@@ -1,0 +1,157 @@
+@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;500;600;700&family=Inter:wght@300;400;500;600;700&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 40 25% 97%;
+    --foreground: 220 40% 13%;
+
+    --card: 0 0% 100%;
+    --card-foreground: 220 40% 13%;
+
+    --popover: 0 0% 100%;
+    --popover-foreground: 220 40% 13%;
+
+    --primary: 220 50% 15%;
+    --primary-foreground: 40 30% 96%;
+
+    --secondary: 40 20% 93%;
+    --secondary-foreground: 220 40% 13%;
+
+    --muted: 40 15% 94%;
+    --muted-foreground: 220 15% 46%;
+
+    --accent: 43 90% 52%;
+    --accent-foreground: 220 50% 10%;
+
+    --destructive: 0 72% 51%;
+    --destructive-foreground: 0 0% 100%;
+
+    --success: 152 60% 40%;
+    --success-foreground: 0 0% 100%;
+
+    --border: 220 15% 88%;
+    --input: 220 15% 88%;
+    --ring: 220 50% 15%;
+
+    --radius: 0.5rem;
+
+    --sidebar-background: 220 50% 12%;
+    --sidebar-foreground: 220 15% 85%;
+    --sidebar-primary: 43 90% 52%;
+    --sidebar-primary-foreground: 220 50% 10%;
+    --sidebar-accent: 220 45% 18%;
+    --sidebar-accent-foreground: 40 30% 96%;
+    --sidebar-border: 220 40% 20%;
+    --sidebar-ring: 43 90% 52%;
+    --sidebar-muted: 220 20% 40%;
+
+    --font-heading: 'Playfair Display', Georgia, serif;
+    --font-body: 'Inter', -apple-system, sans-serif;
+
+    --gold-gradient: linear-gradient(135deg, hsl(43 90% 52%), hsl(38 85% 45%));
+    --navy-gradient: linear-gradient(135deg, hsl(220 50% 15%), hsl(220 45% 22%));
+    --card-shadow: 0 1px 3px hsl(220 40% 13% / 0.06), 0 4px 12px hsl(220 40% 13% / 0.04);
+    --card-shadow-lg: 0 4px 12px hsl(220 40% 13% / 0.08), 0 12px 32px hsl(220 40% 13% / 0.06);
+  }
+
+  .dark {
+    --background: 220 50% 7%;
+    --foreground: 40 20% 92%;
+    --card: 220 45% 11%;
+    --card-foreground: 40 20% 92%;
+    --popover: 220 45% 11%;
+    --popover-foreground: 40 20% 92%;
+    --primary: 43 90% 52%;
+    --primary-foreground: 220 50% 10%;
+    --secondary: 220 40% 16%;
+    --secondary-foreground: 40 20% 92%;
+    --muted: 220 30% 18%;
+    --muted-foreground: 220 15% 55%;
+    --accent: 43 90% 52%;
+    --accent-foreground: 220 50% 10%;
+    --destructive: 0 62% 45%;
+    --destructive-foreground: 0 0% 100%;
+    --success: 152 60% 40%;
+    --success-foreground: 0 0% 100%;
+    --border: 220 30% 20%;
+    --input: 220 30% 20%;
+    --ring: 43 90% 52%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground;
+    font-family: var(--font-body);
+  }
+  h1, h2, h3, h4, h5, h6 {
+    font-family: var(--font-heading);
+  }
+}
+
+@layer utilities {
+  .gold-gradient {
+    background: var(--gold-gradient);
+  }
+  .navy-gradient {
+    background: var(--navy-gradient);
+  }
+  .card-shadow {
+    box-shadow: var(--card-shadow);
+  }
+  .card-shadow-lg {
+    box-shadow: var(--card-shadow-lg);
+  }
+  .seal-pattern {
+    background-image: radial-gradient(circle at 50% 50%, hsl(43 90% 52% / 0.03) 0%, transparent 70%);
+  }
+}
+
+/* ---- Request Access page animations ---- */
+@keyframes ra-fade-in-up {
+  from {
+    opacity: 0;
+    transform: translateY(18px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+@keyframes ra-scale-in {
+  from {
+    opacity: 0;
+    transform: scale(0.7);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+@keyframes ra-pulse-ring {
+  0%, 100% {
+    transform: scale(1);
+    opacity: 0.5;
+  }
+  50% {
+    transform: scale(1.25);
+    opacity: 0;
+  }
+}
+
+.ra-fade-in-up {
+  animation: ra-fade-in-up 0.55s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+.ra-scale-in {
+  animation: ra-scale-in 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) 0.15s both;
+}
+.ra-pulse-ring {
+  animation: ra-pulse-ring 2s ease-in-out infinite;
+}
