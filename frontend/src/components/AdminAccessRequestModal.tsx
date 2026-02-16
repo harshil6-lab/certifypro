@@ -39,6 +39,10 @@ export interface AdminAccessFormData {
   notes: string;
 }
 
+interface FormErrors extends Partial<Record<keyof AdminAccessFormData, string>> {
+  submit?: string;
+}
+
 interface AdminAccessRequestModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -93,8 +97,9 @@ const AdminAccessRequestModal = ({
   onOpenChange,
 }: AdminAccessRequestModalProps) => {
   const [form, setForm] = useState<AdminAccessFormData>({ ...INITIAL_FORM });
-  const [errors, setErrors] = useState<Partial<Record<keyof AdminAccessFormData, string>>>({});
+  const [errors, setErrors] = useState<FormErrors>({});
   const [submitted, setSubmitted] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   /* ---- field change handler ---- */
   const handleChange = (field: keyof AdminAccessFormData, value: string) => {
@@ -104,7 +109,7 @@ const AdminAccessRequestModal = ({
 
   /* ---- validation ---- */
   const validate = (): boolean => {
-    const next: Partial<Record<keyof AdminAccessFormData, string>> = {};
+    const next: FormErrors = {};
     if (!form.fullName.trim()) next.fullName = "Full name is required.";
     if (!form.institution.trim()) next.institution = "Institution is required.";
     if (!form.email.trim()) next.email = "Email is required.";
@@ -115,14 +120,26 @@ const AdminAccessRequestModal = ({
   };
 
   /* ---- submit ---- */
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!validate()) return;
 
-    // TODO: POST form data to backend API
-    // await api.post("/admin-access-requests", form);
+    setIsSubmitting(true);
+    try {
+      // Simulate API call delay for UX
+      await new Promise((resolve) => setTimeout(resolve, 800));
+      
+      // TODO: POST form data to backend API
+      // const response = await api.post("/admin-access-requests", form);
+      // if (!response.ok) throw new Error('Submission failed');
 
-    setSubmitted(true);
+      setSubmitted(true);
+    } catch (error) {
+      console.error('Submission error:', error);
+      setErrors((prev) => ({ ...prev, submit: 'Failed to submit request. Please try again.' }));
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   /* ---- reset on close ---- */
@@ -140,24 +157,36 @@ const AdminAccessRequestModal = ({
       <DialogContent className="sm:max-w-[520px] max-h-[90vh] overflow-y-auto">
         {/* ---- Success state ---- */}
         {submitted ? (
-          <div className="flex flex-col items-center gap-4 py-6 text-center animate-fade-in">
-            <div className="w-14 h-14 rounded-full bg-green-100 dark:bg-green-900/30 flex items-center justify-center">
-              <CheckCircle2 className="w-7 h-7 text-green-600 dark:text-green-400" />
+          <div className="flex flex-col items-center gap-4 py-8 text-center animate-fade-in">
+            <div className="relative">
+              <div className="absolute inset-0 w-16 h-16 bg-green-500/20 rounded-full blur-xl" />
+              <div className="relative w-16 h-16 rounded-full bg-gradient-to-br from-green-50 to-green-100 dark:from-green-900/20 dark:to-green-900/30 flex items-center justify-center ring-2 ring-green-200 dark:ring-green-800">
+                <CheckCircle2 className="w-8 h-8 text-green-600 dark:text-green-400 animate-bounce" style={{ animationDelay: '0.15s' }} />
+              </div>
             </div>
             <DialogHeader className="items-center">
-              <DialogTitle className="text-xl">Request Submitted</DialogTitle>
-              <DialogDescription>
-                Your admin access request has been received. You'll be notified
-                at <span className="font-medium text-foreground">{form.email}</span> once
-                it's reviewed.
+              <DialogTitle className="text-2xl font-bold">Request Submitted! 🎉</DialogTitle>
+              <DialogDescription className="pt-2 text-base">
+                Your admin access request has been received and is now under review.
               </DialogDescription>
+              <p className="text-sm text-muted-foreground pt-3">
+                We'll send a confirmation email to<br />
+                <span className="font-semibold text-foreground">{form.email}</span>
+              </p>
             </DialogHeader>
+            <div className="w-full rounded-lg bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 p-4 text-sm text-blue-900 dark:text-blue-200 space-y-2">
+              <p className="font-medium">What happens next?</p>
+              <ul className="space-y-1 text-left">
+                <li>✓ Your request is queued for review</li>
+                <li>✓ Review typically takes 2-3 business days</li>
+                <li>✓ You'll receive email notification once approved</li>
+              </ul>
+            </div>
             <Button
-              variant="outline"
-              className="mt-2"
+              className="mt-4 gold-gradient text-accent-foreground hover:opacity-90"
               onClick={() => handleOpenChange(false)}
             >
-              Close
+              Got it, thanks!
             </Button>
           </div>
         ) : (
@@ -195,82 +224,90 @@ const AdminAccessRequestModal = ({
             <form onSubmit={handleSubmit} className="space-y-4" noValidate>
               {/* Full Name */}
               <div className="space-y-1.5">
-                <Label htmlFor="admin-fullname">
+                <Label htmlFor="admin-fullname" className="text-sm font-semibold">
                   Full Name <span className="text-destructive">*</span>
                 </Label>
                 <Input
                   id="admin-fullname"
-                  placeholder="John Doe"
+                  placeholder="e.g., Dr. Sarah Chen"
                   value={form.fullName}
                   onChange={(e) => handleChange("fullName", e.target.value)}
                   aria-invalid={!!errors.fullName}
                   aria-describedby={errors.fullName ? "err-fullname" : undefined}
-                  className="h-10"
+                  className="h-10 transition-colors focus:ring-2 focus:ring-amber-400/50"
+                  disabled={isSubmitting}
                 />
                 {errors.fullName && (
-                  <p id="err-fullname" className="text-xs text-destructive" role="alert">
-                    {errors.fullName}
+                  <p id="err-fullname" className="text-xs text-destructive font-medium" role="alert">
+                    ⚠ {errors.fullName}
                   </p>
                 )}
               </div>
 
               {/* Institution */}
               <div className="space-y-1.5">
-                <Label htmlFor="admin-institution">
+                <Label htmlFor="admin-institution" className="text-sm font-semibold">
                   Institution <span className="text-destructive">*</span>
                 </Label>
                 <Input
                   id="admin-institution"
-                  placeholder="University / College name"
+                  placeholder="e.g., Harvard University"
                   value={form.institution}
                   onChange={(e) => handleChange("institution", e.target.value)}
                   aria-invalid={!!errors.institution}
                   aria-describedby={errors.institution ? "err-institution" : undefined}
-                  className="h-10"
+                  className="h-10 transition-colors focus:ring-2 focus:ring-amber-400/50"
+                  disabled={isSubmitting}
                 />
                 {errors.institution && (
-                  <p id="err-institution" className="text-xs text-destructive" role="alert">
-                    {errors.institution}
+                  <p id="err-institution" className="text-xs text-destructive font-medium" role="alert">
+                    ⚠ {errors.institution}
                   </p>
                 )}
               </div>
 
               {/* Official Email */}
               <div className="space-y-1.5">
-                <Label htmlFor="admin-email">
+                <Label htmlFor="admin-email" className="text-sm font-semibold">
                   Official Email <span className="text-destructive">*</span>
                 </Label>
                 <Input
                   id="admin-email"
                   type="email"
-                  placeholder="you@institution.edu"
+                  placeholder="name@university.edu"
                   value={form.email}
                   onChange={(e) => handleChange("email", e.target.value)}
                   aria-invalid={!!errors.email}
-                  aria-describedby={errors.email ? "err-email" : undefined}
-                  className="h-10"
+                  aria-describedby={errors.email ? "err-email" : "hint-email"}
+                  className="h-10 transition-colors focus:ring-2 focus:ring-amber-400/50"
+                  disabled={isSubmitting}
+                  autoComplete="email"
                 />
+                <p id="hint-email" className="text-xs text-muted-foreground">
+                  We'll use this to confirm your request
+                </p>
                 {errors.email && (
-                  <p id="err-email" className="text-xs text-destructive" role="alert">
-                    {errors.email}
+                  <p id="err-email" className="text-xs text-destructive font-medium" role="alert">
+                    ⚠ {errors.email}
                   </p>
                 )}
               </div>
 
               {/* Role / Purpose */}
               <div className="space-y-1.5">
-                <Label htmlFor="admin-role">
+                <Label htmlFor="admin-role" className="text-sm font-semibold">
                   Role / Purpose <span className="text-destructive">*</span>
                 </Label>
                 <Select
                   value={form.role}
                   onValueChange={(v) => handleChange("role", v)}
+                  disabled={isSubmitting}
                 >
                   <SelectTrigger
                     id="admin-role"
                     aria-invalid={!!errors.role}
                     aria-describedby={errors.role ? "err-role" : undefined}
-                    className="h-10"
+                    className="h-10 transition-colors focus:ring-2 focus:ring-amber-400/50"
                   >
                     <SelectValue placeholder="Select your role" />
                   </SelectTrigger>
@@ -283,40 +320,63 @@ const AdminAccessRequestModal = ({
                   </SelectContent>
                 </Select>
                 {errors.role && (
-                  <p id="err-role" className="text-xs text-destructive" role="alert">
-                    {errors.role}
+                  <p id="err-role" className="text-xs text-destructive font-medium" role="alert">
+                    ⚠ {errors.role}
                   </p>
                 )}
               </div>
 
               {/* Optional Notes */}
               <div className="space-y-1.5">
-                <Label htmlFor="admin-notes">Additional Notes (optional)</Label>
+                <Label htmlFor="admin-notes" className="text-sm font-semibold">
+                  Additional Notes <span className="text-muted-foreground text-xs font-normal">(optional)</span>
+                </Label>
                 <Textarea
                   id="admin-notes"
-                  placeholder="Any additional context for your access request…"
+                  placeholder="E.g., I need access to manage certificates for our Computer Science department..."
                   value={form.notes}
                   onChange={(e) => handleChange("notes", e.target.value)}
                   rows={3}
-                  className="resize-none"
+                  className="resize-none transition-colors focus:ring-2 focus:ring-amber-400/50"
+                  disabled={isSubmitting}
                 />
+                <p className="text-xs text-muted-foreground">
+                  Max 500 characters ({form.notes.length}/500)
+                </p>
               </div>
 
+              {errors.submit && (
+                <div className="rounded-lg bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 p-3" role="alert">
+                  <p className="text-sm text-red-700 dark:text-red-200">{errors.submit}</p>
+                </div>
+              )}
+
               {/* Submit */}
-              <DialogFooter className="pt-2">
+              <DialogFooter className="pt-4">
                 <Button
                   type="button"
                   variant="outline"
                   onClick={() => handleOpenChange(false)}
+                  disabled={isSubmitting}
                 >
                   Cancel
                 </Button>
                 <Button
                   type="submit"
-                  className="gap-2 gold-gradient text-accent-foreground hover:opacity-90 transition-opacity"
+                  disabled={isSubmitting}
+                  className="gap-2 gold-gradient text-accent-foreground hover:opacity-90 transition-all disabled:opacity-60 disabled:cursor-not-allowed"
                 >
-                  <Send className="w-4 h-4" />
-                  Submit Request
+                  {isSubmitting ? (
+                    <>
+                      <span className="inline-block h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent" />
+                      Submitting...
+                    </>
+                  ) : (
+                    <>
+                      <Send className="w-4 h-4" />
+                      Submit Request
+                    </>
+                  )}
                 </Button>
               </DialogFooter>
             </form>

@@ -98,14 +98,14 @@ const Login = () => {
           </div>
 
           {/* Request Admin Access */}
-          <div className="flex justify-center">
+          <div className="flex justify-center pt-2">
             <button
               type="button"
               onClick={() => setAdminModalOpen(true)}
-              className="group relative inline-flex items-center gap-2 rounded-xl border border-white/20 bg-white/10 px-5 py-2.5 text-sm font-medium text-foreground shadow-sm backdrop-blur-md transition-all duration-300 hover:border-amber-400/50 hover:bg-white/20 hover:shadow-[0_0_20px_rgba(217,169,56,0.15)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+              className="group inline-flex items-center gap-2 rounded-lg border border-amber-500/30 bg-gradient-to-r from-amber-500/10 to-amber-400/10 px-5 py-2.5 text-sm font-medium text-amber-700 dark:text-amber-400 shadow-sm backdrop-blur-sm transition-all duration-300 hover:border-amber-400/60 hover:bg-gradient-to-r hover:from-amber-500/20 hover:to-amber-400/20 hover:shadow-[0_0_20px_rgba(217,169,56,0.2)] active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500/50 focus-visible:ring-offset-2"
             >
-              <span className="flex h-6 w-6 items-center justify-center rounded-lg bg-gradient-to-br from-amber-400 to-amber-600 shadow-sm transition-transform duration-300 group-hover:scale-110">
-                <UserPlus className="h-3.5 w-3.5 text-white" />
+              <span className="flex h-5 w-5 items-center justify-center rounded-md bg-gradient-to-br from-amber-400 to-amber-600 shadow-sm transition-transform duration-300 group-hover:scale-110">
+                <UserPlus className="h-3 w-3 text-white" />
               </span>
               Request Admin Access
             </button>
