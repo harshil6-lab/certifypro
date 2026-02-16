@@ -1,13 +1,15 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
-import { Award, Lock, Mail, ShieldCheck, UserPlus } from "lucide-react";
+import { Award, Lock, Mail, ShieldCheck, UserPlus, CheckCircle, ArrowRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import loginBg from "@/assets/login-bg.jpg";
 import AdminAccessRequestModal from "@/components/AdminAccessRequestModal";
+import PublicCertificateVerificationModal from "@/components/PublicCertificateVerificationModal";
 
 const Login = () => {
   const [adminModalOpen, setAdminModalOpen] = useState(false);
+  const [verificationModalOpen, setVerificationModalOpen] = useState(false);
 
   return (
     <div className="min-h-screen flex">
@@ -54,6 +56,7 @@ const Login = () => {
             </p>
           </div>
 
+          {/* Admin Login Section */}
           <div className="space-y-4">
             <Button variant="outline" className="w-full h-11 gap-3 font-medium">
               <svg className="w-4 h-4" viewBox="0 0 24 24">
@@ -92,13 +95,14 @@ const Login = () => {
             </Link>
           </div>
 
+          {/* Security Notice */}
           <div className="flex items-center gap-2 text-xs text-muted-foreground justify-center pt-4">
             <Lock className="w-3 h-3" />
             <span>Your certificates are protected with SHA‑256 encryption</span>
           </div>
 
           {/* Request Admin Access */}
-          <div className="flex justify-center pt-2">
+          <div className="flex justify-center">
             <button
               type="button"
               onClick={() => setAdminModalOpen(true)}
@@ -111,9 +115,61 @@ const Login = () => {
             </button>
           </div>
 
+          {/* Divider */}
+          <div className="relative py-6">
+            <div className="absolute inset-0 flex items-center">
+              <span className="w-full border-t" />
+            </div>
+            <div className="relative flex justify-center text-xs uppercase">
+              <span className="bg-background px-3 text-muted-foreground font-medium">not an admin?</span>
+            </div>
+          </div>
+
+          {/* Public Verification Section */}
+          <div
+            className="rounded-xl border border-slate-200 dark:border-slate-700 bg-gradient-to-br from-slate-50 to-slate-100 dark:from-slate-900/30 dark:to-slate-900/50 p-6 space-y-4 cursor-pointer transition-all duration-300 hover:border-amber-400/50 hover:shadow-[0_8px_20px_rgba(217,169,56,0.1)]"
+            onClick={() => setVerificationModalOpen(true)}
+            role="button"
+            tabIndex={0}
+            onKeyDown={(e) => e.key === "Enter" && setVerificationModalOpen(true)}
+          >
+            <div className="space-y-2">
+              <div className="flex items-center gap-2">
+                <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-green-100 dark:bg-green-900/30">
+                  <CheckCircle className="w-4 h-4 text-green-600 dark:text-green-400" />
+                </div>
+                <h3 className="text-sm font-semibold text-foreground">Verify a Certificate</h3>
+              </div>
+              <p className="text-xs text-muted-foreground leading-relaxed">
+                Students, employers, and institutions: Verify certificate authenticity without an account. Quick, secure, and confidential.
+              </p>
+            </div>
+
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-medium text-slate-600 dark:text-slate-400">
+                Public verification portal
+              </span>
+              <ArrowRight className="w-4 h-4 text-amber-500 group-hover:translate-x-1 transition-transform" />
+            </div>
+
+            <Button
+              className="w-full h-10 text-sm font-medium gold-gradient text-accent-foreground hover:opacity-90"
+              onClick={(e) => {
+                e.stopPropagation();
+                setVerificationModalOpen(true);
+              }}
+            >
+              Start Verification
+            </Button>
+          </div>
+
           <AdminAccessRequestModal
             open={adminModalOpen}
             onOpenChange={setAdminModalOpen}
+          />
+          <PublicCertificateVerificationModal
+            open={verificationModalOpen}
+            onOpenChange={setVerificationModalOpen}
           />
         </div>
       </div>
