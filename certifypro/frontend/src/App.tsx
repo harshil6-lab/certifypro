@@ -15,6 +15,7 @@ import AccessControl from "./pages/AccessControl";
 import Verify from "./pages/Verify";
 import VerifyResult from "./pages/VerifyResult";
 import Help from "./pages/Help";
+import RequestAccess from "./pages/RequestAccess";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -28,6 +29,7 @@ const App = () => (
         <Routes>
           <Route path="/" element={<Index />} />
           <Route path="/login" element={<Login />} />
+          <Route path="/request-access" element={<RequestAccess />} />
           <Route path="/verify" element={<Verify />} />
           <Route path="/verify/:certId" element={<VerifyResult />} />
           <Route element={<AdminLayout />}>

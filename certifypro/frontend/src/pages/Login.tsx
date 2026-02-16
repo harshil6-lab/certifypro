@@ -1,13 +1,10 @@
-import { useState } from "react";
 import { Link } from "react-router-dom";
-import { Award, Lock, Mail, ShieldCheck } from "lucide-react";
+import { Award, Lock, Mail, ShieldCheck, ArrowRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import AdminAccessModal from "@/components/AdminAccessModal";
 import loginBg from "@/assets/login-bg.jpg";
 
 const Login = () => {
-  const [adminModalOpen, setAdminModalOpen] = useState(false);
 
   return (
     <div className="min-h-screen flex">
@@ -97,22 +94,20 @@ const Login = () => {
             <span>Your certificates are protected with SHA‑256 encryption</span>
           </div>
 
-          {/* Request Admin Access Button */}
-          <div className="pt-6 border-t">
-            <p className="text-xs text-muted-foreground text-center mb-4">
-              Are you an institution administrator?
-            </p>
-            <Button
-              variant="outline"
-              className="w-full h-11 font-medium"
-              onClick={() => setAdminModalOpen(true)}
-            >
-              Request Admin Access
-            </Button>
+          {/* Request Admin Access CTA */}
+          <div className="pt-2">
+            <Link to="/request-access" className="block">
+              <Button
+                variant="outline"
+                className="w-full h-10 gap-2 text-sm font-medium border-primary/20 text-muted-foreground hover:text-foreground hover:border-primary/40 hover:bg-primary/5 transition-all duration-200 group"
+              >
+                <ShieldCheck className="w-4 h-4 text-primary/60 group-hover:text-primary transition-colors" />
+                Request Admin Access
+                <ArrowRight className="w-3.5 h-3.5 ml-auto opacity-0 -translate-x-1 group-hover:opacity-100 group-hover:translate-x-0 transition-all duration-200" />
+              </Button>
+            </Link>
           </div>
         </div>
-
-        <AdminAccessModal open={adminModalOpen} onOpenChange={setAdminModalOpen} />
       </div>
     </div>
   );
