@@ -1,9 +1,10 @@
 import { Award, Menu } from "lucide-react";
-import { Link } from "react-router-dom";
+import { Link, useLocation } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetClose, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 
 const navItems = [
+  { label: "Home", to: "/" },
   { label: "About Us", to: "/about" },
   { label: "Features", to: "/features" },
   { label: "Templates", to: "/login?reason=templates" },
@@ -12,32 +13,56 @@ const navItems = [
 ];
 
 export function PublicNavbar() {
+  const location = useLocation();
+
+  const isItemActive = (to: string) => {
+    if (to === "/") {
+      return location.pathname === "/";
+    }
+
+    if (to === "/verify") {
+      return location.pathname.startsWith("/verify");
+    }
+
+    if (to.startsWith("/login?reason=templates")) {
+      const params = new URLSearchParams(location.search);
+      return location.pathname === "/login" && params.get("reason") === "templates";
+    }
+
+    return location.pathname === to;
+  };
+
   return (
     <header className="sticky top-0 z-30 border-b border-border/70 bg-background/90 backdrop-blur-lg shadow-[0_8px_24px_rgba(15,23,42,0.06)]">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 py-3.5 flex items-center justify-between gap-4">
-        <Link to="/" className="flex items-center gap-3">
+      <div className="mx-auto w-full max-w-[1400px] px-3 sm:px-4 lg:px-6 py-3.5 flex items-center justify-between gap-4">
+        <Link to="/" className="flex items-center gap-3 group" aria-label="Go to CertifyPro Home">
           <div className="w-10 h-10 rounded-xl gold-gradient flex items-center justify-center">
             <Award className="w-5 h-5 text-accent-foreground" />
           </div>
           <div>
-            <p className="text-lg font-heading font-bold text-foreground leading-none">CertifyPro</p>
+            <p className="text-lg font-heading font-bold text-foreground leading-none transition-colors group-hover:text-foreground/90">CertifyPro</p>
             <p className="text-xs text-muted-foreground mt-1">Certificate Automation Platform</p>
           </div>
         </Link>
 
-        <nav className="hidden lg:flex items-center gap-6">
+        <nav className="hidden lg:flex items-center gap-8 xl:gap-10">
           {navItems.map((item) => (
             <Link
               key={item.label}
               to={item.to}
-              className="relative text-sm text-foreground/80 hover:text-foreground transition-colors after:absolute after:left-0 after:-bottom-1 after:h-0.5 after:w-full after:origin-left after:scale-x-0 after:bg-accent after:transition-transform hover:after:scale-x-100"
+              aria-current={isItemActive(item.to) ? "page" : undefined}
+              className={`relative text-sm transition-colors duration-300 after:absolute after:left-0 after:-bottom-1 after:h-0.5 after:w-full after:origin-left after:bg-accent after:transition-transform after:duration-300 after:ease-out ${
+                isItemActive(item.to)
+                  ? "text-foreground after:scale-x-100"
+                  : "text-foreground/80 hover:text-foreground after:scale-x-0 hover:after:scale-x-100"
+              }`}
             >
               {item.label}
             </Link>
           ))}
         </nav>
 
-        <div className="flex items-center gap-2">
+        <div className="flex items-center justify-end gap-2 shrink-0">
           <Link to="/login" className="hidden sm:block">
             <Button size="sm" className="gold-gradient text-accent-foreground shadow-[0_8px_20px_rgba(217,169,56,0.25)] hover:opacity-95">
               Login / Request Access
@@ -65,7 +90,12 @@ export function PublicNavbar() {
                   <SheetClose asChild key={item.label}>
                     <Link
                       to={item.to}
-                      className="block rounded-lg px-3 py-2 text-sm text-foreground/80 hover:bg-muted hover:text-foreground transition-colors"
+                      aria-current={isItemActive(item.to) ? "page" : undefined}
+                      className={`block rounded-lg px-3 py-2 text-sm transition-colors ${
+                        isItemActive(item.to)
+                          ? "bg-muted text-foreground"
+                          : "text-foreground/80 hover:bg-muted hover:text-foreground"
+                      }`}
                     >
                       {item.label}
                     </Link>
