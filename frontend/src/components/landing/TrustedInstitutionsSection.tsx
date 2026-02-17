@@ -22,7 +22,7 @@ const institutionLogos = [
 
 export function TrustedInstitutionsSection() {
   return (
-    <section className="space-y-4 md:space-y-5">
+    <section className="space-y-4 md:space-y-5 w-full animate-fade-in">
       <div className="text-center space-y-2">
         <h2 className="text-2xl md:text-3xl font-heading font-bold text-foreground">
           Trusted by Institutions &amp; Organizations
@@ -32,15 +32,20 @@ export function TrustedInstitutionsSection() {
         </p>
       </div>
 
-      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-x-6 gap-y-5 md:gap-x-8 md:gap-y-6 items-center justify-items-center py-1">
+      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-x-6 gap-y-6 md:gap-x-8 md:gap-y-7 items-center justify-items-center py-1 sm:py-2">
         {institutionLogos.map((logo, index) => (
-          <img
+          <div
             key={`${logo.src}-${index}`}
-            src={logo.src}
-            alt={logo.alt}
-            loading="lazy"
-            className="h-10 sm:h-11 md:h-12 w-auto max-w-[140px] object-contain opacity-65 grayscale transition-all duration-300 ease-out hover:opacity-100 hover:grayscale-0"
-          />
+            className="group relative rounded-xl px-3 py-2 transition-all duration-300 ease-out hover:scale-[1.03]"
+          >
+            <div className="absolute inset-0 rounded-xl bg-white/0 opacity-0 backdrop-blur-none shadow-none transition-all duration-300 group-hover:bg-white/10 group-hover:opacity-100 group-hover:backdrop-blur-[1.5px] group-hover:shadow-[0_8px_24px_rgba(15,23,42,0.12)] dark:group-hover:bg-white/5" />
+            <img
+              src={logo.src}
+              alt={logo.alt}
+              loading="lazy"
+              className="relative z-10 h-12 sm:h-14 md:h-14 w-auto max-w-[160px] object-contain opacity-90 transition-opacity duration-300 group-hover:opacity-100"
+            />
+          </div>
         ))}
       </div>
     </section>
