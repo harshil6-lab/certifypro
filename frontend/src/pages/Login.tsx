@@ -1,15 +1,19 @@
 import { useState } from "react";
-import { Link } from "react-router-dom";
-import { Award, Lock, Mail, ShieldCheck, UserPlus, CheckCircle, ArrowRight } from "lucide-react";
+import { Link, useSearchParams } from "react-router-dom";
+import { Lock, Mail, ShieldCheck, UserPlus, CheckCircle, ArrowRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import loginBg from "@/assets/login-bg.jpg";
+import whiteCertifyProLogo from "@/assets/white_certify_pro_logo.png";
+import certifyProIcon from "@/assets/certify_pro_icon.png";
 import AdminAccessRequestModal from "@/components/AdminAccessRequestModal";
 import PublicCertificateVerificationModal from "@/components/PublicCertificateVerificationModal";
 
 const Login = () => {
   const [adminModalOpen, setAdminModalOpen] = useState(false);
   const [verificationModalOpen, setVerificationModalOpen] = useState(false);
+  const [searchParams] = useSearchParams();
+  const templateRedirect = searchParams.get("reason") === "templates";
 
   return (
     <div className="min-h-screen flex bg-background overflow-hidden">
@@ -30,19 +34,14 @@ const Login = () => {
         {/* Branding content */}
         <div className="relative z-10 max-w-md text-center space-y-10">
           {/* Logo badge */}
-          <div className="flex justify-center">
-            <div className="relative">
-              <div className="absolute inset-0 gold-gradient rounded-3xl blur-xl opacity-30 group-hover:opacity-50 transition-opacity" />
-              <div className="relative w-24 h-24 rounded-3xl gold-gradient flex items-center justify-center card-shadow-lg ring-1 ring-white/20 backdrop-blur-sm">
-                <Award className="w-12 h-12 text-accent-foreground drop-shadow-sm" />
-              </div>
-            </div>
+          <div className="flex justify-center mb-4">
+            <img src={whiteCertifyProLogo} alt="CertifyPro Logo" className="h-12 lg:h-14 w-auto object-contain opacity-100" />
           </div>
 
           {/* Heading */}
           <div className="space-y-3">
             <h1 className="text-5xl lg:text-6xl font-heading font-bold text-primary-foreground leading-tight drop-shadow-sm">
-              CertifyPro
+              Admin Portal
             </h1>
             <p className="text-xl text-primary-foreground/90 font-body font-light tracking-wide">
               Certificate Automation &amp; Verification
@@ -81,15 +80,10 @@ const Login = () => {
         <div className="w-full max-w-md space-y-8 animate-fade-in relative z-10">
           {/* Mobile header */}
           <div className="lg:hidden flex flex-col items-center gap-3 text-center mb-8">
-            <div className="relative">
-              <div className="absolute inset-0 gold-gradient rounded-2xl blur-lg opacity-20" />
-              <div className="relative w-16 h-16 rounded-2xl gold-gradient flex items-center justify-center ring-1 ring-white/20">
-                <Award className="w-8 h-8 text-accent-foreground" />
-              </div>
-            </div>
+            <img src={certifyProIcon} alt="CertifyPro Logo" className="h-12 w-12 object-contain" />
             <div>
-              <h1 className="text-2xl font-heading font-bold text-foreground">CertifyPro</h1>
-              <p className="text-xs text-muted-foreground mt-1 font-medium">Admin Portal</p>
+              <h1 className="text-2xl font-heading font-bold text-foreground">Admin Portal</h1>
+              <p className="text-xs text-muted-foreground mt-1 font-medium">Secure Access</p>
             </div>
           </div>
 
@@ -101,6 +95,11 @@ const Login = () => {
             <p className="text-sm text-muted-foreground/90 font-body leading-relaxed">
               Sign in to manage certificates, templates, student records, and secure verifications
             </p>
+            {templateRedirect ? (
+              <div className="rounded-xl border border-accent/30 bg-accent/10 px-4 py-3 text-sm text-foreground">
+                Please login to access certificate templates.
+              </div>
+            ) : null}
           </div>
 
           {/* Admin Login Section */}

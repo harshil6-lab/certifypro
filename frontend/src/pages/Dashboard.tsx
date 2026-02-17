@@ -6,7 +6,6 @@ import {
   CheckCircle2,
   Clock,
   ArrowRight,
-  QrCode,
   Upload,
   Printer,
   Search,
@@ -16,7 +15,6 @@ import {
 import { Link } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Progress } from "@/components/ui/progress";
 import { ProfileOnboardingModal } from "@/components/ProfileOnboardingModal";
 import { useAdminOnboarding, type OnboardingProfile } from "@/hooks/useAdminOnboarding";
 
@@ -42,14 +40,11 @@ const recentActivity = [
 ];
 
 const Dashboard = () => {
-  const { isCompleted, isLoading, completeOnboarding, skipOnboarding } = useAdminOnboarding();
+  const { isCompleted, isLoading, profile, completeOnboarding, skipOnboarding } = useAdminOnboarding();
   const [showOnboarding, setShowOnboarding] = useState(false);
 
-  // Once hook finishes loading, show onboarding if not completed
   useEffect(() => {
-    console.log(`[Dashboard] isLoading: ${isLoading}, isCompleted: ${isCompleted}`);
     if (!isLoading && !isCompleted) {
-      console.log("[Dashboard] Showing onboarding modal");
       setShowOnboarding(true);
     }
   }, [isLoading, isCompleted]);
@@ -76,6 +71,11 @@ const Dashboard = () => {
             <p className="text-muted-foreground mt-1">
               Here's what's happening with your certificates today.
             </p>
+            {profile?.organization ? (
+              <p className="mt-2 text-xs inline-flex items-center rounded-full border border-accent/30 bg-accent/5 px-2.5 py-1 text-accent">
+                Workspace: {profile.organization}
+              </p>
+            ) : null}
           </div>
           <Link to="/help">
             <Button variant="outline" size="sm" className="gap-2">

@@ -53,7 +53,6 @@ export function ProfileOnboardingModal({
 }: ProfileOnboardingModalProps) {
   const [step, setStep] = useState(1);
   const [isLoading, setIsLoading] = useState(false);
-  const [open, setOpen] = useState(isOpen);
   const [formData, setFormData] = useState<OnboardingData>({
     role: "",
     organization: "",
@@ -61,17 +60,12 @@ export function ProfileOnboardingModal({
     intendedUse: "",
   });
 
-  // Sync external isOpen state with internal open state
-  useEffect(() => {
-    setOpen(isOpen);
-  }, [isOpen]);
-
   // Reset on open
   useEffect(() => {
-    if (open) {
+    if (isOpen) {
       setStep(1);
     }
-  }, [open]);
+  }, [isOpen]);
 
   const handleNext = () => {
     if (step === 1 && !formData.role) return;
@@ -94,11 +88,9 @@ export function ProfileOnboardingModal({
 
   const submitForm = () => {
     setIsLoading(true);
-    // Simulate API call
     setTimeout(() => {
       setIsLoading(false);
       onComplete(formData);
-      setOpen(false);
     }, 500);
   };
 
@@ -120,9 +112,8 @@ export function ProfileOnboardingModal({
   const progressPercent = (step / 4) * 100;
 
   return (
-    <Dialog open={open} onOpenChange={(newOpen) => {
-      setOpen(newOpen);
-      if (!newOpen) {
+    <Dialog open={isOpen} onOpenChange={(open) => {
+      if (!open) {
         onSkip();
       }
     }}>

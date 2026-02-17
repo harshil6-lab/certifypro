@@ -1,7 +1,8 @@
 import { useParams, Link } from "react-router-dom";
-import { Award, CheckCircle2, XCircle, ArrowLeft, ShieldCheck, Calendar, User, BookOpen, Hash } from "lucide-react";
+import { CheckCircle2, XCircle, ArrowLeft, ShieldCheck, Calendar, User, BookOpen, Hash } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
+import certifyProIcon from "@/assets/certify_pro_icon.png";
 
 const validCerts: Record<string, { name: string; course: string; date: string; institution: string; certId: string }> = {
   "CERT-2024-0001": { name: "Alice Johnson", course: "B.Sc. Computer Science", date: "June 15, 2024", institution: "National University", certId: "CERT-2024-0001" },
@@ -18,9 +19,7 @@ const VerifyResult = () => {
       <header className="border-b bg-card">
         <div className="max-w-4xl mx-auto px-6 py-4 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="w-9 h-9 rounded-lg gold-gradient flex items-center justify-center">
-              <Award className="w-5 h-5 text-accent-foreground" />
-            </div>
+            <img src={certifyProIcon} alt="CertifyPro Logo" className="h-6 w-6 object-contain" />
             <span className="text-lg font-heading font-bold text-foreground">CertifyPro</span>
           </div>
           <Link to="/verify">
