@@ -37,8 +37,8 @@ export function PublicNavbar() {
   return (
     <header className="sticky top-0 z-30 border-b border-border/70 bg-background/90 backdrop-blur-lg shadow-[0_8px_24px_rgba(15,23,42,0.06)]">
       <div className="mx-auto w-full max-w-[1400px] px-3 sm:px-4 lg:px-6 py-3.5 flex items-center justify-between gap-4">
-        <Link to="/" className="flex items-center group" aria-label="Go to CertifyPro Home">
-          <img src={certifyProLogo} alt="CertifyPro Logo" className="h-10 sm:h-11 md:h-12 w-auto object-contain" />
+        <Link to="/" className="flex items-center pr-2 group" aria-label="Go to CertifyPro Home">
+          <img src={certifyProLogo} alt="CertifyPro Logo" className="h-10 md:h-11 lg:h-12 w-auto object-contain" />
         </Link>
 
         <nav className="hidden lg:flex items-center gap-8 xl:gap-10">

@@ -9,7 +9,7 @@ export function LandingFooter() {
       <div className="mx-auto w-full max-w-[1400px] px-4 sm:px-6 lg:px-8 pt-14 md:pt-16 pb-8">
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-12 gap-10 lg:gap-8">
           <div className="lg:col-span-4 space-y-5">
-            <img src={certifyProLogo} alt="CertifyPro Logo" className="h-10 w-auto object-contain" />
+            <img src={certifyProLogo} alt="CertifyPro Logo" className="h-11 md:h-12 w-auto object-contain mb-2" />
 
             <p className="text-sm text-muted-foreground">Secure Certificate Automation &amp; Verification Platform</p>
 

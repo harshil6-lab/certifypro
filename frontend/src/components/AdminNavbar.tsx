@@ -28,7 +28,7 @@ import {
   Shield,
   UserCircle,
 } from "lucide-react";
-import certifyProIcon from "@/assets/certify_pro_icon.png";
+import certifyProLogo from "@/assets/certifypro_logowithtext.png";
 
 const navItems = [
   { title: "Dashboard", url: "/dashboard", icon: LayoutDashboard },
@@ -44,8 +44,8 @@ const AdminNavbar = () => {
     <header className="sticky top-0 z-40 w-full border-b border-slate-700 bg-gradient-to-r from-slate-800 via-slate-800 to-slate-900 backdrop-blur-md shadow-[0_10px_30px_rgba(0,0,0,0.3)]">
       <div className="mx-auto flex min-h-16 max-w-7xl items-center gap-4 px-4 sm:px-6">
         {/* Left: Brand */}
-        <div className="flex items-center shrink-0 pr-2">
-          <img src={certifyProIcon} alt="CertifyPro Logo" className="h-6 w-6 object-contain" />
+        <div className="flex items-center shrink-0 pr-3">
+          <img src={certifyProLogo} alt="CertifyPro Logo" className="h-9 sm:h-10 w-auto object-contain" />
         </div>
 
         {/* Center: Navigation */}
@@ -80,8 +80,7 @@ const AdminNavbar = () => {
             <SheetContent side="left" className="bg-gradient-to-b from-slate-900 to-slate-950 border-slate-700">
               <SheetHeader>
                 <SheetTitle className="flex items-center gap-2 text-white">
-                  <img src={certifyProIcon} alt="CertifyPro Logo" className="h-5 w-5 object-contain" />
-                  CertifyPro
+                  <img src={certifyProLogo} alt="CertifyPro Logo" className="h-8 w-auto object-contain" />
                 </SheetTitle>
               </SheetHeader>
               <div className="mt-6 space-y-2">

@@ -4,6 +4,7 @@ import { Lock, Mail, ShieldCheck, UserPlus, CheckCircle, ArrowRight } from "luci
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import loginBg from "@/assets/login-bg.jpg";
+import whiteCertifyProLogo from "@/assets/white_certify_pro_logo.png";
 import certifyProIcon from "@/assets/certify_pro_icon.png";
 import AdminAccessRequestModal from "@/components/AdminAccessRequestModal";
 import PublicCertificateVerificationModal from "@/components/PublicCertificateVerificationModal";
@@ -33,8 +34,8 @@ const Login = () => {
         {/* Branding content */}
         <div className="relative z-10 max-w-md text-center space-y-10">
           {/* Logo badge */}
-          <div className="flex justify-center">
-            <img src={certifyProIcon} alt="CertifyPro Logo" className="h-14 w-14 object-contain" />
+          <div className="flex justify-center mb-4">
+            <img src={whiteCertifyProLogo} alt="CertifyPro Logo" className="h-12 lg:h-14 w-auto object-contain opacity-100" />
           </div>
 
           {/* Heading */}
