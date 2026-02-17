@@ -1,9 +1,10 @@
-import { Award, Layers, QrCode, Library, Sparkles, ArrowRight, ShieldCheck, Quote, Upload, CheckCircle2, SearchCheck, Menu, BadgeCheck } from "lucide-react";
+import { Layers, QrCode, Library, Sparkles, ArrowRight, ShieldCheck, Quote, Upload, CheckCircle2, SearchCheck, BadgeCheck } from "lucide-react";
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { TrustedInstitutionsSection } from "@/components/landing/TrustedInstitutionsSection";
-import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger, SheetClose } from "@/components/ui/sheet";
+import { PublicNavbar } from "@/components/landing/PublicNavbar";
+import { LandingFooter } from "@/components/landing/LandingFooter";
 
 const heroImage =
   "https://images.unsplash.com/photo-1523050854058-8df90110c9f1?auto=format&fit=crop&w=1600&q=80";
@@ -57,103 +58,10 @@ const workflowSteps = [
   },
 ];
 
-const navItems = [
-  { label: "About Us", href: "#about" },
-  { label: "Features", href: "#features" },
-  { label: "Templates", to: "/templates" },
-  { label: "Contact Us", href: "#contact" },
-  { label: "Verify Certificate", to: "/verify" },
-];
-
 const Index = () => {
   return (
     <div className="min-h-screen bg-gradient-to-b from-background via-background to-muted/20">
-      <header className="sticky top-0 z-30 border-b border-border/70 bg-background/90 backdrop-blur-lg shadow-[0_8px_24px_rgba(15,23,42,0.06)]">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 py-3.5 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl gold-gradient flex items-center justify-center">
-              <Award className="w-5 h-5 text-accent-foreground" />
-            </div>
-            <div>
-              <p className="text-lg font-heading font-bold text-foreground">CertifyPro</p>
-              <p className="text-xs text-muted-foreground">Certificate Automation Platform</p>
-            </div>
-          </div>
-
-          <nav className="hidden lg:flex items-center gap-6">
-            {navItems.map((item) =>
-              item.href ? (
-                <a
-                  key={item.label}
-                  href={item.href}
-                  className="relative text-sm text-foreground/80 hover:text-foreground transition-colors after:absolute after:left-0 after:-bottom-1 after:h-0.5 after:w-full after:origin-left after:scale-x-0 after:bg-accent after:transition-transform hover:after:scale-x-100"
-                >
-                  {item.label}
-                </a>
-              ) : (
-                <Link
-                  key={item.label}
-                  to={item.to ?? "/"}
-                  className="relative text-sm text-foreground/80 hover:text-foreground transition-colors after:absolute after:left-0 after:-bottom-1 after:h-0.5 after:w-full after:origin-left after:scale-x-0 after:bg-accent after:transition-transform hover:after:scale-x-100"
-                >
-                  {item.label}
-                </Link>
-              ),
-            )}
-          </nav>
-
-          <div className="flex items-center gap-2">
-            <Link to="/login" className="hidden sm:block">
-              <Button size="sm" className="gold-gradient text-accent-foreground shadow-[0_8px_20px_rgba(217,169,56,0.25)] hover:opacity-95">
-                Login / Request Access
-              </Button>
-            </Link>
-
-            <Sheet>
-              <SheetTrigger asChild>
-                <Button variant="outline" size="icon" className="lg:hidden" aria-label="Open navigation menu">
-                  <Menu className="h-5 w-5" />
-                </Button>
-              </SheetTrigger>
-              <SheetContent side="right" className="w-[85%] sm:w-[420px]">
-                <SheetHeader>
-                  <SheetTitle className="flex items-center gap-2">
-                    <div className="w-8 h-8 rounded-lg gold-gradient flex items-center justify-center">
-                      <Award className="w-4 h-4 text-accent-foreground" />
-                    </div>
-                    CertifyPro
-                  </SheetTitle>
-                </SheetHeader>
-                <div className="mt-6 space-y-3">
-                  {navItems.map((item) =>
-                    item.href ? (
-                      <SheetClose asChild key={item.label}>
-                        <a href={item.href} className="block rounded-lg px-3 py-2 text-sm text-foreground/80 hover:bg-muted hover:text-foreground transition-colors">
-                          {item.label}
-                        </a>
-                      </SheetClose>
-                    ) : (
-                      <SheetClose asChild key={item.label}>
-                        <Link to={item.to ?? "/"} className="block rounded-lg px-3 py-2 text-sm text-foreground/80 hover:bg-muted hover:text-foreground transition-colors">
-                          {item.label}
-                        </Link>
-                      </SheetClose>
-                    ),
-                  )}
-
-                  <div className="pt-2">
-                    <SheetClose asChild>
-                      <Link to="/login">
-                        <Button className="w-full gold-gradient text-accent-foreground">Login / Request Access</Button>
-                      </Link>
-                    </SheetClose>
-                  </div>
-                </div>
-              </SheetContent>
-            </Sheet>
-          </div>
-        </div>
-      </header>
+      <PublicNavbar />
 
       <main className="max-w-7xl mx-auto px-4 sm:px-6 py-12 md:py-16 space-y-16 md:space-y-20">
         <section className="relative rounded-2xl overflow-hidden border border-border/60 card-shadow-lg">
@@ -224,7 +132,7 @@ const Index = () => {
 
         <div className="h-px w-full bg-gradient-to-r from-transparent via-border to-transparent" />
 
-        <section id="features" className="space-y-7">
+        <section className="space-y-7">
           <div className="space-y-2">
             <h2 className="text-2xl md:text-3xl font-heading font-bold text-foreground">Platform Features</h2>
             <p className="text-muted-foreground">Production-ready frontend modules prepared for backend integration.</p>
@@ -281,7 +189,7 @@ const Index = () => {
 
         <div className="h-px w-full bg-gradient-to-r from-transparent via-border to-transparent" />
 
-        <section id="about" className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-center">
+        <section className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-center">
           <div className="space-y-4">
             <h2 className="text-2xl md:text-3xl font-heading font-bold text-foreground">Built for institutions that care about trust and speed</h2>
             <p className="text-muted-foreground leading-relaxed">
@@ -350,56 +258,7 @@ const Index = () => {
           </Card>
         </section>
 
-        <footer id="contact" className="pt-6 pb-10 border-t border-border/70">
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8">
-            <div className="space-y-3">
-              <div className="flex items-center gap-3">
-                <div className="w-9 h-9 rounded-lg gold-gradient flex items-center justify-center">
-                  <Award className="w-4 h-4 text-accent-foreground" />
-                </div>
-                <div>
-                  <p className="text-sm font-semibold text-foreground">CertifyPro</p>
-                  <p className="text-xs text-muted-foreground">Certificate Automation SaaS</p>
-                </div>
-              </div>
-              <p className="text-sm text-muted-foreground leading-relaxed">
-                Launch-ready platform experience for secure certificate issuing and verification.
-              </p>
-            </div>
-
-            <div className="space-y-3">
-              <p className="text-sm font-semibold text-foreground">Product</p>
-              <div className="space-y-2 text-sm">
-                <a href="#features" className="block text-muted-foreground hover:text-foreground transition-colors">Features</a>
-                <Link to="/templates" className="block text-muted-foreground hover:text-foreground transition-colors">Templates</Link>
-                <Link to="/verify" className="block text-muted-foreground hover:text-foreground transition-colors">Verification</Link>
-              </div>
-            </div>
-
-            <div className="space-y-3">
-              <p className="text-sm font-semibold text-foreground">Company</p>
-              <div className="space-y-2 text-sm">
-                <a href="#about" className="block text-muted-foreground hover:text-foreground transition-colors">About</a>
-                <a href="#contact" className="block text-muted-foreground hover:text-foreground transition-colors">Contact</a>
-                <a href="#" className="block text-muted-foreground hover:text-foreground transition-colors">Privacy</a>
-              </div>
-            </div>
-
-            <div className="space-y-3">
-              <p className="text-sm font-semibold text-foreground">Resources</p>
-              <div className="space-y-2 text-sm">
-                <a href="#" className="block text-muted-foreground hover:text-foreground transition-colors">Docs</a>
-                <a href="#" className="block text-muted-foreground hover:text-foreground transition-colors">FAQs</a>
-                <Link to="/login" className="block text-muted-foreground hover:text-foreground transition-colors">Request Access</Link>
-              </div>
-            </div>
-          </div>
-
-          <div className="mt-8 pt-4 border-t border-border/60 text-xs text-muted-foreground flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
-            <p>© {new Date().getFullYear()} CertifyPro. All rights reserved.</p>
-            <p>Frontend preview • React + Tailwind + shadcn</p>
-          </div>
-        </footer>
+        <LandingFooter />
       </main>
     </div>
   );

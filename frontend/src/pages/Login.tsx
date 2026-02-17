@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
 import { Award, Lock, Mail, ShieldCheck, UserPlus, CheckCircle, ArrowRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -10,6 +10,8 @@ import PublicCertificateVerificationModal from "@/components/PublicCertificateVe
 const Login = () => {
   const [adminModalOpen, setAdminModalOpen] = useState(false);
   const [verificationModalOpen, setVerificationModalOpen] = useState(false);
+  const [searchParams] = useSearchParams();
+  const templateRedirect = searchParams.get("reason") === "templates";
 
   return (
     <div className="min-h-screen flex bg-background overflow-hidden">
@@ -101,6 +103,11 @@ const Login = () => {
             <p className="text-sm text-muted-foreground/90 font-body leading-relaxed">
               Sign in to manage certificates, templates, student records, and secure verifications
             </p>
+            {templateRedirect ? (
+              <div className="rounded-xl border border-accent/30 bg-accent/10 px-4 py-3 text-sm text-foreground">
+                Please login to access certificate templates.
+              </div>
+            ) : null}
           </div>
 
           {/* Admin Login Section */}
