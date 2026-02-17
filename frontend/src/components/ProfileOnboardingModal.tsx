@@ -53,6 +53,7 @@ export function ProfileOnboardingModal({
 }: ProfileOnboardingModalProps) {
   const [step, setStep] = useState(1);
   const [isLoading, setIsLoading] = useState(false);
+  const [open, setOpen] = useState(isOpen);
   const [formData, setFormData] = useState<OnboardingData>({
     role: "",
     organization: "",
@@ -60,12 +61,17 @@ export function ProfileOnboardingModal({
     intendedUse: "",
   });
 
+  // Sync external isOpen state with internal open state
+  useEffect(() => {
+    setOpen(isOpen);
+  }, [isOpen]);
+
   // Reset on open
   useEffect(() => {
-    if (isOpen) {
+    if (open) {
       setStep(1);
     }
-  }, [isOpen]);
+  }, [open]);
 
   const handleNext = () => {
     if (step === 1 && !formData.role) return;
@@ -92,6 +98,7 @@ export function ProfileOnboardingModal({
     setTimeout(() => {
       setIsLoading(false);
       onComplete(formData);
+      setOpen(false);
     }, 500);
   };
 
@@ -113,8 +120,11 @@ export function ProfileOnboardingModal({
   const progressPercent = (step / 4) * 100;
 
   return (
-    <Dialog open={isOpen} onOpenChange={(open) => {
-      if (!open) onSkip();
+    <Dialog open={open} onOpenChange={(newOpen) => {
+      setOpen(newOpen);
+      if (!newOpen) {
+        onSkip();
+      }
     }}>
       <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto border-2 border-border/60 bg-gradient-to-br from-background to-background/95 backdrop-blur-sm">
         {/* Close button */}

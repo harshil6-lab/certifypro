@@ -23,10 +23,14 @@ export function useAdminOnboarding() {
         const data = JSON.parse(stored);
         setProfile(data);
         setIsCompleted(true);
+        console.log("[Onboarding] Loaded from storage:", data);
       } catch {
         // Invalid JSON, treat as not completed
         setIsCompleted(false);
+        console.log("[Onboarding] Invalid stored data, resetting");
       }
+    } else {
+      console.log("[Onboarding] No stored data found, showing modal");
     }
     setIsLoading(false);
   }, []);
@@ -39,6 +43,7 @@ export function useAdminOnboarding() {
     setProfile(profileData);
     setIsCompleted(true);
     localStorage.setItem(ONBOARDING_KEY, JSON.stringify(profileData));
+    console.log("[Onboarding] Saved profile:", profileData);
   };
 
   const skipOnboarding = () => {
@@ -49,6 +54,7 @@ export function useAdminOnboarding() {
     };
     localStorage.setItem(ONBOARDING_KEY, JSON.stringify(skipData));
     setIsCompleted(true);
+    console.log("[Onboarding] User skipped onboarding");
   };
 
   const resetOnboarding = () => {

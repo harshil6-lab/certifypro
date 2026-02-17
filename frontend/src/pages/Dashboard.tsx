@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   Award,
   FileText,
@@ -21,10 +21,10 @@ import { ProfileOnboardingModal } from "@/components/ProfileOnboardingModal";
 import { useAdminOnboarding, type OnboardingProfile } from "@/hooks/useAdminOnboarding";
 
 const stats = [
-  { label: "Certificates Issued", value: "12,847", icon: Award, change: "+342 this month" },
-  { label: "Pending Tasks", value: "23", icon: Clock, change: "5 urgent" },
-  { label: "Recent Verifications", value: "1,204", icon: CheckCircle2, change: "Last 7 days" },
-  { label: "Active Templates", value: "8", icon: FileText, change: "2 drafts" },
+  { label: "Certificates Issued", value: "0", icon: Award, change: "+0 this month" },
+  { label: "Pending Tasks", value: "0", icon: Clock, change: "0 urgent" },
+  { label: "Recent Verifications", value: "0", icon: CheckCircle2, change: "Last 7 days" },
+  { label: "Active Templates", value: "0", icon: FileText, change: "0 drafts" },
 ];
 
 const workflowSteps = [
@@ -43,7 +43,16 @@ const recentActivity = [
 
 const Dashboard = () => {
   const { isCompleted, isLoading, completeOnboarding, skipOnboarding } = useAdminOnboarding();
-  const [showOnboarding, setShowOnboarding] = useState(!isCompleted && !isLoading);
+  const [showOnboarding, setShowOnboarding] = useState(false);
+
+  // Once hook finishes loading, show onboarding if not completed
+  useEffect(() => {
+    console.log(`[Dashboard] isLoading: ${isLoading}, isCompleted: ${isCompleted}`);
+    if (!isLoading && !isCompleted) {
+      console.log("[Dashboard] Showing onboarding modal");
+      setShowOnboarding(true);
+    }
+  }, [isLoading, isCompleted]);
 
   const handleOnboardingComplete = (data: Omit<OnboardingProfile, "completedAt">) => {
     completeOnboarding(data);
