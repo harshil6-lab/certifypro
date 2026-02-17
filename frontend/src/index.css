@@ -112,4 +112,84 @@
   .seal-pattern {
     background-image: radial-gradient(circle at 50% 50%, hsl(43 90% 52% / 0.03) 0%, transparent 70%);
   }
+
+  /* Glass morphism effect */
+  .glass {
+    @apply backdrop-blur-xl bg-white/10 border border-white/20;
+  }
+
+  .glass-dark {
+    @apply backdrop-blur-xl bg-black/20 border border-white/10;
+  }
+
+  /* Refined button interactions */
+  .transition-smooth {
+    @apply transition-all duration-300 ease-out;
+  }
+
+  /* Focus ring with gold accent */
+  .focus-ring {
+    @apply focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/50 focus-visible:ring-offset-2 dark:focus-visible:ring-offset-background;
+  }
+
+  .scale-98 {
+    transform: scale(0.98);
+  }
+
+  .scale-102 {
+    transform: scale(1.02);
+  }
+}
+
+/* Animations for Login page */
+@keyframes glow-pulse {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.8;
+  }
+}
+
+@keyframes float {
+  0%, 100% {
+    transform: translateY(0px);
+  }
+  50% {
+    transform: translateY(-8px);
+  }
+}
+
+@keyframes shimmer {
+  0% {
+    background-position: -1000px 0;
+  }
+  100% {
+    background-position: 1000px 0;
+  }
+}
+
+@layer utilities {
+  .animate-glow-pulse {
+    animation: glow-pulse 3s ease-in-out infinite;
+  }
+
+  .animate-float {
+    animation: float 3s ease-in-out infinite;
+  }
+
+  .animate-shimmer {
+    animation: shimmer 2s infinite;
+  }
+}
+
+/* Improve input focus states and button interactions */
+@layer components {
+  input:focus {
+    @apply ring-1 ring-accent/20;
+  }
+
+  button:not(:disabled):active {
+    @apply scale-98;
+  }
 }
