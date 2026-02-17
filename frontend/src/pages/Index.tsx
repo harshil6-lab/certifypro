@@ -223,6 +223,13 @@ const Index = () => {
 
           <Card className="rounded-2xl card-shadow border-border/60">
             <CardContent className="p-6 sm:p-7">
+              <div className="space-y-2 mb-6">
+                <h3 className="text-xl sm:text-2xl font-heading font-bold text-foreground">Expected Impact for Institutions</h3>
+                <p className="text-sm sm:text-base text-muted-foreground leading-relaxed max-w-3xl">
+                  Here’s how institutions and training teams are expected to benefit from CertifyPro once deployed.
+                </p>
+              </div>
+
               <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                 <div className="flex items-start gap-3">
                   <div className="w-10 h-10 rounded-full bg-accent/10 flex items-center justify-center shrink-0">
@@ -230,11 +237,11 @@ const Index = () => {
                   </div>
                   <div className="space-y-3">
                     <p className="text-sm sm:text-base text-foreground leading-relaxed">
-                      “CertifyPro reduced manual certificate processing time by over 70% while improving verification trust for employers and partner institutions.”
+                      “As faculty coordinators, we expect CertifyPro to significantly reduce manual certificate work and improve verification trust for students and employers.”
                     </p>
                     <div>
-                      <p className="text-sm font-semibold text-foreground">Operations Lead</p>
-                      <p className="text-xs text-muted-foreground">Regional Education Consortium</p>
+                      <p className="text-sm font-semibold text-foreground">Academic Program Coordinator</p>
+                      <p className="text-xs text-muted-foreground">Expected Use Case</p>
                     </div>
                   </div>
                 </div>
@@ -245,11 +252,11 @@ const Index = () => {
                   </div>
                   <div className="space-y-3">
                     <p className="text-sm sm:text-base text-foreground leading-relaxed">
-                      “The verification-first approach gave our compliance team immediate confidence during audits and partner checks.”
+                      “The verification-first workflow should help institutions maintain credibility and simplify certificate audits.”
                     </p>
                     <div>
-                      <p className="text-sm font-semibold text-foreground">Director of Programs</p>
-                      <p className="text-xs text-muted-foreground">PrimeSkills Academy</p>
+                      <p className="text-sm font-semibold text-foreground">Training Institute Faculty</p>
+                      <p className="text-xs text-muted-foreground">Projected Feedback</p>
                     </div>
                   </div>
                 </div>

@@ -7,9 +7,9 @@ import {
   List,
   Shield,
   HelpCircle,
-  Award,
   LogOut,
 } from "lucide-react";
+import certifyProIcon from "@/assets/certify_pro_icon.png";
 
 const navItems = [
   { title: "Dashboard", url: "/dashboard", icon: LayoutDashboard },
@@ -29,7 +29,7 @@ export function AdminSidebar() {
       <div className="p-6 border-b border-sidebar-border">
         <div className="flex items-center gap-3">
           <div className="w-10 h-10 rounded-lg gold-gradient flex items-center justify-center">
-            <Award className="w-5 h-5 text-accent-foreground" />
+            <img src={certifyProIcon} alt="CertifyPro Logo" className="h-5 w-5 object-contain" />
           </div>
           <div>
             <h1 className="text-lg font-heading font-bold text-sidebar-accent-foreground tracking-tight">

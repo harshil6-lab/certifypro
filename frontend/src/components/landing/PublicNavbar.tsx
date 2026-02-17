@@ -1,7 +1,9 @@
-import { Award, Menu } from "lucide-react";
+import { Menu } from "lucide-react";
 import { Link, useLocation } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetClose, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
+import certifyProLogo from "@/assets/certifypro_logowithtext.png";
+import certifyProIcon from "@/assets/certify_pro_icon.png";
 
 const navItems = [
   { label: "Home", to: "/" },
@@ -35,14 +37,8 @@ export function PublicNavbar() {
   return (
     <header className="sticky top-0 z-30 border-b border-border/70 bg-background/90 backdrop-blur-lg shadow-[0_8px_24px_rgba(15,23,42,0.06)]">
       <div className="mx-auto w-full max-w-[1400px] px-3 sm:px-4 lg:px-6 py-3.5 flex items-center justify-between gap-4">
-        <Link to="/" className="flex items-center gap-3 group" aria-label="Go to CertifyPro Home">
-          <div className="w-10 h-10 rounded-xl gold-gradient flex items-center justify-center">
-            <Award className="w-5 h-5 text-accent-foreground" />
-          </div>
-          <div>
-            <p className="text-lg font-heading font-bold text-foreground leading-none transition-colors group-hover:text-foreground/90">CertifyPro</p>
-            <p className="text-xs text-muted-foreground mt-1">Certificate Automation Platform</p>
-          </div>
+        <Link to="/" className="flex items-center group" aria-label="Go to CertifyPro Home">
+          <img src={certifyProLogo} alt="CertifyPro Logo" className="h-10 sm:h-11 md:h-12 w-auto object-contain" />
         </Link>
 
         <nav className="hidden lg:flex items-center gap-8 xl:gap-10">
@@ -78,9 +74,7 @@ export function PublicNavbar() {
             <SheetContent side="right" className="w-[85%] sm:w-[420px]">
               <SheetHeader>
                 <SheetTitle className="flex items-center gap-2">
-                  <div className="w-8 h-8 rounded-lg gold-gradient flex items-center justify-center">
-                    <Award className="w-4 h-4 text-accent-foreground" />
-                  </div>
+                  <img src={certifyProIcon} alt="CertifyPro Logo" className="h-5 w-5 object-contain" />
                   CertifyPro
                 </SheetTitle>
               </SheetHeader>

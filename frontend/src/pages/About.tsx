@@ -2,6 +2,7 @@ import { Target, Users, Lightbulb, Sparkles } from "lucide-react";
 import { PublicNavbar } from "@/components/landing/PublicNavbar";
 import { LandingFooter } from "@/components/landing/LandingFooter";
 import { Card, CardContent } from "@/components/ui/card";
+import certifyProLogo from "@/assets/certifypro_logowithtext.png";
 
 const teamMembers = [
   {
@@ -39,6 +40,7 @@ const About = () => {
           </div>
 
           <div className="space-y-4 max-w-4xl">
+            <img src={certifyProLogo} alt="CertifyPro Logo" className="h-12 md:h-14 w-auto object-contain" />
             <h1 className="text-4xl md:text-5xl font-heading font-bold text-foreground leading-tight">About CertifyPro</h1>
             <p className="text-base md:text-lg text-muted-foreground leading-relaxed">
               CertifyPro is a certificate automation and verification platform designed to help institutions issue secure digital certificates, manage credential registries, and enable instant public verification.

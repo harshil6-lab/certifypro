@@ -16,7 +16,6 @@ import {
   SheetTrigger,
 } from "@/components/ui/sheet";
 import {
-  Award,
   ChevronDown,
   HelpCircle,
   LayoutDashboard,
@@ -29,6 +28,7 @@ import {
   Shield,
   UserCircle,
 } from "lucide-react";
+import certifyProIcon from "@/assets/certify_pro_icon.png";
 
 const navItems = [
   { title: "Dashboard", url: "/dashboard", icon: LayoutDashboard },
@@ -44,18 +44,8 @@ const AdminNavbar = () => {
     <header className="sticky top-0 z-40 w-full border-b border-slate-700 bg-gradient-to-r from-slate-800 via-slate-800 to-slate-900 backdrop-blur-md shadow-[0_10px_30px_rgba(0,0,0,0.3)]">
       <div className="mx-auto flex min-h-16 max-w-7xl items-center gap-4 px-4 sm:px-6">
         {/* Left: Brand */}
-        <div className="flex items-center gap-3 shrink-0">
-          <div className="h-10 w-10 rounded-lg gold-gradient flex items-center justify-center shadow-lg ring-2 ring-amber-400/20">
-            <Award className="h-5 w-5 text-white" />
-          </div>
-          <div className="leading-tight">
-            <div className="text-lg font-heading font-bold text-white tracking-tight">
-              CertifyPro
-            </div>
-            <div className="text-xs text-slate-400">
-              Admin Dashboard
-            </div>
-          </div>
+        <div className="flex items-center shrink-0 pr-2">
+          <img src={certifyProIcon} alt="CertifyPro Logo" className="h-6 w-6 object-contain" />
         </div>
 
         {/* Center: Navigation */}
@@ -90,9 +80,7 @@ const AdminNavbar = () => {
             <SheetContent side="left" className="bg-gradient-to-b from-slate-900 to-slate-950 border-slate-700">
               <SheetHeader>
                 <SheetTitle className="flex items-center gap-2 text-white">
-                  <div className="h-9 w-9 rounded-lg gold-gradient flex items-center justify-center">
-                    <Award className="h-4 w-4 text-white" />
-                  </div>
+                  <img src={certifyProIcon} alt="CertifyPro Logo" className="h-5 w-5 object-contain" />
                   CertifyPro
                 </SheetTitle>
               </SheetHeader>

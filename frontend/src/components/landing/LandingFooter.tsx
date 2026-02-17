@@ -1,6 +1,7 @@
-import { Award, ArrowRight, BadgeCheck, Globe, Linkedin } from "lucide-react";
+import { ArrowRight, BadgeCheck, Globe, Linkedin } from "lucide-react";
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
+import certifyProLogo from "@/assets/certifypro_logowithtext.png";
 
 export function LandingFooter() {
   return (
@@ -8,15 +9,9 @@ export function LandingFooter() {
       <div className="mx-auto w-full max-w-[1400px] px-4 sm:px-6 lg:px-8 pt-14 md:pt-16 pb-8">
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-12 gap-10 lg:gap-8">
           <div className="lg:col-span-4 space-y-5">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl gold-gradient flex items-center justify-center">
-                <Award className="w-5 h-5 text-accent-foreground" />
-              </div>
-              <div>
-                <p className="text-lg font-heading font-bold text-foreground leading-none">CertifyPro</p>
-                <p className="text-sm text-muted-foreground mt-1">Secure Certificate Automation &amp; Verification Platform</p>
-              </div>
-            </div>
+            <img src={certifyProLogo} alt="CertifyPro Logo" className="h-10 w-auto object-contain" />
+
+            <p className="text-sm text-muted-foreground">Secure Certificate Automation &amp; Verification Platform</p>
 
             <p className="text-sm text-muted-foreground leading-relaxed max-w-md">
               Built for institutions and training teams to streamline certificate issuance, automate workflows, and deliver trusted public verification experiences.
