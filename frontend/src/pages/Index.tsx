@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { TrustedInstitutionsSection } from "@/components/landing/TrustedInstitutionsSection";
+import { CertificateGallerySection } from "@/components/landing/CertificateGallerySection";
 import { PublicNavbar } from "@/components/landing/PublicNavbar";
 import { LandingFooter } from "@/components/landing/LandingFooter";
 import templateLibraryVisual from "@/assets/features/template-library.svg";
@@ -210,6 +211,10 @@ const Index = () => {
             ))}
           </div>
         </section>
+
+        <div className="h-px w-full bg-gradient-to-r from-transparent via-border to-transparent" />
+
+        <CertificateGallerySection />
 
         <div className="h-px w-full bg-gradient-to-r from-transparent via-border to-transparent" />
 
