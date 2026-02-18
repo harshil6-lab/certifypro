@@ -1,7 +1,8 @@
-import { Layers, QrCode, Library, Sparkles, ArrowRight, ShieldCheck, Quote, Upload, CheckCircle2, SearchCheck, BadgeCheck } from "lucide-react";
+import { Layers, QrCode, Library, Sparkles, ArrowRight, ShieldCheck, Quote, Upload, CheckCircle2, SearchCheck, BadgeCheck, Lock } from "lucide-react";
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { TrustedInstitutionsSection } from "@/components/landing/TrustedInstitutionsSection";
 import { PublicNavbar } from "@/components/landing/PublicNavbar";
 import { LandingFooter } from "@/components/landing/LandingFooter";
@@ -55,6 +56,52 @@ const workflowSteps = [
     title: "Verify Instantly",
     description: "Each certificate includes secure verification paths for employers and institutions.",
     icon: SearchCheck,
+  },
+];
+
+const securityHighlights = [
+  {
+    title: "Tamper-Proof Certificates",
+    description: "Unique IDs with QR-based verification help prevent certificate fraud.",
+    icon: ShieldCheck,
+  },
+  {
+    title: "Data Protection & Privacy",
+    description: "Secure storage practices and minimal personal data exposure by design.",
+    icon: Lock,
+  },
+  {
+    title: "Verification Transparency",
+    description: "Public certificate validation portal with audit-friendly verification logs.",
+    icon: SearchCheck,
+  },
+  {
+    title: "Institution-Ready Infrastructure",
+    description: "Built for universities, training organizations, and enterprise-scale workflows.",
+    icon: Library,
+  },
+];
+
+const faqs = [
+  {
+    question: "How are certificates verified?",
+    answer: "Each certificate includes a unique ID and QR verification link for authenticity.",
+  },
+  {
+    question: "Can institutions upload their own templates?",
+    answer: "Yes. Admins can upload custom certificate templates or use built-in designs.",
+  },
+  {
+    question: "Is CertifyPro secure?",
+    answer: "Platform designed with secure workflows, verification tracking, and data protection focus.",
+  },
+  {
+    question: "Who can use CertifyPro?",
+    answer: "Universities, training institutes, companies, event organizers.",
+  },
+  {
+    question: "Do recipients need an account?",
+    answer: "No. Public verification works without login.",
   },
 ];
 
@@ -259,6 +306,79 @@ const Index = () => {
                 </div>
               </div>
             </div>
+          </div>
+        </section>
+
+        <div className="h-px w-full bg-gradient-to-r from-transparent via-border to-transparent" />
+
+        <section className="space-y-7 bg-white p-5 sm:p-6 rounded-2xl">
+          <div className="space-y-2 text-center max-w-3xl mx-auto">
+            <h2 className="text-2xl md:text-3xl font-heading font-semibold tracking-tight text-foreground">Security &amp; Compliance</h2>
+            <p className="text-slate-600 leading-relaxed">
+              CertifyPro ensures secure certificate issuance, trusted verification, and data protection aligned with institutional standards.
+            </p>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4 sm:gap-5">
+            {securityHighlights.map((item) => (
+              <div key={item.title} className="rounded-xl border border-slate-200 bg-slate-50 p-5 space-y-3">
+                <div className="w-10 h-10 rounded-lg bg-accent/10 flex items-center justify-center">
+                  <item.icon className="w-5 h-5 text-accent" />
+                </div>
+                <h3 className="text-base font-semibold tracking-tight text-foreground">{item.title}</h3>
+                <p className="text-sm text-slate-600 leading-relaxed">{item.description}</p>
+              </div>
+            ))}
+          </div>
+        </section>
+
+        <div className="h-px w-full bg-gradient-to-r from-transparent via-border to-transparent" />
+
+        <section className="space-y-7 bg-slate-50 p-5 sm:p-6 rounded-2xl">
+          <div className="space-y-2 text-center max-w-3xl mx-auto">
+            <h2 className="text-2xl md:text-3xl font-heading font-semibold tracking-tight text-foreground">Frequently Asked Questions</h2>
+            <p className="text-slate-600 leading-relaxed">
+              Common questions from institutions and teams evaluating secure certificate workflows.
+            </p>
+          </div>
+
+          <div className="max-w-4xl mx-auto rounded-2xl border border-slate-200 bg-white px-5 sm:px-6">
+            <Accordion type="single" collapsible className="w-full">
+              {faqs.map((faq, index) => (
+                <AccordionItem key={faq.question} value={`faq-${index}`} className="border-slate-200">
+                  <AccordionTrigger className="text-left text-sm sm:text-base font-semibold tracking-tight text-foreground hover:no-underline hover:text-accent transition-colors">
+                    {faq.question}
+                  </AccordionTrigger>
+                  <AccordionContent className="text-sm text-slate-600 leading-relaxed">
+                    {faq.answer}
+                  </AccordionContent>
+                </AccordionItem>
+              ))}
+            </Accordion>
+          </div>
+        </section>
+
+        <div className="h-px w-full bg-gradient-to-r from-transparent via-border to-transparent" />
+
+        <section className="rounded-2xl bg-gradient-to-b from-slate-50 to-white p-8 sm:p-10 text-center border border-slate-200 space-y-5">
+          <h2 className="text-3xl md:text-4xl font-heading font-semibold tracking-tight text-foreground">
+            Start Issuing Secure Certificates Today
+          </h2>
+          <p className="text-slate-600 leading-relaxed max-w-3xl mx-auto">
+            Automate certificate generation, ensure trusted verification, and streamline academic or corporate credential workflows.
+          </p>
+
+          <div className="flex flex-wrap justify-center items-center gap-3 pt-1">
+            <Link to="/login">
+              <Button className="gold-gradient text-accent-foreground gap-2 hover:opacity-95 transition-all hover:-translate-y-0.5">
+                Request Access <ArrowRight className="w-4 h-4" />
+              </Button>
+            </Link>
+            <Link to="/verify">
+              <Button variant="outline" className="bg-white border-slate-300 text-foreground hover:bg-slate-50 transition-all hover:-translate-y-0.5">
+                Verify Certificate
+              </Button>
+            </Link>
           </div>
         </section>
 
