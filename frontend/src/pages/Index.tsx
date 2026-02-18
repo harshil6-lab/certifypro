@@ -67,7 +67,7 @@ const Index = () => {
         <section className="relative rounded-2xl overflow-hidden border border-border/60 card-shadow-lg">
           <img
             src={heroImage}
-            alt="Professional certificate ceremony"
+            alt="Professional certification event"
             className="absolute inset-0 h-full w-full object-cover scale-105 blur-[1px]"
           />
           <div className="absolute inset-0 bg-gradient-to-r from-background/95 via-background/88 to-background/78" />
