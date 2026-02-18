@@ -27,9 +27,22 @@ const emptyDraft: CertificateDraft = {
   certificateTitle: "Certificate of Completion",
   description: "For successful completion of the designated certification program.",
   issuerName: "CertifyPro Institution",
+  authorityName: "Program Authority",
+  issuedDate: new Date().toLocaleDateString(),
   logoName: "",
   logoPreviewUrl: "",
 };
+
+const normalizeDraft = (draft: Partial<CertificateDraft>, fallbackTitle: string): CertificateDraft => ({
+  recipientName: draft.recipientName ?? emptyDraft.recipientName,
+  certificateTitle: draft.certificateTitle ?? fallbackTitle,
+  description: draft.description ?? emptyDraft.description,
+  issuerName: draft.issuerName ?? emptyDraft.issuerName,
+  authorityName: draft.authorityName ?? emptyDraft.authorityName,
+  issuedDate: draft.issuedDate ?? emptyDraft.issuedDate,
+  logoName: draft.logoName ?? "",
+  logoPreviewUrl: draft.logoPreviewUrl ?? "",
+});
 
 export function CertificateGallerySection() {
   const [activeCategory, setActiveCategory] = useState<GalleryCategory>("Academic");
@@ -47,7 +60,13 @@ export function CertificateGallerySection() {
     try {
       const raw = localStorage.getItem("certifypro-template-drafts");
       if (raw) {
-        setDraftByTemplate(JSON.parse(raw) as Record<string, CertificateDraft>);
+        const parsed = JSON.parse(raw) as Record<string, Partial<CertificateDraft>>;
+        const normalized = Object.entries(parsed).reduce((acc, [templateId, draft]) => {
+          const fallbackTitle = templates.find((template) => template.id === templateId)?.title ?? emptyDraft.certificateTitle;
+          acc[templateId] = normalizeDraft(draft, fallbackTitle);
+          return acc;
+        }, {} as Record<string, CertificateDraft>);
+        setDraftByTemplate(normalized);
       }
     } catch {
       setDraftByTemplate({});
@@ -55,10 +74,7 @@ export function CertificateGallerySection() {
   }, []);
 
   const currentDraft = selectedTemplate
-    ? draftByTemplate[selectedTemplate.id] ?? {
-        ...emptyDraft,
-        certificateTitle: selectedTemplate.title,
-      }
+    ? draftByTemplate[selectedTemplate.id] ?? normalizeDraft({}, selectedTemplate.title)
     : emptyDraft;
 
   const updateDraftField = (field: keyof CertificateDraft, value: string) => {
@@ -69,7 +85,7 @@ export function CertificateGallerySection() {
     setDraftByTemplate((prev) => ({
       ...prev,
       [selectedTemplate.id]: {
-        ...(prev[selectedTemplate.id] ?? { ...emptyDraft, certificateTitle: selectedTemplate.title }),
+        ...normalizeDraft(prev[selectedTemplate.id] ?? {}, selectedTemplate.title),
         [field]: value,
       },
     }));
@@ -118,8 +134,7 @@ export function CertificateGallerySection() {
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-5">
               {templatesByCategory[category].map((template) => {
                 const draft = draftByTemplate[template.id] ?? {
-                  ...emptyDraft,
-                  certificateTitle: template.title,
+                  ...normalizeDraft({}, template.title),
                 };
 
                 return (

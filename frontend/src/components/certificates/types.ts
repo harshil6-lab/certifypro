@@ -28,6 +28,8 @@ export interface CertificateDraft {
   certificateTitle: string;
   description: string;
   issuerName: string;
+  authorityName: string;
+  issuedDate: string;
   logoName: string;
   logoPreviewUrl?: string;
 }
