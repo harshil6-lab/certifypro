@@ -153,10 +153,32 @@
 
 @keyframes float {
   0%, 100% {
-    transform: translateY(0px);
+    transform: translateY(0) rotate(var(--float-rotate, 3deg));
   }
   50% {
-    transform: translateY(-8px);
+    transform: translateY(-8px) rotate(var(--float-rotate, 3deg));
+  }
+}
+
+@keyframes hero-enter {
+  0% {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes card-float-pulse {
+  0%, 100% {
+    transform: translateY(0px);
+    box-shadow: 0 8px 18px hsl(220 40% 13% / 0.08);
+  }
+  50% {
+    transform: translateY(-6px);
+    box-shadow: 0 12px 24px hsl(220 40% 13% / 0.12);
   }
 }
 
@@ -180,6 +202,14 @@
 
   .animate-shimmer {
     animation: shimmer 2s infinite;
+  }
+
+  .animate-hero-enter {
+    animation: hero-enter 0.7s ease-out both;
+  }
+
+  .animate-card-float-pulse {
+    animation: card-float-pulse 6s ease-in-out infinite;
   }
 }
 

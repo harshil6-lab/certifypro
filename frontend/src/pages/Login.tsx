@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Link, useSearchParams } from "react-router-dom";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { Lock, Mail, ShieldCheck, UserPlus, CheckCircle, ArrowRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -8,12 +8,20 @@ import whiteCertifyProLogo from "@/assets/white_certify_pro_logo.png";
 import certifyProIcon from "@/assets/certify_pro_icon.png";
 import AdminAccessRequestModal from "@/components/AdminAccessRequestModal";
 import PublicCertificateVerificationModal from "@/components/PublicCertificateVerificationModal";
+import { setAuthenticated } from "@/lib/auth";
 
 const Login = () => {
+  const navigate = useNavigate();
   const [adminModalOpen, setAdminModalOpen] = useState(false);
   const [verificationModalOpen, setVerificationModalOpen] = useState(false);
   const [searchParams] = useSearchParams();
   const templateRedirect = searchParams.get("reason") === "templates";
+  const redirectTo = searchParams.get("redirect") || "/dashboard";
+
+  const handleSignIn = () => {
+    setAuthenticated(true);
+    navigate(redirectTo);
+  };
 
   return (
     <div className="min-h-screen flex bg-background overflow-hidden">
@@ -150,13 +158,14 @@ const Login = () => {
             </div>
 
             {/* Sign In Button */}
-            <Link to="/dashboard" className="block pt-1">
+            <div className="block pt-1">
               <Button 
                 className="w-full h-12 font-semibold gold-gradient text-accent-foreground hover:shadow-lg hover:shadow-amber-500/30 active:scale-98 transition-all duration-300"
+                onClick={handleSignIn}
               >
                 Sign In
               </Button>
-            </Link>
+            </div>
           </div>
 
           {/* Security notice */}

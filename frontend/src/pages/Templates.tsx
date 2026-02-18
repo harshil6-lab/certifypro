@@ -1,25 +1,57 @@
 import { useEffect, useMemo, useState, type DragEvent } from "react";
-import { Upload, QrCode, Info, Move, Loader2, Sparkles, Star, WandSparkles } from "lucide-react";
+import { Upload, QrCode, Info, Move, Loader2, Sparkles, WandSparkles, Eye, Pencil } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
-import { mockTemplateApi } from "@/lib/mockTemplateApi";
-import { TemplateCard } from "@/components/templates/TemplateCard";
-import { TemplatePreviewModal } from "@/components/templates/TemplatePreviewModal";
-import type { TemplateCategory, TemplateItem } from "@/types/template";
+import { useSearchParams } from "react-router-dom";
+import { CertificateTemplate } from "@/components/certificates/CertificateTemplate";
+import { CertificateEditorModal } from "@/components/certificates/CertificateEditorModal";
+import {
+  CertificateDraft,
+  CertificateTemplateMeta,
+  GalleryCategory,
+} from "@/components/certificates/types";
+import templatesData from "@/data/certificateTemplates.json";
 
-const categories: Array<"All" | TemplateCategory> = ["All", "Academic", "Corporate", "Event", "Compliance", "Training"];
+const categories: Array<"All" | GalleryCategory> = ["All", "Academic", "Corporate", "Internship", "Event", "Compliance", "Training"];
+const officialTemplates = templatesData as CertificateTemplateMeta[];
+
+const emptyDraft: CertificateDraft = {
+  recipientName: "Alex Morgan",
+  certificateTitle: "Certificate of Completion",
+  description: "For successful completion of the designated certification program.",
+  issuerName: "CertifyPro Institution",
+  authorityName: "Program Authority",
+  issuedDate: new Date().toLocaleDateString(),
+  logoName: "",
+  logoPreviewUrl: "",
+};
+
+const normalizeDraft = (draft: Partial<CertificateDraft>, fallbackTitle: string): CertificateDraft => ({
+  recipientName: draft.recipientName ?? emptyDraft.recipientName,
+  certificateTitle: draft.certificateTitle ?? fallbackTitle,
+  description: draft.description ?? emptyDraft.description,
+  issuerName: draft.issuerName ?? emptyDraft.issuerName,
+  authorityName: draft.authorityName ?? emptyDraft.authorityName,
+  issuedDate: draft.issuedDate ?? emptyDraft.issuedDate,
+  logoName: draft.logoName ?? "",
+  logoPreviewUrl: draft.logoPreviewUrl ?? "",
+});
 
 const Templates = () => {
-  const [templates, setTemplates] = useState<TemplateItem[]>([]);
-  const [selectedCategory, setSelectedCategory] = useState<"All" | TemplateCategory>("All");
-  const [selectedTemplateId, setSelectedTemplateId] = useState<string>("");
-  const [previewTemplate, setPreviewTemplate] = useState<TemplateItem | null>(null);
+  const [searchParams] = useSearchParams();
+  const [selectedCategory, setSelectedCategory] = useState<"All" | GalleryCategory>("All");
+  const [selectedTemplateId, setSelectedTemplateId] = useState<string>(officialTemplates[0]?.id ?? "");
+  const [selectedTemplate, setSelectedTemplate] = useState<CertificateTemplateMeta | null>(null);
+  const [modalMode, setModalMode] = useState<"preview" | "edit">("preview");
+  const [draftByTemplate, setDraftByTemplate] = useState<Record<string, CertificateDraft>>({});
   const [loading, setLoading] = useState(true);
 
   const [dragActive, setDragActive] = useState(false);
   const [uploadedTemplateName, setUploadedTemplateName] = useState("sample-certificate-layout.pdf");
+  const [showPlaceholder, setShowPlaceholder] = useState(true);
+  const [showQrPlaceholder, setShowQrPlaceholder] = useState(true);
   const [placeholderField, setPlaceholderField] = useState("STUDENT_NAME");
   const [placeholderX, setPlaceholderX] = useState(40);
   const [placeholderY, setPlaceholderY] = useState(36);
@@ -27,32 +59,90 @@ const Templates = () => {
   const [qrY, setQrY] = useState(76);
 
   useEffect(() => {
-    const loadTemplates = async () => {
+    const load = async () => {
       setLoading(true);
-      const result = await mockTemplateApi.getTemplates();
-      setTemplates(result);
-      setSelectedTemplateId(result[0]?.id ?? "");
+      try {
+        const raw = localStorage.getItem("certifypro-official-template-drafts");
+        if (raw) {
+          const parsed = JSON.parse(raw) as Record<string, Partial<CertificateDraft>>;
+          const normalized = Object.entries(parsed).reduce((acc, [templateId, draft]) => {
+            const fallbackTitle = officialTemplates.find((template) => template.id === templateId)?.title ?? emptyDraft.certificateTitle;
+            acc[templateId] = normalizeDraft(draft, fallbackTitle);
+            return acc;
+          }, {} as Record<string, CertificateDraft>);
+          setDraftByTemplate(normalized);
+        }
+      } catch {
+        setDraftByTemplate({});
+      }
       setLoading(false);
     };
 
-    loadTemplates();
+    load();
   }, []);
+
+  useEffect(() => {
+    const source = searchParams.get("source");
+    const templateId = searchParams.get("templateId");
+    const mode = searchParams.get("mode");
+
+    if (source !== "official" || !templateId) {
+      return;
+    }
+
+    const target = officialTemplates.find((template) => template.id === templateId);
+    if (!target) {
+      return;
+    }
+
+    setSelectedTemplateId(target.id);
+    setSelectedTemplate(target);
+    setModalMode(mode === "edit" ? "edit" : "preview");
+  }, [searchParams]);
 
   const filteredTemplates = useMemo(() => {
     if (selectedCategory === "All") {
-      return templates;
+      return officialTemplates;
     }
-    return templates.filter((template) => template.category === selectedCategory);
-  }, [selectedCategory, templates]);
+    return officialTemplates.filter((template) => template.category === selectedCategory);
+  }, [selectedCategory]);
 
-  const selectedTemplate = useMemo(
-    () => templates.find((template) => template.id === selectedTemplateId) ?? null,
-    [selectedTemplateId, templates],
-  );
+  const currentDraft = selectedTemplate
+    ? draftByTemplate[selectedTemplate.id] ?? normalizeDraft({}, selectedTemplate.title)
+    : emptyDraft;
 
-  const handleFavorite = async (templateId: string) => {
-    const updated = await mockTemplateApi.toggleFavorite(templateId);
-    setTemplates(updated);
+  const updateDraftField = (field: keyof CertificateDraft, value: string) => {
+    if (!selectedTemplate) {
+      return;
+    }
+
+    setDraftByTemplate((prev) => ({
+      ...prev,
+      [selectedTemplate.id]: {
+        ...normalizeDraft(prev[selectedTemplate.id] ?? {}, selectedTemplate.title),
+        [field]: value,
+      },
+    }));
+  };
+
+  const saveDraft = () => {
+    if (!selectedTemplate) {
+      return;
+    }
+
+    const next = {
+      ...draftByTemplate,
+      [selectedTemplate.id]: currentDraft,
+    };
+
+    setDraftByTemplate(next);
+    localStorage.setItem("certifypro-official-template-drafts", JSON.stringify(next));
+  };
+
+  const openOfficialTemplate = (template: CertificateTemplateMeta, mode: "preview" | "edit") => {
+    setSelectedTemplate(template);
+    setSelectedTemplateId(template.id);
+    setModalMode(mode);
   };
 
   const handleDrop = (event: DragEvent<HTMLDivElement>) => {
@@ -69,7 +159,7 @@ const Templates = () => {
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <h1 className="text-3xl font-heading font-bold text-foreground">Template Library & Workspace</h1>
-          <p className="text-muted-foreground mt-1">Browse, preview, favorite, and configure certificate templates with frontend-only mock flows</p>
+          <p className="text-muted-foreground mt-1">Browse official locked templates and manage custom uploaded layouts in separate workspaces.</p>
         </div>
         <Badge variant="secondary" className="text-xs">Mock API Mode • Backend-ready</Badge>
       </div>
@@ -80,10 +170,15 @@ const Templates = () => {
             <CardHeader className="pb-3">
               <CardTitle className="text-base font-heading flex items-center gap-2">
                 <Sparkles className="w-4 h-4 text-accent" />
-                Certificate Template Gallery
+                CertifyPro Official Template Gallery
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
+              <div className="flex flex-wrap gap-2">
+                <Badge className="bg-accent/10 text-accent border border-accent/20">Official Template</Badge>
+                <Badge variant="outline">Brand Locked</Badge>
+              </div>
+
               <div className="flex flex-wrap gap-2">
                 {categories.map((category) => (
                   <Button
@@ -98,6 +193,10 @@ const Templates = () => {
                 ))}
               </div>
 
+              <p className="text-xs text-muted-foreground">
+                Editable fields only: Recipient Name, Certificate Title, Description, Issuer Signature 1, Authority Signature 2, Date Issued, Logo Upload. QR placement is locked.
+              </p>
+
               {loading ? (
                 <div className="h-48 rounded-lg border border-dashed border-border flex items-center justify-center text-muted-foreground text-sm">
                   <Loader2 className="w-4 h-4 mr-2 animate-spin" /> Loading template library...
@@ -105,14 +204,39 @@ const Templates = () => {
               ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   {filteredTemplates.map((template) => (
-                    <TemplateCard
+                    <div
                       key={template.id}
-                      template={template}
-                      selectedId={selectedTemplateId}
-                      onPreview={setPreviewTemplate}
-                      onSelect={(selected) => setSelectedTemplateId(selected.id)}
-                      onFavorite={handleFavorite}
-                    />
+                      className={`rounded-xl border p-4 space-y-4 transition-all ${selectedTemplateId === template.id ? "border-accent bg-accent/5" : "border-border bg-card hover:border-accent/40"}`}
+                    >
+                      <div className="aspect-[1.414/1] rounded-lg border border-border bg-white p-2 relative overflow-hidden">
+                        <CertificateTemplate
+                          styleType={template.styleType}
+                          draft={draftByTemplate[template.id] ?? normalizeDraft({}, template.title)}
+                          organizationName={template.category === "Corporate" ? "CertifyPro Corporate" : "CertifyPro Institution"}
+                          previewScale="sm"
+                        />
+                      </div>
+
+                      <div className="space-y-2">
+                        <div className="flex items-center justify-between gap-2">
+                          <p className="text-sm font-semibold text-foreground line-clamp-1">{template.title}</p>
+                          <Badge variant="outline" className="text-[10px]">{template.category}</Badge>
+                        </div>
+                        <div className="flex flex-wrap gap-2">
+                          <Badge className="bg-accent/10 text-accent border border-accent/20">Official Template</Badge>
+                          <Badge variant="outline">Brand Locked</Badge>
+                        </div>
+                      </div>
+
+                      <div className="flex items-center gap-2">
+                        <Button variant="outline" size="sm" className="gap-1.5" onClick={() => openOfficialTemplate(template, "preview")}>
+                          <Eye className="w-3.5 h-3.5" /> Preview
+                        </Button>
+                        <Button size="sm" className="gap-1.5" onClick={() => openOfficialTemplate(template, "edit")}>
+                          <Pencil className="w-3.5 h-3.5" /> Edit
+                        </Button>
+                      </div>
+                    </div>
                   ))}
                 </div>
               )}
@@ -126,6 +250,11 @@ const Templates = () => {
               <CardTitle className="text-base font-heading">Template Upload & Live Preview</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
+              <div className="flex flex-wrap gap-2">
+                <Badge className="bg-primary/10 text-primary border border-primary/20">Custom Template</Badge>
+                <Badge variant="outline">Editable Layout</Badge>
+              </div>
+
               <div
                 className={`border-2 border-dashed rounded-lg p-5 text-center transition-colors ${dragActive ? "border-accent bg-accent/10" : "border-border hover:border-accent/50"}`}
                 onDragOver={(event) => {
@@ -145,6 +274,16 @@ const Templates = () => {
               </div>
 
               <div className="space-y-3">
+                <div className="flex items-center justify-between rounded-md border border-border bg-muted/30 px-3 py-2">
+                  <label className="text-xs text-muted-foreground">Student Name placeholder visibility</label>
+                  <input type="checkbox" checked={showPlaceholder} onChange={(event) => setShowPlaceholder(event.target.checked)} />
+                </div>
+
+                <div className="flex items-center justify-between rounded-md border border-border bg-muted/30 px-3 py-2">
+                  <label className="text-xs text-muted-foreground">QR placeholder visibility</label>
+                  <input type="checkbox" checked={showQrPlaceholder} onChange={(event) => setShowQrPlaceholder(event.target.checked)} />
+                </div>
+
                 <div>
                   <label className="text-xs text-muted-foreground">Placeholder Label</label>
                   <Input value={placeholderField} onChange={(event) => setPlaceholderField(event.target.value.toUpperCase())} />
@@ -178,21 +317,25 @@ const Templates = () => {
                     <p className="font-heading text-base font-bold text-foreground">{selectedTemplate?.title ?? "No Template Selected"}</p>
                   </div>
 
-                  <div className="absolute" style={{ left: `${placeholderX}%`, top: `${placeholderY}%`, transform: "translate(-50%, -50%)" }}>
-                    <span className="text-[10px] px-2 py-1 rounded bg-primary text-primary-foreground shadow">
-                      {`{{${placeholderField || "FIELD"}}}`}
-                    </span>
-                  </div>
+                  {showPlaceholder && (
+                    <div className="absolute" style={{ left: `${placeholderX}%`, top: `${placeholderY}%`, transform: "translate(-50%, -50%)" }}>
+                      <span className="text-[10px] px-2 py-1 rounded bg-primary text-primary-foreground shadow">
+                        {`{{${placeholderField || "FIELD"}}}`}
+                      </span>
+                    </div>
+                  )}
 
-                  <div
-                    className="absolute w-14 h-14 rounded-md border-2 border-dashed border-accent bg-accent/10 flex items-center justify-center"
-                    style={{ left: `${qrX}%`, top: `${qrY}%`, transform: "translate(-50%, -50%)" }}
-                  >
-                    <QrCode className="w-7 h-7 text-accent" />
-                    <span className="absolute -top-2 -right-2 w-5 h-5 rounded-full bg-accent flex items-center justify-center">
-                      <Move className="w-3 h-3 text-accent-foreground" />
-                    </span>
-                  </div>
+                  {showQrPlaceholder && (
+                    <div
+                      className="absolute w-14 h-14 rounded-md border-2 border-dashed border-accent bg-accent/10 flex items-center justify-center"
+                      style={{ left: `${qrX}%`, top: `${qrY}%`, transform: "translate(-50%, -50%)" }}
+                    >
+                      <QrCode className="w-7 h-7 text-accent" />
+                      <span className="absolute -top-2 -right-2 w-5 h-5 rounded-full bg-accent flex items-center justify-center">
+                        <Move className="w-3 h-3 text-accent-foreground" />
+                      </span>
+                    </div>
+                  )}
 
                   <div className="flex justify-between items-end text-[10px] text-muted-foreground">
                     <span>Date: {"{{DATE}}"}</span>
@@ -205,9 +348,6 @@ const Templates = () => {
                 <Button className="flex-1 gold-gradient text-accent-foreground gap-2">
                   <WandSparkles className="w-4 h-4" /> Save Layout
                 </Button>
-                <Button variant="outline" className="flex-1 gap-2">
-                  <Star className="w-4 h-4" /> Save as Favorite
-                </Button>
               </div>
             </CardContent>
           </Card>
@@ -219,9 +359,9 @@ const Templates = () => {
                 <div className="text-xs text-muted-foreground space-y-1">
                   <p className="font-medium text-foreground">Implementation Notes</p>
                   <ul className="space-y-1 list-disc list-inside">
-                    <li>Template library uses modular mock API placeholders.</li>
-                    <li>Category filtering, favorites, and select actions are frontend-only.</li>
-                    <li>Drag-drop, placeholder and QR positioning are UI simulation only.</li>
+                    <li>Official templates are brand-locked with field-only editing in modal.</li>
+                    <li>Custom upload workspace supports placeholder visibility and position controls.</li>
+                    <li>Drag-drop and layout save are frontend-only UI simulation.</li>
                     <li>Ready for future backend connection without routing changes.</li>
                   </ul>
                 </div>
@@ -231,14 +371,18 @@ const Templates = () => {
         </div>
       </div>
 
-      <TemplatePreviewModal
-        open={Boolean(previewTemplate)}
-        template={previewTemplate}
+      <CertificateEditorModal
+        open={Boolean(selectedTemplate)}
+        template={selectedTemplate}
+        draft={currentDraft}
+        initialMode={modalMode}
         onOpenChange={(open) => {
           if (!open) {
-            setPreviewTemplate(null);
+            setSelectedTemplate(null);
           }
         }}
+        onUpdateField={updateDraftField}
+        onSave={saveDraft}
       />
     </div>
   );

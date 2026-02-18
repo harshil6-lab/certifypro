@@ -36,7 +36,7 @@ export function PublicNavbar() {
 
   return (
     <header className="sticky top-0 z-30 border-b border-border/70 bg-background/90 backdrop-blur-lg shadow-[0_8px_24px_rgba(15,23,42,0.06)]">
-      <div className="mx-auto w-full max-w-[1400px] px-3 sm:px-4 lg:px-6 py-3.5 flex items-center justify-between gap-4">
+      <div className="mx-auto w-full max-w-7xl px-6 lg:px-8 py-3.5 flex items-center justify-between gap-4">
         <Link to="/" className="flex items-center pr-2 group" aria-label="Go to CertifyPro Home">
           <img src={certifyProLogo} alt="CertifyPro Logo" className="h-10 md:h-11 lg:h-12 w-auto object-contain" />
         </Link>
@@ -47,7 +47,7 @@ export function PublicNavbar() {
               key={item.label}
               to={item.to}
               aria-current={isItemActive(item.to) ? "page" : undefined}
-              className={`relative text-sm transition-colors duration-300 after:absolute after:left-0 after:-bottom-1 after:h-0.5 after:w-full after:origin-left after:bg-accent after:transition-transform after:duration-300 after:ease-out ${
+              className={`relative text-sm transition-all duration-200 ease-out after:absolute after:left-0 after:-bottom-1 after:h-0.5 after:w-full after:origin-left after:bg-accent after:transition-transform after:duration-200 after:ease-out ${
                 isItemActive(item.to)
                   ? "text-foreground after:scale-x-100"
                   : "text-foreground/80 hover:text-foreground after:scale-x-0 hover:after:scale-x-100"

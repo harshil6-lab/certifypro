@@ -28,7 +28,8 @@ import {
   Shield,
   UserCircle,
 } from "lucide-react";
-import certifyProLogo from "@/assets/certifypro_logowithtext.png";
+import certifyProLogo from "@/assets/white_certify_pro_logo.png";
+import { setAuthenticated } from "@/lib/auth";
 
 const navItems = [
   { title: "Dashboard", url: "/dashboard", icon: LayoutDashboard },
@@ -40,6 +41,10 @@ const navItems = [
 ];
 
 const AdminNavbar = () => {
+  const handleSignOut = () => {
+    setAuthenticated(false);
+  };
+
   return (
     <header className="sticky top-0 z-40 w-full border-b border-slate-700 bg-gradient-to-r from-slate-800 via-slate-800 to-slate-900 backdrop-blur-md shadow-[0_10px_30px_rgba(0,0,0,0.3)]">
       <div className="mx-auto flex min-h-16 max-w-7xl items-center gap-4 px-4 sm:px-6">
@@ -110,6 +115,7 @@ const AdminNavbar = () => {
                 <SheetClose asChild>
                   <NavLink
                     to="/"
+                    onClick={handleSignOut}
                     className="flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-slate-300 hover:bg-white/10 hover:text-white transition-all duration-200"
                   >
                     <LogOut className="h-4 w-4" />
@@ -144,7 +150,7 @@ const AdminNavbar = () => {
               </DropdownMenuItem>
               <DropdownMenuSeparator className="bg-slate-700" />
               <DropdownMenuItem asChild>
-                <NavLink to="/" className="flex items-center gap-2 text-slate-300 hover:text-white hover:bg-white/10">
+                <NavLink to="/" onClick={handleSignOut} className="flex items-center gap-2 text-slate-300 hover:text-white hover:bg-white/10">
                   <LogOut className="h-4 w-4" />
                   Sign Out
                 </NavLink>
