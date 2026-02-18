@@ -28,7 +28,7 @@ import {
   Shield,
   UserCircle,
 } from "lucide-react";
-import certifyProLogo from "@/assets/certifypro_logowithtext.png";
+import certifyProLogo from "@/assets/white_certify_pro_logo.png";
 
 const navItems = [
   { title: "Dashboard", url: "/dashboard", icon: LayoutDashboard },
