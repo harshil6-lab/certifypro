@@ -55,7 +55,7 @@ export function LandingFooter() {
                 <a href="#" className="block text-muted-foreground hover:text-foreground transition-colors duration-200">Documentation</a>
               </li>
               <li>
-                <a href="#" className="block text-muted-foreground hover:text-foreground transition-colors duration-200">FAQs</a>
+                <Link to="/faq" className="block text-muted-foreground hover:text-foreground transition-colors duration-200">FAQs</Link>
               </li>
               <li>
                 <Link to="/login" className="block text-muted-foreground hover:text-foreground transition-colors duration-200">Request Access</Link>

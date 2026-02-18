@@ -19,6 +19,7 @@ import Verify from "./pages/Verify";
 import VerifyResult from "./pages/VerifyResult";
 import Help from "./pages/Help";
 import NotFound from "./pages/NotFound";
+import Faq from "./pages/Faq";
 
 const queryClient = new QueryClient();
 
@@ -45,6 +46,7 @@ const App = () => (
             <Route path="/access" element={<AccessControl />} />
             <Route path="/help" element={<Help />} />
           </Route>
+          <Route path="/faq" element={<Faq />} />
           <Route path="*" element={<NotFound />} />
         </Routes>
       </BrowserRouter>
