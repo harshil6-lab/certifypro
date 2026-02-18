@@ -5,6 +5,10 @@ import { Card, CardContent } from "@/components/ui/card";
 import { TrustedInstitutionsSection } from "@/components/landing/TrustedInstitutionsSection";
 import { PublicNavbar } from "@/components/landing/PublicNavbar";
 import { LandingFooter } from "@/components/landing/LandingFooter";
+import templateLibraryVisual from "@/assets/features/template-library.svg";
+import bulkGenerationVisual from "@/assets/features/bulk-generation.svg";
+import qrVerificationVisual from "@/assets/features/qr-verification.svg";
+import certificateRegistryVisual from "@/assets/features/certificate-registry.svg";
 
 const heroImage =
   "https://images.unsplash.com/photo-1523050854058-8df90110c9f1?auto=format&fit=crop&w=1600&q=80";
@@ -14,29 +18,25 @@ const features = [
     title: "Template Library",
     description: "Use professionally designed certificate templates for academic and enterprise use cases.",
     icon: Layers,
-    image:
-      "https://images.unsplash.com/photo-1454165804606-c3d57bc86b40?auto=format&fit=crop&w=900&q=80",
+    image: templateLibraryVisual,
   },
   {
     title: "Bulk Generation",
     description: "Generate hundreds of certificates in minutes with guided workflows and mock-ready previewing.",
     icon: Sparkles,
-    image:
-      "https://images.unsplash.com/photo-1461749280684-dccba630e2f6?auto=format&fit=crop&w=900&q=80",
+    image: bulkGenerationVisual,
   },
   {
     title: "QR Verification",
     description: "Attach unique QR references to every certificate for quick public authenticity checks.",
     icon: QrCode,
-    image:
-      "https://images.unsplash.com/photo-1556740738-b6a63e27c4df?auto=format&fit=crop&w=900&q=80",
+    image: qrVerificationVisual,
   },
   {
     title: "Certificate Registry",
     description: "Manage certificate records in one operational workspace built for compliance-ready expansion.",
     icon: Library,
-    image:
-      "https://images.unsplash.com/photo-1450101499163-c8848c66ca85?auto=format&fit=crop&w=900&q=80",
+    image: certificateRegistryVisual,
   },
 ];
 
@@ -141,11 +141,11 @@ const Index = () => {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
             {features.map((feature) => (
               <Card key={feature.title} className="group rounded-2xl card-shadow border-border/60 overflow-hidden transition-all duration-300 hover:-translate-y-1 hover:card-shadow-lg hover:border-accent/40">
-                <div className="aspect-[16/8] w-full overflow-hidden">
+                <div className="aspect-[16/8] w-full overflow-hidden bg-gradient-to-br from-primary/5 to-accent/10 p-3 sm:p-4">
                   <img
                     src={feature.image}
                     alt={feature.title}
-                    className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
+                    className="h-full w-full rounded-xl object-contain shadow-[0_10px_24px_rgba(13,27,58,0.12)] transition-transform duration-500 group-hover:scale-105"
                     loading="lazy"
                   />
                 </div>
