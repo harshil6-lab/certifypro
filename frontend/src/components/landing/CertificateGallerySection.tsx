@@ -1,9 +1,12 @@
 import { useEffect, useMemo, useState } from "react";
 import { Eye, Pencil } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { CertificateTemplate } from "@/components/certificates/CertificateTemplate";
 import { CertificateEditorModal } from "@/components/certificates/CertificateEditorModal";
+import { toast } from "@/hooks/use-toast";
+import { isAuthenticated } from "@/lib/auth";
 import {
   CertificateDraft,
   CertificateTemplateMeta,
@@ -45,6 +48,7 @@ const normalizeDraft = (draft: Partial<CertificateDraft>, fallbackTitle: string)
 });
 
 export function CertificateGallerySection() {
+  const navigate = useNavigate();
   const [activeCategory, setActiveCategory] = useState<GalleryCategory>("Academic");
   const [selectedTemplate, setSelectedTemplate] = useState<CertificateTemplateMeta | null>(null);
   const [draftByTemplate, setDraftByTemplate] = useState<Record<string, CertificateDraft>>({});
@@ -105,6 +109,21 @@ export function CertificateGallerySection() {
     localStorage.setItem("certifypro-template-drafts", JSON.stringify(nextState));
   };
 
+  const openTemplateForEdit = (template: CertificateTemplateMeta) => {
+    const targetPath = `/templates?source=official&templateId=${encodeURIComponent(template.id)}&mode=edit`;
+
+    if (!isAuthenticated()) {
+      toast({
+        title: "Login required",
+        description: "Please login to edit certificate templates.",
+      });
+      navigate(`/login?reason=templates&redirect=${encodeURIComponent(targetPath)}`);
+      return;
+    }
+
+    navigate(targetPath);
+  };
+
   return (
     <section className="space-y-7 bg-white p-5 sm:p-6 rounded-2xl">
       <div className="space-y-2 max-w-3xl">
@@ -156,7 +175,7 @@ export function CertificateGallerySection() {
                         <Button size="sm" className="h-8 text-xs gap-1.5" onClick={() => setSelectedTemplate(template)}>
                           <Eye className="h-3.5 w-3.5" /> Preview
                         </Button>
-                        <Button size="sm" variant="outline" className="h-8 text-xs gap-1.5 bg-white/90" onClick={() => setSelectedTemplate(template)}>
+                        <Button size="sm" variant="outline" className="h-8 text-xs gap-1.5 bg-white/90" onClick={() => openTemplateForEdit(template)}>
                           <Pencil className="h-3.5 w-3.5" /> Edit
                         </Button>
                       </div>
@@ -181,6 +200,7 @@ export function CertificateGallerySection() {
         onOpenChange={(open) => !open && setSelectedTemplate(null)}
         onUpdateField={updateDraftField}
         onSave={saveDraft}
+        readOnly
       />
     </section>
   );

@@ -13,6 +13,8 @@ interface CertificateEditorModalProps {
   onOpenChange: (open: boolean) => void;
   onUpdateField: (field: keyof CertificateDraft, value: string) => void;
   onSave: () => void;
+  readOnly?: boolean;
+  initialMode?: "preview" | "edit";
 }
 
 class PreviewErrorBoundary extends Component<{ children: ReactNode }, { hasError: boolean }> {
@@ -51,8 +53,10 @@ export function CertificateEditorModal({
   onOpenChange,
   onUpdateField,
   onSave,
+  readOnly = false,
+  initialMode = "edit",
 }: CertificateEditorModalProps) {
-  const [mode, setMode] = useState<"preview" | "edit">("edit");
+  const [mode, setMode] = useState<"preview" | "edit">(readOnly ? "preview" : initialMode);
 
   const safeTemplate = template;
   const safeDraft: CertificateDraft = {
@@ -65,6 +69,18 @@ export function CertificateEditorModal({
     logoName: String(draft.logoName ?? ""),
     logoPreviewUrl: draft.logoPreviewUrl ? String(draft.logoPreviewUrl) : "",
   };
+
+  useEffect(() => {
+    if (readOnly && mode !== "preview") {
+      setMode("preview");
+    }
+  }, [mode, readOnly]);
+
+  useEffect(() => {
+    if (open) {
+      setMode(readOnly ? "preview" : initialMode);
+    }
+  }, [initialMode, open, readOnly]);
 
   useEffect(() => {
     if (!open) {
@@ -121,15 +137,19 @@ export function CertificateEditorModal({
             >
               Preview Mode
             </button>
-            <button
-              type="button"
-              className={`px-3 py-1.5 text-sm rounded-md transition-colors ${mode === "edit" ? "bg-white text-foreground" : "text-slate-600 hover:text-foreground"}`}
-              onClick={() => setMode("edit")}
-            >
-              Edit Mode
-            </button>
+            {!readOnly && (
+              <button
+                type="button"
+                className={`px-3 py-1.5 text-sm rounded-md transition-colors ${mode === "edit" ? "bg-white text-foreground" : "text-slate-600 hover:text-foreground"}`}
+                onClick={() => setMode("edit")}
+              >
+                Edit Mode
+              </button>
+            )}
           </div>
-          <p className="mt-2 text-xs text-slate-500">Content editable only — Design locked for brand consistency.</p>
+          <p className="mt-2 text-xs text-slate-500">
+            {readOnly ? "Preview only — Login required for editing." : "Content editable only — Design locked for brand consistency."}
+          </p>
         </div>
 
         <div className="flex flex-col lg:flex-row gap-0 max-h-[calc(92vh-120px)] overflow-y-auto">
@@ -143,8 +163,8 @@ export function CertificateEditorModal({
                       draft={safeDraft}
                       organizationName={safeTemplate.category === "Corporate" ? "CertifyPro Corporate" : "CertifyPro Institution"}
                       previewScale="md"
-                      highlightEditableZones={mode === "edit"}
-                      onInlineEdit={onUpdateField}
+                      highlightEditableZones={!readOnly && mode === "edit"}
+                      onInlineEdit={readOnly ? undefined : onUpdateField}
                     />
                   ) : (
                     <div className="min-h-[420px] rounded-xl border border-slate-200 bg-white p-6 flex items-center justify-center text-sm text-slate-600">
@@ -156,7 +176,7 @@ export function CertificateEditorModal({
             </div>
           </div>
 
-          {mode === "edit" && (
+          {!readOnly && mode === "edit" && (
           <div className="px-6 pb-6 pt-3 sm:px-7 lg:pl-4 lg:border-l lg:border-slate-200 bg-white/80 lg:w-[320px] lg:min-w-[320px]">
             <div className="space-y-5">
               <div className="space-y-1">
@@ -258,7 +278,7 @@ export function CertificateEditorModal({
           <Button variant="outline" onClick={() => onOpenChange(false)}>
             Close
           </Button>
-          <Button onClick={onSave}>Save Preview</Button>
+          {!readOnly && <Button onClick={onSave}>Save Preview</Button>}
         </div>
       </div>
     </div>
