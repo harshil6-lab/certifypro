@@ -1,67 +1,842 @@
 [
-  {"id":"academic-01","category":"Academic","title":"Degree Completion Certificate","image":"/src/assets/certificates/academic/template-01.svg","editableFields":["recipientName","certificateTitle","description","issuerName","logo"]},
-  {"id":"academic-02","category":"Academic","title":"Workshop Completion Certificate","image":"/src/assets/certificates/academic/template-01.svg","editableFields":["recipientName","certificateTitle","description","issuerName","logo"]},
-  {"id":"academic-03","category":"Academic","title":"Academic Achievement Award","image":"/src/assets/certificates/academic/template-01.svg","editableFields":["recipientName","certificateTitle","description","issuerName","logo"]},
-  {"id":"academic-04","category":"Academic","title":"Merit Distinction Certificate","image":"/src/assets/certificates/academic/template-01.svg","editableFields":["recipientName","certificateTitle","description","issuerName","logo"]},
-  {"id":"academic-05","category":"Academic","title":"Research Participation Certificate","image":"/src/assets/certificates/academic/template-01.svg","editableFields":["recipientName","certificateTitle","description","issuerName","logo"]},
-  {"id":"academic-06","category":"Academic","title":"Capstone Project Recognition","image":"/src/assets/certificates/academic/template-01.svg","editableFields":["recipientName","certificateTitle","description","issuerName","logo"]},
-  {"id":"academic-07","category":"Academic","title":"Academic Excellence Certificate","image":"/src/assets/certificates/academic/template-01.svg","editableFields":["recipientName","certificateTitle","description","issuerName","logo"]},
-  {"id":"academic-08","category":"Academic","title":"Program Completion Certificate","image":"/src/assets/certificates/academic/template-01.svg","editableFields":["recipientName","certificateTitle","description","issuerName","logo"]},
-  {"id":"academic-09","category":"Academic","title":"Department Honors Certificate","image":"/src/assets/certificates/academic/template-01.svg","editableFields":["recipientName","certificateTitle","description","issuerName","logo"]},
-  {"id":"academic-10","category":"Academic","title":"Academic Participation Certificate","image":"/src/assets/certificates/academic/template-01.svg","editableFields":["recipientName","certificateTitle","description","issuerName","logo"]},
-
-  {"id":"corporate-01","category":"Corporate","title":"Employee Recognition Certificate","image":"/src/assets/certificates/corporate/template-01.svg","editableFields":["recipientName","certificateTitle","description","issuerName","logo"]},
-  {"id":"corporate-02","category":"Corporate","title":"Corporate Training Completion","image":"/src/assets/certificates/corporate/template-01.svg","editableFields":["recipientName","certificateTitle","description","issuerName","logo"]},
-  {"id":"corporate-03","category":"Corporate","title":"Excellence in Service Award","image":"/src/assets/certificates/corporate/template-01.svg","editableFields":["recipientName","certificateTitle","description","issuerName","logo"]},
-  {"id":"corporate-04","category":"Corporate","title":"Leadership Recognition","image":"/src/assets/certificates/corporate/template-01.svg","editableFields":["recipientName","certificateTitle","description","issuerName","logo"]},
-  {"id":"corporate-05","category":"Corporate","title":"Project Delivery Appreciation","image":"/src/assets/certificates/corporate/template-01.svg","editableFields":["recipientName","certificateTitle","description","issuerName","logo"]},
-  {"id":"corporate-06","category":"Corporate","title":"Corporate Achievement Certificate","image":"/src/assets/certificates/corporate/template-01.svg","editableFields":["recipientName","certificateTitle","description","issuerName","logo"]},
-  {"id":"corporate-07","category":"Corporate","title":"Workplace Milestone Certificate","image":"/src/assets/certificates/corporate/template-01.svg","editableFields":["recipientName","certificateTitle","description","issuerName","logo"]},
-  {"id":"corporate-08","category":"Corporate","title":"Employee Appreciation Certificate","image":"/src/assets/certificates/corporate/template-01.svg","editableFields":["recipientName","certificateTitle","description","issuerName","logo"]},
-  {"id":"corporate-09","category":"Corporate","title":"Corporate Performance Award","image":"/src/assets/certificates/corporate/template-01.svg","editableFields":["recipientName","certificateTitle","description","issuerName","logo"]},
-  {"id":"corporate-10","category":"Corporate","title":"Team Contribution Certificate","image":"/src/assets/certificates/corporate/template-01.svg","editableFields":["recipientName","certificateTitle","description","issuerName","logo"]},
-
-  {"id":"internship-01","category":"Internship","title":"Internship Completion Certificate","image":"/src/assets/certificates/internship/template-01.svg","editableFields":["recipientName","certificateTitle","description","issuerName","logo"]},
-  {"id":"internship-02","category":"Internship","title":"Internship Participation Certificate","image":"/src/assets/certificates/internship/template-01.svg","editableFields":["recipientName","certificateTitle","description","issuerName","logo"]},
-  {"id":"internship-03","category":"Internship","title":"Internship Experience Certificate","image":"/src/assets/certificates/internship/template-01.svg","editableFields":["recipientName","certificateTitle","description","issuerName","logo"]},
-  {"id":"internship-04","category":"Internship","title":"Applied Learning Internship Award","image":"/src/assets/certificates/internship/template-01.svg","editableFields":["recipientName","certificateTitle","description","issuerName","logo"]},
-  {"id":"internship-05","category":"Internship","title":"Industry Internship Recognition","image":"/src/assets/certificates/internship/template-01.svg","editableFields":["recipientName","certificateTitle","description","issuerName","logo"]},
-  {"id":"internship-06","category":"Internship","title":"Internship Performance Certificate","image":"/src/assets/certificates/internship/template-01.svg","editableFields":["recipientName","certificateTitle","description","issuerName","logo"]},
-  {"id":"internship-07","category":"Internship","title":"Professional Internship Certificate","image":"/src/assets/certificates/internship/template-01.svg","editableFields":["recipientName","certificateTitle","description","issuerName","logo"]},
-  {"id":"internship-08","category":"Internship","title":"Internship Program Completion","image":"/src/assets/certificates/internship/template-01.svg","editableFields":["recipientName","certificateTitle","description","issuerName","logo"]},
-  {"id":"internship-09","category":"Internship","title":"Internship Project Contribution","image":"/src/assets/certificates/internship/template-01.svg","editableFields":["recipientName","certificateTitle","description","issuerName","logo"]},
-  {"id":"internship-10","category":"Internship","title":"Internship Achievement Certificate","image":"/src/assets/certificates/internship/template-01.svg","editableFields":["recipientName","certificateTitle","description","issuerName","logo"]},
-
-  {"id":"event-01","category":"Event","title":"Seminar Participation Certificate","image":"/src/assets/certificates/event/template-01.svg","editableFields":["recipientName","certificateTitle","description","issuerName","logo"]},
-  {"id":"event-02","category":"Event","title":"Hackathon Achievement Certificate","image":"/src/assets/certificates/event/template-01.svg","editableFields":["recipientName","certificateTitle","description","issuerName","logo"]},
-  {"id":"event-03","category":"Event","title":"Conference Attendance Certificate","image":"/src/assets/certificates/event/template-01.svg","editableFields":["recipientName","certificateTitle","description","issuerName","logo"]},
-  {"id":"event-04","category":"Event","title":"Event Speaker Appreciation","image":"/src/assets/certificates/event/template-01.svg","editableFields":["recipientName","certificateTitle","description","issuerName","logo"]},
-  {"id":"event-05","category":"Event","title":"Panel Participation Certificate","image":"/src/assets/certificates/event/template-01.svg","editableFields":["recipientName","certificateTitle","description","issuerName","logo"]},
-  {"id":"event-06","category":"Event","title":"Innovation Event Certificate","image":"/src/assets/certificates/event/template-01.svg","editableFields":["recipientName","certificateTitle","description","issuerName","logo"]},
-  {"id":"event-07","category":"Event","title":"Tech Summit Participation","image":"/src/assets/certificates/event/template-01.svg","editableFields":["recipientName","certificateTitle","description","issuerName","logo"]},
-  {"id":"event-08","category":"Event","title":"Conference Contributor Award","image":"/src/assets/certificates/event/template-01.svg","editableFields":["recipientName","certificateTitle","description","issuerName","logo"]},
-  {"id":"event-09","category":"Event","title":"Event Excellence Certificate","image":"/src/assets/certificates/event/template-01.svg","editableFields":["recipientName","certificateTitle","description","issuerName","logo"]},
-  {"id":"event-10","category":"Event","title":"Workshop Event Completion","image":"/src/assets/certificates/event/template-01.svg","editableFields":["recipientName","certificateTitle","description","issuerName","logo"]},
-
-  {"id":"compliance-01","category":"Compliance","title":"Safety Training Compliance","image":"/src/assets/certificates/compliance/template-01.svg","editableFields":["recipientName","certificateTitle","description","issuerName","logo"]},
-  {"id":"compliance-02","category":"Compliance","title":"ISO Awareness Certificate","image":"/src/assets/certificates/compliance/template-01.svg","editableFields":["recipientName","certificateTitle","description","issuerName","logo"]},
-  {"id":"compliance-03","category":"Compliance","title":"Audit Compliance Certificate","image":"/src/assets/certificates/compliance/template-01.svg","editableFields":["recipientName","certificateTitle","description","issuerName","logo"]},
-  {"id":"compliance-04","category":"Compliance","title":"Policy Adherence Certificate","image":"/src/assets/certificates/compliance/template-01.svg","editableFields":["recipientName","certificateTitle","description","issuerName","logo"]},
-  {"id":"compliance-05","category":"Compliance","title":"Regulatory Readiness Certificate","image":"/src/assets/certificates/compliance/template-01.svg","editableFields":["recipientName","certificateTitle","description","issuerName","logo"]},
-  {"id":"compliance-06","category":"Compliance","title":"Quality Compliance Completion","image":"/src/assets/certificates/compliance/template-01.svg","editableFields":["recipientName","certificateTitle","description","issuerName","logo"]},
-  {"id":"compliance-07","category":"Compliance","title":"Compliance Program Certificate","image":"/src/assets/certificates/compliance/template-01.svg","editableFields":["recipientName","certificateTitle","description","issuerName","logo"]},
-  {"id":"compliance-08","category":"Compliance","title":"Operational Safety Certificate","image":"/src/assets/certificates/compliance/template-01.svg","editableFields":["recipientName","certificateTitle","description","issuerName","logo"]},
-  {"id":"compliance-09","category":"Compliance","title":"Standards Compliance Certificate","image":"/src/assets/certificates/compliance/template-01.svg","editableFields":["recipientName","certificateTitle","description","issuerName","logo"]},
-  {"id":"compliance-10","category":"Compliance","title":"Audit Preparedness Certificate","image":"/src/assets/certificates/compliance/template-01.svg","editableFields":["recipientName","certificateTitle","description","issuerName","logo"]},
-
-  {"id":"training-01","category":"Training","title":"Skill Training Completion","image":"/src/assets/certificates/training/template-01.svg","editableFields":["recipientName","certificateTitle","description","issuerName","logo"]},
-  {"id":"training-02","category":"Training","title":"Technical Workshop Certificate","image":"/src/assets/certificates/training/template-01.svg","editableFields":["recipientName","certificateTitle","description","issuerName","logo"]},
-  {"id":"training-03","category":"Training","title":"Certification Program Completion","image":"/src/assets/certificates/training/template-01.svg","editableFields":["recipientName","certificateTitle","description","issuerName","logo"]},
-  {"id":"training-04","category":"Training","title":"Advanced Skills Certificate","image":"/src/assets/certificates/training/template-01.svg","editableFields":["recipientName","certificateTitle","description","issuerName","logo"]},
-  {"id":"training-05","category":"Training","title":"Professional Training Certificate","image":"/src/assets/certificates/training/template-01.svg","editableFields":["recipientName","certificateTitle","description","issuerName","logo"]},
-  {"id":"training-06","category":"Training","title":"Instructor-Led Program Certificate","image":"/src/assets/certificates/training/template-01.svg","editableFields":["recipientName","certificateTitle","description","issuerName","logo"]},
-  {"id":"training-07","category":"Training","title":"Competency Development Certificate","image":"/src/assets/certificates/training/template-01.svg","editableFields":["recipientName","certificateTitle","description","issuerName","logo"]},
-  {"id":"training-08","category":"Training","title":"Practical Skills Certificate","image":"/src/assets/certificates/training/template-01.svg","editableFields":["recipientName","certificateTitle","description","issuerName","logo"]},
-  {"id":"training-09","category":"Training","title":"Learning Path Completion","image":"/src/assets/certificates/training/template-01.svg","editableFields":["recipientName","certificateTitle","description","issuerName","logo"]},
-  {"id":"training-10","category":"Training","title":"Hands-On Training Certificate","image":"/src/assets/certificates/training/template-01.svg","editableFields":["recipientName","certificateTitle","description","issuerName","logo"]}
+    {
+        "id":  "academic-01",
+        "category":  "Academic",
+        "title":  "Degree Completion Certificate",
+        "image":  "/src/assets/certificates/academic/template-01.svg",
+        "editableFields":  [
+                               "recipientName",
+                               "certificateTitle",
+                               "description",
+                               "issuerName",
+                               "logo"
+                           ],
+        "styleType":  "academicFormal"
+    },
+    {
+        "id":  "academic-02",
+        "category":  "Academic",
+        "title":  "Workshop Completion Certificate",
+        "image":  "/src/assets/certificates/academic/template-01.svg",
+        "editableFields":  [
+                               "recipientName",
+                               "certificateTitle",
+                               "description",
+                               "issuerName",
+                               "logo"
+                           ],
+        "styleType":  "corporateMinimal"
+    },
+    {
+        "id":  "academic-03",
+        "category":  "Academic",
+        "title":  "Academic Achievement Award",
+        "image":  "/src/assets/certificates/academic/template-01.svg",
+        "editableFields":  [
+                               "recipientName",
+                               "certificateTitle",
+                               "description",
+                               "issuerName",
+                               "logo"
+                           ],
+        "styleType":  "modernGradient"
+    },
+    {
+        "id":  "academic-04",
+        "category":  "Academic",
+        "title":  "Merit Distinction Certificate",
+        "image":  "/src/assets/certificates/academic/template-01.svg",
+        "editableFields":  [
+                               "recipientName",
+                               "certificateTitle",
+                               "description",
+                               "issuerName",
+                               "logo"
+                           ],
+        "styleType":  "elegantClassic"
+    },
+    {
+        "id":  "academic-05",
+        "category":  "Academic",
+        "title":  "Research Participation Certificate",
+        "image":  "/src/assets/certificates/academic/template-01.svg",
+        "editableFields":  [
+                               "recipientName",
+                               "certificateTitle",
+                               "description",
+                               "issuerName",
+                               "logo"
+                           ],
+        "styleType":  "trainingCertification"
+    },
+    {
+        "id":  "academic-06",
+        "category":  "Academic",
+        "title":  "Capstone Project Recognition",
+        "image":  "/src/assets/certificates/academic/template-01.svg",
+        "editableFields":  [
+                               "recipientName",
+                               "certificateTitle",
+                               "description",
+                               "issuerName",
+                               "logo"
+                           ],
+        "styleType":  "eventCertificate"
+    },
+    {
+        "id":  "academic-07",
+        "category":  "Academic",
+        "title":  "Academic Excellence Certificate",
+        "image":  "/src/assets/certificates/academic/template-01.svg",
+        "editableFields":  [
+                               "recipientName",
+                               "certificateTitle",
+                               "description",
+                               "issuerName",
+                               "logo"
+                           ],
+        "styleType":  "academicFormal"
+    },
+    {
+        "id":  "academic-08",
+        "category":  "Academic",
+        "title":  "Program Completion Certificate",
+        "image":  "/src/assets/certificates/academic/template-01.svg",
+        "editableFields":  [
+                               "recipientName",
+                               "certificateTitle",
+                               "description",
+                               "issuerName",
+                               "logo"
+                           ],
+        "styleType":  "corporateMinimal"
+    },
+    {
+        "id":  "academic-09",
+        "category":  "Academic",
+        "title":  "Department Honors Certificate",
+        "image":  "/src/assets/certificates/academic/template-01.svg",
+        "editableFields":  [
+                               "recipientName",
+                               "certificateTitle",
+                               "description",
+                               "issuerName",
+                               "logo"
+                           ],
+        "styleType":  "modernGradient"
+    },
+    {
+        "id":  "academic-10",
+        "category":  "Academic",
+        "title":  "Academic Participation Certificate",
+        "image":  "/src/assets/certificates/academic/template-01.svg",
+        "editableFields":  [
+                               "recipientName",
+                               "certificateTitle",
+                               "description",
+                               "issuerName",
+                               "logo"
+                           ],
+        "styleType":  "elegantClassic"
+    },
+    {
+        "id":  "corporate-01",
+        "category":  "Corporate",
+        "title":  "Employee Recognition Certificate",
+        "image":  "/src/assets/certificates/corporate/template-01.svg",
+        "editableFields":  [
+                               "recipientName",
+                               "certificateTitle",
+                               "description",
+                               "issuerName",
+                               "logo"
+                           ],
+        "styleType":  "trainingCertification"
+    },
+    {
+        "id":  "corporate-02",
+        "category":  "Corporate",
+        "title":  "Corporate Training Completion",
+        "image":  "/src/assets/certificates/corporate/template-01.svg",
+        "editableFields":  [
+                               "recipientName",
+                               "certificateTitle",
+                               "description",
+                               "issuerName",
+                               "logo"
+                           ],
+        "styleType":  "eventCertificate"
+    },
+    {
+        "id":  "corporate-03",
+        "category":  "Corporate",
+        "title":  "Excellence in Service Award",
+        "image":  "/src/assets/certificates/corporate/template-01.svg",
+        "editableFields":  [
+                               "recipientName",
+                               "certificateTitle",
+                               "description",
+                               "issuerName",
+                               "logo"
+                           ],
+        "styleType":  "academicFormal"
+    },
+    {
+        "id":  "corporate-04",
+        "category":  "Corporate",
+        "title":  "Leadership Recognition",
+        "image":  "/src/assets/certificates/corporate/template-01.svg",
+        "editableFields":  [
+                               "recipientName",
+                               "certificateTitle",
+                               "description",
+                               "issuerName",
+                               "logo"
+                           ],
+        "styleType":  "corporateMinimal"
+    },
+    {
+        "id":  "corporate-05",
+        "category":  "Corporate",
+        "title":  "Project Delivery Appreciation",
+        "image":  "/src/assets/certificates/corporate/template-01.svg",
+        "editableFields":  [
+                               "recipientName",
+                               "certificateTitle",
+                               "description",
+                               "issuerName",
+                               "logo"
+                           ],
+        "styleType":  "modernGradient"
+    },
+    {
+        "id":  "corporate-06",
+        "category":  "Corporate",
+        "title":  "Corporate Achievement Certificate",
+        "image":  "/src/assets/certificates/corporate/template-01.svg",
+        "editableFields":  [
+                               "recipientName",
+                               "certificateTitle",
+                               "description",
+                               "issuerName",
+                               "logo"
+                           ],
+        "styleType":  "elegantClassic"
+    },
+    {
+        "id":  "corporate-07",
+        "category":  "Corporate",
+        "title":  "Workplace Milestone Certificate",
+        "image":  "/src/assets/certificates/corporate/template-01.svg",
+        "editableFields":  [
+                               "recipientName",
+                               "certificateTitle",
+                               "description",
+                               "issuerName",
+                               "logo"
+                           ],
+        "styleType":  "trainingCertification"
+    },
+    {
+        "id":  "corporate-08",
+        "category":  "Corporate",
+        "title":  "Employee Appreciation Certificate",
+        "image":  "/src/assets/certificates/corporate/template-01.svg",
+        "editableFields":  [
+                               "recipientName",
+                               "certificateTitle",
+                               "description",
+                               "issuerName",
+                               "logo"
+                           ],
+        "styleType":  "eventCertificate"
+    },
+    {
+        "id":  "corporate-09",
+        "category":  "Corporate",
+        "title":  "Corporate Performance Award",
+        "image":  "/src/assets/certificates/corporate/template-01.svg",
+        "editableFields":  [
+                               "recipientName",
+                               "certificateTitle",
+                               "description",
+                               "issuerName",
+                               "logo"
+                           ],
+        "styleType":  "academicFormal"
+    },
+    {
+        "id":  "corporate-10",
+        "category":  "Corporate",
+        "title":  "Team Contribution Certificate",
+        "image":  "/src/assets/certificates/corporate/template-01.svg",
+        "editableFields":  [
+                               "recipientName",
+                               "certificateTitle",
+                               "description",
+                               "issuerName",
+                               "logo"
+                           ],
+        "styleType":  "corporateMinimal"
+    },
+    {
+        "id":  "internship-01",
+        "category":  "Internship",
+        "title":  "Internship Completion Certificate",
+        "image":  "/src/assets/certificates/internship/template-01.svg",
+        "editableFields":  [
+                               "recipientName",
+                               "certificateTitle",
+                               "description",
+                               "issuerName",
+                               "logo"
+                           ],
+        "styleType":  "modernGradient"
+    },
+    {
+        "id":  "internship-02",
+        "category":  "Internship",
+        "title":  "Internship Participation Certificate",
+        "image":  "/src/assets/certificates/internship/template-01.svg",
+        "editableFields":  [
+                               "recipientName",
+                               "certificateTitle",
+                               "description",
+                               "issuerName",
+                               "logo"
+                           ],
+        "styleType":  "elegantClassic"
+    },
+    {
+        "id":  "internship-03",
+        "category":  "Internship",
+        "title":  "Internship Experience Certificate",
+        "image":  "/src/assets/certificates/internship/template-01.svg",
+        "editableFields":  [
+                               "recipientName",
+                               "certificateTitle",
+                               "description",
+                               "issuerName",
+                               "logo"
+                           ],
+        "styleType":  "trainingCertification"
+    },
+    {
+        "id":  "internship-04",
+        "category":  "Internship",
+        "title":  "Applied Learning Internship Award",
+        "image":  "/src/assets/certificates/internship/template-01.svg",
+        "editableFields":  [
+                               "recipientName",
+                               "certificateTitle",
+                               "description",
+                               "issuerName",
+                               "logo"
+                           ],
+        "styleType":  "eventCertificate"
+    },
+    {
+        "id":  "internship-05",
+        "category":  "Internship",
+        "title":  "Industry Internship Recognition",
+        "image":  "/src/assets/certificates/internship/template-01.svg",
+        "editableFields":  [
+                               "recipientName",
+                               "certificateTitle",
+                               "description",
+                               "issuerName",
+                               "logo"
+                           ],
+        "styleType":  "academicFormal"
+    },
+    {
+        "id":  "internship-06",
+        "category":  "Internship",
+        "title":  "Internship Performance Certificate",
+        "image":  "/src/assets/certificates/internship/template-01.svg",
+        "editableFields":  [
+                               "recipientName",
+                               "certificateTitle",
+                               "description",
+                               "issuerName",
+                               "logo"
+                           ],
+        "styleType":  "corporateMinimal"
+    },
+    {
+        "id":  "internship-07",
+        "category":  "Internship",
+        "title":  "Professional Internship Certificate",
+        "image":  "/src/assets/certificates/internship/template-01.svg",
+        "editableFields":  [
+                               "recipientName",
+                               "certificateTitle",
+                               "description",
+                               "issuerName",
+                               "logo"
+                           ],
+        "styleType":  "modernGradient"
+    },
+    {
+        "id":  "internship-08",
+        "category":  "Internship",
+        "title":  "Internship Program Completion",
+        "image":  "/src/assets/certificates/internship/template-01.svg",
+        "editableFields":  [
+                               "recipientName",
+                               "certificateTitle",
+                               "description",
+                               "issuerName",
+                               "logo"
+                           ],
+        "styleType":  "elegantClassic"
+    },
+    {
+        "id":  "internship-09",
+        "category":  "Internship",
+        "title":  "Internship Project Contribution",
+        "image":  "/src/assets/certificates/internship/template-01.svg",
+        "editableFields":  [
+                               "recipientName",
+                               "certificateTitle",
+                               "description",
+                               "issuerName",
+                               "logo"
+                           ],
+        "styleType":  "trainingCertification"
+    },
+    {
+        "id":  "internship-10",
+        "category":  "Internship",
+        "title":  "Internship Achievement Certificate",
+        "image":  "/src/assets/certificates/internship/template-01.svg",
+        "editableFields":  [
+                               "recipientName",
+                               "certificateTitle",
+                               "description",
+                               "issuerName",
+                               "logo"
+                           ],
+        "styleType":  "eventCertificate"
+    },
+    {
+        "id":  "event-01",
+        "category":  "Event",
+        "title":  "Seminar Participation Certificate",
+        "image":  "/src/assets/certificates/event/template-01.svg",
+        "editableFields":  [
+                               "recipientName",
+                               "certificateTitle",
+                               "description",
+                               "issuerName",
+                               "logo"
+                           ],
+        "styleType":  "academicFormal"
+    },
+    {
+        "id":  "event-02",
+        "category":  "Event",
+        "title":  "Hackathon Achievement Certificate",
+        "image":  "/src/assets/certificates/event/template-01.svg",
+        "editableFields":  [
+                               "recipientName",
+                               "certificateTitle",
+                               "description",
+                               "issuerName",
+                               "logo"
+                           ],
+        "styleType":  "corporateMinimal"
+    },
+    {
+        "id":  "event-03",
+        "category":  "Event",
+        "title":  "Conference Attendance Certificate",
+        "image":  "/src/assets/certificates/event/template-01.svg",
+        "editableFields":  [
+                               "recipientName",
+                               "certificateTitle",
+                               "description",
+                               "issuerName",
+                               "logo"
+                           ],
+        "styleType":  "modernGradient"
+    },
+    {
+        "id":  "event-04",
+        "category":  "Event",
+        "title":  "Event Speaker Appreciation",
+        "image":  "/src/assets/certificates/event/template-01.svg",
+        "editableFields":  [
+                               "recipientName",
+                               "certificateTitle",
+                               "description",
+                               "issuerName",
+                               "logo"
+                           ],
+        "styleType":  "elegantClassic"
+    },
+    {
+        "id":  "event-05",
+        "category":  "Event",
+        "title":  "Panel Participation Certificate",
+        "image":  "/src/assets/certificates/event/template-01.svg",
+        "editableFields":  [
+                               "recipientName",
+                               "certificateTitle",
+                               "description",
+                               "issuerName",
+                               "logo"
+                           ],
+        "styleType":  "trainingCertification"
+    },
+    {
+        "id":  "event-06",
+        "category":  "Event",
+        "title":  "Innovation Event Certificate",
+        "image":  "/src/assets/certificates/event/template-01.svg",
+        "editableFields":  [
+                               "recipientName",
+                               "certificateTitle",
+                               "description",
+                               "issuerName",
+                               "logo"
+                           ],
+        "styleType":  "eventCertificate"
+    },
+    {
+        "id":  "event-07",
+        "category":  "Event",
+        "title":  "Tech Summit Participation",
+        "image":  "/src/assets/certificates/event/template-01.svg",
+        "editableFields":  [
+                               "recipientName",
+                               "certificateTitle",
+                               "description",
+                               "issuerName",
+                               "logo"
+                           ],
+        "styleType":  "academicFormal"
+    },
+    {
+        "id":  "event-08",
+        "category":  "Event",
+        "title":  "Conference Contributor Award",
+        "image":  "/src/assets/certificates/event/template-01.svg",
+        "editableFields":  [
+                               "recipientName",
+                               "certificateTitle",
+                               "description",
+                               "issuerName",
+                               "logo"
+                           ],
+        "styleType":  "corporateMinimal"
+    },
+    {
+        "id":  "event-09",
+        "category":  "Event",
+        "title":  "Event Excellence Certificate",
+        "image":  "/src/assets/certificates/event/template-01.svg",
+        "editableFields":  [
+                               "recipientName",
+                               "certificateTitle",
+                               "description",
+                               "issuerName",
+                               "logo"
+                           ],
+        "styleType":  "modernGradient"
+    },
+    {
+        "id":  "event-10",
+        "category":  "Event",
+        "title":  "Workshop Event Completion",
+        "image":  "/src/assets/certificates/event/template-01.svg",
+        "editableFields":  [
+                               "recipientName",
+                               "certificateTitle",
+                               "description",
+                               "issuerName",
+                               "logo"
+                           ],
+        "styleType":  "elegantClassic"
+    },
+    {
+        "id":  "compliance-01",
+        "category":  "Compliance",
+        "title":  "Safety Training Compliance",
+        "image":  "/src/assets/certificates/compliance/template-01.svg",
+        "editableFields":  [
+                               "recipientName",
+                               "certificateTitle",
+                               "description",
+                               "issuerName",
+                               "logo"
+                           ],
+        "styleType":  "trainingCertification"
+    },
+    {
+        "id":  "compliance-02",
+        "category":  "Compliance",
+        "title":  "ISO Awareness Certificate",
+        "image":  "/src/assets/certificates/compliance/template-01.svg",
+        "editableFields":  [
+                               "recipientName",
+                               "certificateTitle",
+                               "description",
+                               "issuerName",
+                               "logo"
+                           ],
+        "styleType":  "eventCertificate"
+    },
+    {
+        "id":  "compliance-03",
+        "category":  "Compliance",
+        "title":  "Audit Compliance Certificate",
+        "image":  "/src/assets/certificates/compliance/template-01.svg",
+        "editableFields":  [
+                               "recipientName",
+                               "certificateTitle",
+                               "description",
+                               "issuerName",
+                               "logo"
+                           ],
+        "styleType":  "academicFormal"
+    },
+    {
+        "id":  "compliance-04",
+        "category":  "Compliance",
+        "title":  "Policy Adherence Certificate",
+        "image":  "/src/assets/certificates/compliance/template-01.svg",
+        "editableFields":  [
+                               "recipientName",
+                               "certificateTitle",
+                               "description",
+                               "issuerName",
+                               "logo"
+                           ],
+        "styleType":  "corporateMinimal"
+    },
+    {
+        "id":  "compliance-05",
+        "category":  "Compliance",
+        "title":  "Regulatory Readiness Certificate",
+        "image":  "/src/assets/certificates/compliance/template-01.svg",
+        "editableFields":  [
+                               "recipientName",
+                               "certificateTitle",
+                               "description",
+                               "issuerName",
+                               "logo"
+                           ],
+        "styleType":  "modernGradient"
+    },
+    {
+        "id":  "compliance-06",
+        "category":  "Compliance",
+        "title":  "Quality Compliance Completion",
+        "image":  "/src/assets/certificates/compliance/template-01.svg",
+        "editableFields":  [
+                               "recipientName",
+                               "certificateTitle",
+                               "description",
+                               "issuerName",
+                               "logo"
+                           ],
+        "styleType":  "elegantClassic"
+    },
+    {
+        "id":  "compliance-07",
+        "category":  "Compliance",
+        "title":  "Compliance Program Certificate",
+        "image":  "/src/assets/certificates/compliance/template-01.svg",
+        "editableFields":  [
+                               "recipientName",
+                               "certificateTitle",
+                               "description",
+                               "issuerName",
+                               "logo"
+                           ],
+        "styleType":  "trainingCertification"
+    },
+    {
+        "id":  "compliance-08",
+        "category":  "Compliance",
+        "title":  "Operational Safety Certificate",
+        "image":  "/src/assets/certificates/compliance/template-01.svg",
+        "editableFields":  [
+                               "recipientName",
+                               "certificateTitle",
+                               "description",
+                               "issuerName",
+                               "logo"
+                           ],
+        "styleType":  "eventCertificate"
+    },
+    {
+        "id":  "compliance-09",
+        "category":  "Compliance",
+        "title":  "Standards Compliance Certificate",
+        "image":  "/src/assets/certificates/compliance/template-01.svg",
+        "editableFields":  [
+                               "recipientName",
+                               "certificateTitle",
+                               "description",
+                               "issuerName",
+                               "logo"
+                           ],
+        "styleType":  "academicFormal"
+    },
+    {
+        "id":  "compliance-10",
+        "category":  "Compliance",
+        "title":  "Audit Preparedness Certificate",
+        "image":  "/src/assets/certificates/compliance/template-01.svg",
+        "editableFields":  [
+                               "recipientName",
+                               "certificateTitle",
+                               "description",
+                               "issuerName",
+                               "logo"
+                           ],
+        "styleType":  "corporateMinimal"
+    },
+    {
+        "id":  "training-01",
+        "category":  "Training",
+        "title":  "Skill Training Completion",
+        "image":  "/src/assets/certificates/training/template-01.svg",
+        "editableFields":  [
+                               "recipientName",
+                               "certificateTitle",
+                               "description",
+                               "issuerName",
+                               "logo"
+                           ],
+        "styleType":  "modernGradient"
+    },
+    {
+        "id":  "training-02",
+        "category":  "Training",
+        "title":  "Technical Workshop Certificate",
+        "image":  "/src/assets/certificates/training/template-01.svg",
+        "editableFields":  [
+                               "recipientName",
+                               "certificateTitle",
+                               "description",
+                               "issuerName",
+                               "logo"
+                           ],
+        "styleType":  "elegantClassic"
+    },
+    {
+        "id":  "training-03",
+        "category":  "Training",
+        "title":  "Certification Program Completion",
+        "image":  "/src/assets/certificates/training/template-01.svg",
+        "editableFields":  [
+                               "recipientName",
+                               "certificateTitle",
+                               "description",
+                               "issuerName",
+                               "logo"
+                           ],
+        "styleType":  "trainingCertification"
+    },
+    {
+        "id":  "training-04",
+        "category":  "Training",
+        "title":  "Advanced Skills Certificate",
+        "image":  "/src/assets/certificates/training/template-01.svg",
+        "editableFields":  [
+                               "recipientName",
+                               "certificateTitle",
+                               "description",
+                               "issuerName",
+                               "logo"
+                           ],
+        "styleType":  "eventCertificate"
+    },
+    {
+        "id":  "training-05",
+        "category":  "Training",
+        "title":  "Professional Training Certificate",
+        "image":  "/src/assets/certificates/training/template-01.svg",
+        "editableFields":  [
+                               "recipientName",
+                               "certificateTitle",
+                               "description",
+                               "issuerName",
+                               "logo"
+                           ],
+        "styleType":  "academicFormal"
+    },
+    {
+        "id":  "training-06",
+        "category":  "Training",
+        "title":  "Instructor-Led Program Certificate",
+        "image":  "/src/assets/certificates/training/template-01.svg",
+        "editableFields":  [
+                               "recipientName",
+                               "certificateTitle",
+                               "description",
+                               "issuerName",
+                               "logo"
+                           ],
+        "styleType":  "corporateMinimal"
+    },
+    {
+        "id":  "training-07",
+        "category":  "Training",
+        "title":  "Competency Development Certificate",
+        "image":  "/src/assets/certificates/training/template-01.svg",
+        "editableFields":  [
+                               "recipientName",
+                               "certificateTitle",
+                               "description",
+                               "issuerName",
+                               "logo"
+                           ],
+        "styleType":  "modernGradient"
+    },
+    {
+        "id":  "training-08",
+        "category":  "Training",
+        "title":  "Practical Skills Certificate",
+        "image":  "/src/assets/certificates/training/template-01.svg",
+        "editableFields":  [
+                               "recipientName",
+                               "certificateTitle",
+                               "description",
+                               "issuerName",
+                               "logo"
+                           ],
+        "styleType":  "elegantClassic"
+    },
+    {
+        "id":  "training-09",
+        "category":  "Training",
+        "title":  "Learning Path Completion",
+        "image":  "/src/assets/certificates/training/template-01.svg",
+        "editableFields":  [
+                               "recipientName",
+                               "certificateTitle",
+                               "description",
+                               "issuerName",
+                               "logo"
+                           ],
+        "styleType":  "trainingCertification"
+    },
+    {
+        "id":  "training-10",
+        "category":  "Training",
+        "title":  "Hands-On Training Certificate",
+        "image":  "/src/assets/certificates/training/template-01.svg",
+        "editableFields":  [
+                               "recipientName",
+                               "certificateTitle",
+                               "description",
+                               "issuerName",
+                               "logo"
+                           ],
+        "styleType":  "eventCertificate"
+    }
 ]
