@@ -121,7 +121,7 @@ const Index = () => {
           <div className="absolute inset-0 bg-gradient-to-r from-white/95 via-white/90 to-slate-50/85" />
 
           <div className="relative z-10 grid grid-cols-1 lg:grid-cols-2 gap-8 lg:gap-10 items-center p-7 sm:p-10">
-            <div className="space-y-6">
+            <div className="space-y-6 animate-hero-enter">
               <div className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white/90 px-3 py-1 text-xs text-slate-600">
                 <ShieldCheck className="w-3.5 h-3.5 text-accent" />
                 Trusted workflow for modern institutions
@@ -138,19 +138,20 @@ const Index = () => {
 
               <div className="flex flex-wrap items-center gap-3">
                 <Link to="/login">
-                  <Button className="gold-gradient text-accent-foreground gap-2 shadow-md ring-1 ring-yellow-100 hover:opacity-95">
+                  <Button className="gold-gradient text-accent-foreground gap-2 shadow-md ring-1 ring-yellow-100 transition-all duration-200 ease-out hover:-translate-y-0.5 hover:shadow-lg hover:opacity-95">
                     Request Access <ArrowRight className="w-4 h-4" />
                   </Button>
                 </Link>
                 <Link to="/verify">
-                  <Button variant="outline" className="bg-white shadow-sm ring-1 ring-slate-200">Verify Certificate</Button>
+                  <Button variant="outline" className="bg-white shadow-sm ring-1 ring-slate-200 transition-all duration-200 ease-out hover:-translate-y-0.5 hover:shadow-md">Verify Certificate</Button>
                 </Link>
               </div>
             </div>
 
-            <div className="relative">
-              <div className="absolute -inset-2 rounded-2xl bg-gradient-to-tr from-accent/12 via-transparent to-primary/10 blur-xl" />
-              <div className="relative rotate-[1deg] rounded-2xl border border-slate-200 bg-white shadow-md">
+            <div className="relative group">
+              <div className="absolute -inset-4 rounded-2xl bg-yellow-100/20 blur-2xl opacity-60" />
+              <div className="relative rotate-[2deg] md:rotate-[3deg] transition-all duration-300 ease-out hover:rotate-0 hover:scale-105">
+                <div className="relative rounded-2xl border border-slate-200 bg-white shadow-xl hover:shadow-2xl [--float-rotate:0deg] animate-[float_6s_ease-in-out_infinite]">
                 <div className="p-6 space-y-4">
                   <p className="text-sm font-semibold tracking-tight text-foreground">Certificate Preview</p>
                   <div className="aspect-[1.414/1] rounded-xl border border-slate-200 bg-white p-6 relative overflow-hidden">
@@ -172,6 +173,7 @@ const Index = () => {
                       </div>
                     </div>
                   </div>
+                </div>
                 </div>
               </div>
             </div>
@@ -370,12 +372,12 @@ const Index = () => {
 
           <div className="flex flex-wrap justify-center items-center gap-3 pt-1">
             <Link to="/login">
-              <Button className="gold-gradient text-accent-foreground gap-2 hover:opacity-95 transition-all hover:-translate-y-0.5">
+              <Button className="gold-gradient text-accent-foreground gap-2 transition-all duration-200 ease-out hover:-translate-y-0.5 hover:shadow-lg hover:opacity-95">
                 Request Access <ArrowRight className="w-4 h-4" />
               </Button>
             </Link>
             <Link to="/verify">
-              <Button variant="outline" className="bg-white border-slate-300 text-foreground hover:bg-slate-50 transition-all hover:-translate-y-0.5">
+              <Button variant="outline" className="bg-white border-slate-300 text-foreground hover:bg-slate-50 transition-all duration-200 ease-out hover:-translate-y-0.5 hover:shadow-md">
                 Verify Certificate
               </Button>
             </Link>

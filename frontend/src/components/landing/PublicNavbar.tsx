@@ -47,7 +47,7 @@ export function PublicNavbar() {
               key={item.label}
               to={item.to}
               aria-current={isItemActive(item.to) ? "page" : undefined}
-              className={`relative text-sm transition-colors duration-300 after:absolute after:left-0 after:-bottom-1 after:h-0.5 after:w-full after:origin-left after:bg-accent after:transition-transform after:duration-300 after:ease-out ${
+              className={`relative text-sm transition-all duration-200 ease-out after:absolute after:left-0 after:-bottom-1 after:h-0.5 after:w-full after:origin-left after:bg-accent after:transition-transform after:duration-200 after:ease-out ${
                 isItemActive(item.to)
                   ? "text-foreground after:scale-x-100"
                   : "text-foreground/80 hover:text-foreground after:scale-x-0 hover:after:scale-x-100"

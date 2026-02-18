@@ -28,7 +28,7 @@ const institutionLogos = [
 
 export function TrustedInstitutionsSection() {
   return (
-    <section className="space-y-4 md:space-y-5 w-full">
+    <section className="w-full max-w-6xl mx-auto px-6 py-16 md:py-20 space-y-6 md:space-y-7">
       <div className="text-center space-y-2">
         <h2 className="text-2xl md:text-3xl font-heading font-semibold tracking-tight text-foreground">
           Trusted by Institutions &amp; Organizations
@@ -38,14 +38,14 @@ export function TrustedInstitutionsSection() {
         </p>
       </div>
 
-      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-8 items-center justify-items-center py-2 sm:py-3">
+      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-10 md:gap-12 place-items-center">
         {institutionLogos.map((logo, index) => (
-          <div key={`${logo.src}-${index}`} className="px-2 py-2">
+          <div key={`${logo.src}-${index}`} className="px-2">
             <img
               src={logo.src}
               alt={logo.alt}
               loading="lazy"
-              className="h-10 w-auto max-w-[170px] object-contain opacity-80 hover:opacity-100 transition"
+              className="h-10 md:h-12 lg:h-14 w-auto max-w-[190px] object-contain opacity-80 hover:opacity-100 transition"
             />
           </div>
         ))}
