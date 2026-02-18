@@ -19,6 +19,7 @@ import Verify from "./pages/Verify";
 import VerifyResult from "./pages/VerifyResult";
 import Help from "./pages/Help";
 import NotFound from "./pages/NotFound";
+import PrivacyPolicy from "./pages/PrivacyPolicy";
 
 const queryClient = new QueryClient();
 
@@ -33,6 +34,7 @@ const App = () => (
           <Route path="/about" element={<About />} />
           <Route path="/features" element={<FeaturesPage />} />
           <Route path="/contact" element={<Contact />} />
+          <Route path="/privacy-policy" element={<PrivacyPolicy />} />
           <Route path="/login" element={<Login />} />
           <Route path="/verify" element={<Verify />} />
           <Route path="/verify/:certId" element={<VerifyResult />} />

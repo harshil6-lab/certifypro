@@ -43,7 +43,7 @@ export function LandingFooter() {
                 <Link to="/contact" className="block text-muted-foreground hover:text-foreground transition-colors duration-200">Contact Us</Link>
               </li>
               <li>
-                <a href="#" className="block text-muted-foreground hover:text-foreground transition-colors duration-200">Privacy Policy</a>
+                <Link to="/privacy-policy" className="block text-muted-foreground hover:text-foreground transition-colors duration-200">Privacy Policy</Link>
               </li>
             </ul>
           </div>
@@ -51,12 +51,6 @@ export function LandingFooter() {
           <div className="lg:col-span-2 space-y-4">
             <p className="text-sm font-semibold text-foreground">Resources</p>
             <ul className="space-y-2.5 text-sm">
-              <li>
-                <a href="#" className="block text-muted-foreground hover:text-foreground transition-colors duration-200">Documentation</a>
-              </li>
-              <li>
-                <a href="#" className="block text-muted-foreground hover:text-foreground transition-colors duration-200">FAQs</a>
-              </li>
               <li>
                 <Link to="/login" className="block text-muted-foreground hover:text-foreground transition-colors duration-200">Request Access</Link>
               </li>
