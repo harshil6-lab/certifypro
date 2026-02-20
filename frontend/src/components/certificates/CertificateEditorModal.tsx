@@ -185,8 +185,8 @@ export function CertificateEditorModal({
 
         <div className="flex flex-col lg:flex-row gap-0 max-h-[calc(92vh-120px)] overflow-y-auto">
           <div className="flex-1 min-w-0 px-6 pb-6 pt-3 sm:px-7 lg:pr-4">
-            <div className="rounded-xl border border-slate-200 bg-white shadow-xl p-5 overflow-auto max-h-[80vh]">
-              <div className="mx-auto w-[900px] max-w-none origin-top scale-[0.5] sm:scale-[0.62] md:scale-[0.75] lg:scale-[0.88] xl:scale-100">
+            <div className="rounded-xl border border-slate-200 bg-white shadow-xl p-3 sm:p-5 overflow-auto max-h-[80vh]">
+              <div className="mx-auto w-full max-w-[980px]">
                 <PreviewErrorBoundary>
                   {safeTemplate ? (
                     <CertificateTemplate
@@ -303,6 +303,7 @@ export function CertificateEditorModal({
 
               <div className="space-y-3">
                 <label className="text-sm font-medium text-foreground">Issuer Signature (Signature 1)</label>
+                <p className="text-xs text-slate-500">Transparent PNG recommended for realistic institutional certificates.</p>
                 <div className="flex items-center gap-2">
                   <Input
                     type="file"
@@ -334,6 +335,7 @@ export function CertificateEditorModal({
 
               <div className="space-y-3">
                 <label className="text-sm font-medium text-foreground">Authority Signature (Signature 2)</label>
+                <p className="text-xs text-slate-500">Supports PNG/JPG; image auto-fits inside the locked signature area.</p>
                 <div className="flex items-center gap-2">
                   <Input
                     type="file"
