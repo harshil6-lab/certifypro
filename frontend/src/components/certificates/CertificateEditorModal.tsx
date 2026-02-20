@@ -1,5 +1,5 @@
 import { ChangeEvent, Component, ReactNode, useEffect, useState } from "react";
-import { Upload } from "lucide-react";
+import { Upload, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -68,6 +68,10 @@ export function CertificateEditorModal({
     issuedDate: String(draft.issuedDate ?? ""),
     logoName: String(draft.logoName ?? ""),
     logoPreviewUrl: draft.logoPreviewUrl ? String(draft.logoPreviewUrl) : "",
+    issuerSignaturePreviewUrl: draft.issuerSignaturePreviewUrl ? String(draft.issuerSignaturePreviewUrl) : "",
+    issuerSignatureName: draft.issuerSignatureName ? String(draft.issuerSignatureName) : "",
+    authoritySignaturePreviewUrl: draft.authoritySignaturePreviewUrl ? String(draft.authoritySignaturePreviewUrl) : "",
+    authoritySignatureName: draft.authoritySignatureName ? String(draft.authoritySignatureName) : "",
   };
 
   useEffect(() => {
@@ -110,6 +114,33 @@ export function CertificateEditorModal({
       onUpdateField("logoName", file.name);
     };
     reader.readAsDataURL(file);
+  };
+
+  const onSignatureUpload = (
+    event: ChangeEvent<HTMLInputElement>,
+    previewField: "issuerSignaturePreviewUrl" | "authoritySignaturePreviewUrl",
+    nameField: "issuerSignatureName" | "authoritySignatureName",
+  ) => {
+    const file = event.target.files?.[0];
+    if (!file) {
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = () => {
+      const previewUrl = typeof reader.result === "string" ? reader.result : "";
+      onUpdateField(previewField, previewUrl);
+      onUpdateField(nameField, file.name);
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const removeSignature = (
+    previewField: "issuerSignaturePreviewUrl" | "authoritySignaturePreviewUrl",
+    nameField: "issuerSignatureName" | "authoritySignatureName",
+  ) => {
+    onUpdateField(previewField, "");
+    onUpdateField(nameField, "");
   };
 
   if (!open) {
@@ -266,6 +297,68 @@ export function CertificateEditorModal({
                   <div className="mt-2 inline-flex items-center gap-2 rounded-md border border-slate-200 bg-white px-2 py-1">
                     <img src={safeDraft.logoPreviewUrl} alt="Logo preview" className="h-6 w-auto max-w-20 object-contain" />
                     <span className="text-xs text-slate-600 line-clamp-1">{safeDraft.logoName}</span>
+                  </div>
+                )}
+              </div>
+
+              <div className="space-y-3">
+                <label className="text-sm font-medium text-foreground">Issuer Signature (Signature 1)</label>
+                <div className="flex items-center gap-2">
+                  <Input
+                    type="file"
+                    accept="image/png,image/jpeg,image/jpg"
+                    className="h-10 focus-visible:ring-accent/30"
+                    onChange={(event) => onSignatureUpload(event, "issuerSignaturePreviewUrl", "issuerSignatureName")}
+                  />
+                  <div className="inline-flex h-10 w-10 items-center justify-center rounded-md border border-slate-200 bg-slate-50 text-slate-500">
+                    <Upload className="h-4 w-4" />
+                  </div>
+                </div>
+                {safeDraft.issuerSignaturePreviewUrl && (
+                  <div className="inline-flex items-center gap-2 rounded-md border border-slate-200 bg-white px-2 py-1">
+                    <img src={safeDraft.issuerSignaturePreviewUrl} alt="Issuer signature preview" className="h-6 w-auto max-w-20 object-contain" />
+                    <span className="text-xs text-slate-600 line-clamp-1">{safeDraft.issuerSignatureName || "Signature 1"}</span>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      className="h-7 px-2"
+                      onClick={() => removeSignature("issuerSignaturePreviewUrl", "issuerSignatureName")}
+                    >
+                      <X className="h-3.5 w-3.5" />
+                      Remove
+                    </Button>
+                  </div>
+                )}
+              </div>
+
+              <div className="space-y-3">
+                <label className="text-sm font-medium text-foreground">Authority Signature (Signature 2)</label>
+                <div className="flex items-center gap-2">
+                  <Input
+                    type="file"
+                    accept="image/png,image/jpeg,image/jpg"
+                    className="h-10 focus-visible:ring-accent/30"
+                    onChange={(event) => onSignatureUpload(event, "authoritySignaturePreviewUrl", "authoritySignatureName")}
+                  />
+                  <div className="inline-flex h-10 w-10 items-center justify-center rounded-md border border-slate-200 bg-slate-50 text-slate-500">
+                    <Upload className="h-4 w-4" />
+                  </div>
+                </div>
+                {safeDraft.authoritySignaturePreviewUrl && (
+                  <div className="inline-flex items-center gap-2 rounded-md border border-slate-200 bg-white px-2 py-1">
+                    <img src={safeDraft.authoritySignaturePreviewUrl} alt="Authority signature preview" className="h-6 w-auto max-w-20 object-contain" />
+                    <span className="text-xs text-slate-600 line-clamp-1">{safeDraft.authoritySignatureName || "Signature 2"}</span>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      className="h-7 px-2"
+                      onClick={() => removeSignature("authoritySignaturePreviewUrl", "authoritySignatureName")}
+                    >
+                      <X className="h-3.5 w-3.5" />
+                      Remove
+                    </Button>
                   </div>
                 )}
               </div>

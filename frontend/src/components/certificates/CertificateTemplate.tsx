@@ -129,6 +129,15 @@ export function CertificateTemplate({
         <footer className="space-y-2">
           <div className="grid grid-cols-3 items-end gap-3 sm:gap-4">
           <div className={cn("space-y-1", interactive && "rounded-md px-1 hover:bg-white/60 transition-colors") }>
+            <div className={cn("flex items-end justify-center", compact ? "h-6" : "h-9")}>
+              {draft.issuerSignaturePreviewUrl ? (
+                <img
+                  src={draft.issuerSignaturePreviewUrl}
+                  alt="Issuer signature"
+                  className="max-h-full max-w-full object-contain drop-shadow-sm"
+                />
+              ) : null}
+            </div>
             <div className="h-px w-full bg-slate-300" />
             <p
               className={cn("font-medium", compact ? "text-[9px]" : "text-[11px]", preset.signatureClass)}
@@ -148,6 +157,15 @@ export function CertificateTemplate({
           </div>
 
           <div className={cn("text-right space-y-1", interactive && "rounded-md px-1 hover:bg-white/60 transition-colors") }>
+            <div className={cn("flex items-end justify-center", compact ? "h-6" : "h-9")}>
+              {draft.authoritySignaturePreviewUrl ? (
+                <img
+                  src={draft.authoritySignaturePreviewUrl}
+                  alt="Authority signature"
+                  className="max-h-full max-w-full object-contain drop-shadow-sm"
+                />
+              ) : null}
+            </div>
             <div className="h-px w-full bg-slate-300" />
             <p
               className={cn("font-medium", compact ? "text-[9px]" : "text-[11px]", preset.signatureClass)}

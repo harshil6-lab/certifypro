@@ -26,6 +26,10 @@ const emptyDraft: CertificateDraft = {
   issuedDate: new Date().toLocaleDateString(),
   logoName: "",
   logoPreviewUrl: "",
+  issuerSignaturePreviewUrl: "",
+  issuerSignatureName: "",
+  authoritySignaturePreviewUrl: "",
+  authoritySignatureName: "",
 };
 
 const normalizeDraft = (draft: Partial<CertificateDraft>, fallbackTitle: string): CertificateDraft => ({
@@ -37,6 +41,10 @@ const normalizeDraft = (draft: Partial<CertificateDraft>, fallbackTitle: string)
   issuedDate: draft.issuedDate ?? emptyDraft.issuedDate,
   logoName: draft.logoName ?? "",
   logoPreviewUrl: draft.logoPreviewUrl ?? "",
+  issuerSignaturePreviewUrl: draft.issuerSignaturePreviewUrl ?? "",
+  issuerSignatureName: draft.issuerSignatureName ?? "",
+  authoritySignaturePreviewUrl: draft.authoritySignaturePreviewUrl ?? "",
+  authoritySignatureName: draft.authoritySignatureName ?? "",
 });
 
 const Templates = () => {
@@ -135,8 +143,19 @@ const Templates = () => {
       [selectedTemplate.id]: currentDraft,
     };
 
+    const persistable = Object.entries(next).reduce((acc, [templateId, draft]) => {
+      acc[templateId] = {
+        ...draft,
+        issuerSignaturePreviewUrl: "",
+        issuerSignatureName: "",
+        authoritySignaturePreviewUrl: "",
+        authoritySignatureName: "",
+      };
+      return acc;
+    }, {} as Record<string, CertificateDraft>);
+
     setDraftByTemplate(next);
-    localStorage.setItem("certifypro-official-template-drafts", JSON.stringify(next));
+    localStorage.setItem("certifypro-official-template-drafts", JSON.stringify(persistable));
   };
 
   const openOfficialTemplate = (template: CertificateTemplateMeta, mode: "preview" | "edit") => {

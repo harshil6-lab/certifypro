@@ -32,4 +32,8 @@ export interface CertificateDraft {
   issuedDate: string;
   logoName: string;
   logoPreviewUrl?: string;
+  issuerSignaturePreviewUrl?: string;
+  issuerSignatureName?: string;
+  authoritySignaturePreviewUrl?: string;
+  authoritySignatureName?: string;
 }
