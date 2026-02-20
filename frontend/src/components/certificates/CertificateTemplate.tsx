@@ -43,6 +43,15 @@ export function CertificateTemplate({
     }
   };
 
+  const updateSignatureTextField = (field: "issuerSignatureText" | "authoritySignatureText") => (event: FocusEvent<HTMLElement>) => {
+    if (!interactive || !onInlineEdit) {
+      return;
+    }
+
+    const value = event.currentTarget.textContent?.trim() ?? "";
+    onInlineEdit(field, value === "Type signature here" ? "" : value);
+  };
+
   const subtitleByStyle: Record<CertificateStyleType, string> = {
     academicFormal: "Certificate of Academic Excellence",
     corporateMinimal: "Certificate of Achievement",
@@ -146,14 +155,19 @@ export function CertificateTemplate({
         <footer className="space-y-2">
           <div className="grid grid-cols-3 items-end gap-3 sm:gap-4">
           <div className={cn("space-y-1", interactive && "rounded-md px-1 hover:bg-white/60 transition-colors") }>
-            <div className={cn("flex items-end justify-center", compact ? "h-6" : "h-9")}>
-              {draft.issuerSignaturePreviewUrl ? (
-                <img
-                  src={draft.issuerSignaturePreviewUrl}
-                  alt="Issuer signature"
-                  className="max-h-full max-w-full object-contain drop-shadow-sm animate-hero-enter"
-                />
-              ) : null}
+            <div
+              className={cn(
+                "flex min-h-[24px] items-end justify-center text-center font-signature italic text-[#374151]",
+                compact ? "text-[10px]" : "text-[16px]",
+                interactive
+                  ? "rounded border border-dashed border-[#9CA3AF]/70 px-2 py-0.5"
+                  : "px-2 py-0.5",
+              )}
+              contentEditable={interactive}
+              suppressContentEditableWarning
+              onBlur={updateSignatureTextField("issuerSignatureText")}
+            >
+              {draft.issuerSignatureText || (interactive ? "Type signature here" : "")}
             </div>
             <div className={cn("h-px w-full", preset.signatureLineClass)} />
             <p
@@ -164,7 +178,7 @@ export function CertificateTemplate({
             >
               {draft.issuerName}
             </p>
-            <p className={cn(compact ? "text-[8px]" : "text-[10px]", preset.bodyClass)}>Issuer Signature</p>
+            <p className={cn(compact ? "text-[8px]" : "text-[10px]", preset.bodyClass)}>Signature 1</p>
             {interactive && <Pencil className="h-3 w-3 text-slate-400" />}
           </div>
 
@@ -174,17 +188,33 @@ export function CertificateTemplate({
               <div className={cn("absolute inset-[22%] rounded-md border-2 border-dashed", preset.qrClass)} />
             </div>
             <p className={cn(compact ? "text-[8px]" : "text-[10px]", preset.bodyClass)}>QR Verification</p>
+            <div className={cn("mt-1 text-center rounded-md px-2 py-0.5", preset.datePanelClass, interactive && "hover:bg-white/60 transition-colors")}>
+              <p className={cn(compact ? "text-[9px]" : "text-[11px]", preset.signatureClass)}
+                contentEditable={interactive}
+                suppressContentEditableWarning
+                onBlur={updateInlineField("issuedDate")}
+              >
+                {draft.issuedDate}
+              </p>
+              <p className={cn(compact ? "text-[8px]" : "text-[10px]", preset.bodyClass)}>Date Issued</p>
+              {interactive && <Pencil className="mx-auto h-3 w-3 text-slate-400" />}
+            </div>
           </div>
 
           <div className={cn("text-right space-y-1", interactive && "rounded-md px-1 hover:bg-white/60 transition-colors") }>
-            <div className={cn("flex items-end justify-center", compact ? "h-6" : "h-9")}>
-              {draft.authoritySignaturePreviewUrl ? (
-                <img
-                  src={draft.authoritySignaturePreviewUrl}
-                  alt="Authority signature"
-                  className="max-h-full max-w-full object-contain drop-shadow-sm animate-hero-enter"
-                />
-              ) : null}
+            <div
+              className={cn(
+                "flex min-h-[24px] items-end justify-center text-center font-signature italic text-[#374151]",
+                compact ? "text-[10px]" : "text-[16px]",
+                interactive
+                  ? "rounded border border-dashed border-[#9CA3AF]/70 px-2 py-0.5"
+                  : "px-2 py-0.5",
+              )}
+              contentEditable={interactive}
+              suppressContentEditableWarning
+              onBlur={updateSignatureTextField("authoritySignatureText")}
+            >
+              {draft.authoritySignatureText || (interactive ? "Type signature here" : "")}
             </div>
             <div className={cn("h-px w-full", preset.signatureLineClass)} />
             <p
@@ -195,21 +225,9 @@ export function CertificateTemplate({
             >
               {draft.authorityName}
             </p>
-            <p className={cn(compact ? "text-[8px]" : "text-[10px]", preset.bodyClass)}>Authority Signature</p>
+            <p className={cn(compact ? "text-[8px]" : "text-[10px]", preset.bodyClass)}>Signature 2</p>
             {interactive && <Pencil className="ml-auto h-3 w-3 text-slate-400" />}
           </div>
-          </div>
-
-          <div className={cn("mx-auto text-center rounded-md px-3 py-1", preset.datePanelClass, interactive && "hover:bg-white/60 transition-colors")}>
-            <p className={cn(compact ? "text-[9px]" : "text-[11px]", preset.signatureClass)}
-              contentEditable={interactive}
-              suppressContentEditableWarning
-              onBlur={updateInlineField("issuedDate")}
-            >
-              {draft.issuedDate}
-            </p>
-            <p className={cn(compact ? "text-[8px]" : "text-[10px]", preset.bodyClass)}>Date Issued</p>
-            {interactive && <Pencil className="mx-auto h-3 w-3 text-slate-400" />}
           </div>
         </footer>
       </div>

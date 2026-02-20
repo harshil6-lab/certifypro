@@ -27,13 +27,11 @@ export interface CertificateDraft {
   recipientName: string;
   certificateTitle: string;
   description: string;
+  issuerSignatureText?: string;
   issuerName: string;
+  authoritySignatureText?: string;
   authorityName: string;
   issuedDate: string;
   logoName: string;
   logoPreviewUrl?: string;
-  issuerSignaturePreviewUrl?: string;
-  issuerSignatureName?: string;
-  authoritySignaturePreviewUrl?: string;
-  authoritySignatureName?: string;
 }
