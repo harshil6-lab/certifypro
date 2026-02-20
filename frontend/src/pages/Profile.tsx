@@ -8,7 +8,6 @@ import {
   KeyRound,
   Mail,
   MapPin,
-  Phone,
   Save,
   Shield,
   UserCircle2,
@@ -53,11 +52,6 @@ const activityLog = [
   { event: "Invited admin", detail: "Added maria.garcia@institution.edu", time: "2 days ago • 02:40 PM" },
 ];
 
-const activeSessions = [
-  { device: "Chrome • Windows", location: "Ahmedabad, IN", status: "Current session" },
-  { device: "Safari • iPad", location: "Ahmedabad, IN", status: "Last active 3h ago" },
-];
-
 const initialProfile: ProfileForm = {
   fullName: "Dr. Sarah Chen",
   email: "sarah.chen@university.edu",
@@ -79,7 +73,6 @@ const Profile = () => {
 
   const [profile, setProfile] = useState<ProfileForm>(initialProfile);
   const [savedProfile, setSavedProfile] = useState<ProfileForm>(initialProfile);
-  const [twoFactorEnabled, setTwoFactorEnabled] = useState(false);
   const [emailAlerts, setEmailAlerts] = useState(true);
   const [securityAlerts, setSecurityAlerts] = useState(true);
 
@@ -240,14 +233,11 @@ const Profile = () => {
               <CardTitle className="text-lg font-heading">Security</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
+              {/* TODO: Add 2FA & session tracking after backend auth integration */}
               <div className="flex flex-wrap items-center gap-3">
                 <Button variant="outline" className="gap-2">
                   <KeyRound className="w-4 h-4" /> Change Password
                 </Button>
-                <div className="flex items-center gap-2 rounded-md border border-border px-3 py-2">
-                  <Switch checked={twoFactorEnabled} onCheckedChange={setTwoFactorEnabled} />
-                  <span className="text-sm">2FA (UI only)</span>
-                </div>
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -267,19 +257,6 @@ const Profile = () => {
                     </p>
                   </CardContent>
                 </Card>
-              </div>
-
-              <div className="space-y-2">
-                <p className="text-sm font-medium">Active Sessions</p>
-                {activeSessions.map((session) => (
-                  <div key={session.device} className="rounded-md border border-border p-3 text-sm flex items-center justify-between gap-2">
-                    <div>
-                      <p className="font-medium">{session.device}</p>
-                      <p className="text-muted-foreground text-xs">{session.location}</p>
-                    </div>
-                    <Badge variant="outline">{session.status}</Badge>
-                  </div>
-                ))}
               </div>
             </CardContent>
           </Card>
