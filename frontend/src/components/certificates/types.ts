@@ -27,7 +27,9 @@ export interface CertificateDraft {
   recipientName: string;
   certificateTitle: string;
   description: string;
+  issuerSignatureText?: string;
   issuerName: string;
+  authoritySignatureText?: string;
   authorityName: string;
   issuedDate: string;
   logoName: string;

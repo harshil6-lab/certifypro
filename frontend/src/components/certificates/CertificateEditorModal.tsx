@@ -63,7 +63,9 @@ export function CertificateEditorModal({
     recipientName: String(draft.recipientName ?? ""),
     certificateTitle: String(draft.certificateTitle ?? "Certificate"),
     description: String(draft.description ?? ""),
+    issuerSignatureText: String(draft.issuerSignatureText ?? ""),
     issuerName: String(draft.issuerName ?? ""),
+    authoritySignatureText: String(draft.authoritySignatureText ?? ""),
     authorityName: String(draft.authorityName ?? ""),
     issuedDate: String(draft.issuedDate ?? ""),
     logoName: String(draft.logoName ?? ""),
@@ -154,8 +156,8 @@ export function CertificateEditorModal({
 
         <div className="flex flex-col lg:flex-row gap-0 max-h-[calc(92vh-120px)] overflow-y-auto">
           <div className="flex-1 min-w-0 px-6 pb-6 pt-3 sm:px-7 lg:pr-4">
-            <div className="rounded-xl border border-slate-200 bg-white shadow-xl p-5 overflow-auto max-h-[80vh]">
-              <div className="mx-auto w-[900px] max-w-none origin-top scale-[0.5] sm:scale-[0.62] md:scale-[0.75] lg:scale-[0.88] xl:scale-100">
+            <div className="rounded-xl border border-slate-200 bg-white shadow-xl p-3 sm:p-5 overflow-auto max-h-[80vh]">
+              <div className="mx-auto w-full max-w-[980px]">
                 <PreviewErrorBoundary>
                   {safeTemplate ? (
                     <CertificateTemplate
