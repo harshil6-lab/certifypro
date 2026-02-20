@@ -28,6 +28,7 @@ import {
   Shield,
   UserCircle,
 } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 import certifyProLogo from "@/assets/white_certify_pro_logo.png";
 import { setAuthenticated } from "@/lib/auth";
 
@@ -41,19 +42,19 @@ const navItems = [
 ];
 
 const AdminNavbar = () => {
+  const navigate = useNavigate();
+
   const handleSignOut = () => {
     setAuthenticated(false);
   };
 
   return (
-    <header className="sticky top-0 z-40 w-full border-b border-slate-700 bg-gradient-to-r from-slate-800 via-slate-800 to-slate-900 backdrop-blur-md shadow-[0_10px_30px_rgba(0,0,0,0.3)]">
+    <header className="sticky top-0 z-40 w-full border-b border-slate-700 bg-gradient-to-r from-slate-800 via-slate-800 to-slate-900 shadow-[0_10px_30px_rgba(0,0,0,0.3)]">
       <div className="mx-auto flex min-h-16 max-w-7xl items-center gap-4 px-4 sm:px-6">
-        {/* Left: Brand */}
         <div className="flex items-center shrink-0 pr-3">
           <img src={certifyProLogo} alt="CertifyPro Logo" className="h-9 sm:h-10 w-auto object-contain" />
         </div>
 
-        {/* Center: Navigation */}
         <nav className="hidden xl:flex flex-1 min-w-0 items-center justify-center gap-0.5">
           {navItems.map((item) => (
             <NavLink
@@ -68,14 +69,12 @@ const AdminNavbar = () => {
           ))}
         </nav>
 
-        {/* Right: Actions */}
         <div className="ml-auto flex items-center justify-end gap-3 shrink-0">
-          {/* Mobile menu */}
           <Sheet>
             <SheetTrigger asChild>
-              <Button 
-                variant="ghost" 
-                size="icon" 
+              <Button
+                variant="ghost"
+                size="icon"
                 className="xl:hidden text-slate-300 hover:bg-white/10 hover:text-white hover:border-slate-600"
                 aria-label="Open navigation menu"
               >
@@ -101,7 +100,28 @@ const AdminNavbar = () => {
                     </NavLink>
                   </SheetClose>
                 ))}
+
                 <div className="my-3 h-px bg-slate-700" />
+
+                <SheetClose asChild>
+                  <NavLink
+                    to="/dashboard/profile"
+                    className="flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-slate-300 hover:bg-white/10 hover:text-white transition-all duration-200"
+                    activeClassName="bg-amber-500/20 text-amber-300 ring-1 ring-amber-400/50"
+                  >
+                    <UserCircle className="h-4 w-4" />
+                    My Profile
+                  </NavLink>
+                </SheetClose>
+                <SheetClose asChild>
+                  <NavLink
+                    to="/dashboard/profile?section=security"
+                    className="flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-slate-300 hover:bg-white/10 hover:text-white transition-all duration-200"
+                  >
+                    <Shield className="h-4 w-4" />
+                    Account Settings
+                  </NavLink>
+                </SheetClose>
                 <SheetClose asChild>
                   <NavLink
                     to="/help"
@@ -126,37 +146,51 @@ const AdminNavbar = () => {
             </SheetContent>
           </Sheet>
 
-          {/* User menu */}
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button
-                className="gap-2 px-3 py-2 rounded-lg border border-slate-600 bg-white/5 hover:bg-white/15 text-slate-200 hover:text-white transition-all duration-200 shadow-md hover:shadow-lg"
-              >
-                <span className="hidden sm:inline text-sm font-medium whitespace-nowrap">
-                  Admin
-                </span>
-                <div className="flex h-8 w-8 items-center justify-center rounded-full bg-amber-500/20 ring-1 ring-amber-400/50 text-amber-300">
-                  <UserCircle className="h-5 w-5" />
-                </div>
-                <ChevronDown className="hidden sm:block h-4 w-4 text-slate-400 transition-transform duration-200 group-data-[state=open]:rotate-180" />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-44 bg-slate-800 border-slate-700">
-              <DropdownMenuItem asChild>
-                <NavLink to="/help" className="flex items-center gap-2 text-slate-300 hover:text-white hover:bg-white/10">
-                  <HelpCircle className="h-4 w-4" />
-                  User Manual
-                </NavLink>
-              </DropdownMenuItem>
-              <DropdownMenuSeparator className="bg-slate-700" />
-              <DropdownMenuItem asChild>
-                <NavLink to="/" onClick={handleSignOut} className="flex items-center gap-2 text-slate-300 hover:text-white hover:bg-white/10">
-                  <LogOut className="h-4 w-4" />
-                  Sign Out
-                </NavLink>
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
+          <div className="flex items-center gap-1.5">
+            <Button
+              onClick={() => navigate("/dashboard/profile")}
+              className="gap-2 px-3 py-2 rounded-lg border border-slate-600 bg-white/5 hover:bg-white/15 text-slate-200 hover:text-white transition-all duration-200 shadow-md hover:shadow-lg"
+            >
+              <span className="hidden sm:inline text-sm font-medium whitespace-nowrap">Admin</span>
+              <div className="flex h-8 w-8 items-center justify-center rounded-full bg-amber-500/20 ring-1 ring-amber-400/50 text-amber-300">
+                <UserCircle className="h-5 w-5" />
+              </div>
+            </Button>
+
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-9 w-9 border border-slate-600 bg-white/5 text-slate-300 hover:bg-white/15 hover:text-white"
+                  aria-label="Open account menu"
+                >
+                  <ChevronDown className="h-4 w-4" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-48 bg-slate-800 border-slate-700">
+                <DropdownMenuItem asChild>
+                  <NavLink to="/dashboard/profile" className="flex items-center gap-2 text-slate-300 hover:text-white hover:bg-white/10">
+                    <UserCircle className="h-4 w-4" />
+                    My Profile
+                  </NavLink>
+                </DropdownMenuItem>
+                <DropdownMenuItem asChild>
+                  <NavLink to="/dashboard/profile?section=security" className="flex items-center gap-2 text-slate-300 hover:text-white hover:bg-white/10">
+                    <Shield className="h-4 w-4" />
+                    Account Settings
+                  </NavLink>
+                </DropdownMenuItem>
+                <DropdownMenuSeparator className="bg-slate-700" />
+                <DropdownMenuItem asChild>
+                  <NavLink to="/" onClick={handleSignOut} className="flex items-center gap-2 text-slate-300 hover:text-white hover:bg-white/10">
+                    <LogOut className="h-4 w-4" />
+                    Sign Out
+                  </NavLink>
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
         </div>
       </div>
     </header>

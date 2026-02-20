@@ -19,6 +19,7 @@ import AccessControl from "./pages/AccessControl";
 import Verify from "./pages/Verify";
 import VerifyResult from "./pages/VerifyResult";
 import Help from "./pages/Help";
+import Profile from "./pages/Profile";
 import NotFound from "./pages/NotFound";
 import PrivacyPolicy from "./pages/PrivacyPolicy";
 
@@ -59,6 +60,7 @@ const App = () => (
             <Route path="/registry" element={<Registry />} />
             <Route path="/access" element={<AccessControl />} />
             <Route path="/help" element={<Help />} />
+            <Route path="/dashboard/profile" element={<Profile />} />
           </Route>
           <Route path="*" element={<NotFound />} />
         </Routes>
