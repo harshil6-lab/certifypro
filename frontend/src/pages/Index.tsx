@@ -147,6 +147,10 @@ const Index = () => {
                   <Button variant="outline" className="bg-white shadow-sm ring-1 ring-slate-200 transition-all duration-200 ease-out hover:-translate-y-0.5 hover:shadow-md">Verify Certificate</Button>
                 </Link>
               </div>
+
+              <div className="rounded-lg border border-slate-200 bg-white/80 px-4 py-3 text-sm text-slate-600 max-w-xl">
+                Access requires institutional verification. Request access to continue.
+              </div>
             </div>
 
             <div className="relative group">

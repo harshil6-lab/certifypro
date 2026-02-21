@@ -9,6 +9,7 @@ import {
   HelpCircle,
   LogOut,
 } from "lucide-react";
+import { signOutUser } from "@/lib/auth";
 import certifyProIcon from "@/assets/certify_pro_icon.png";
 
 const navItems = [
@@ -78,6 +79,9 @@ export function AdminSidebar() {
         </NavLink>
         <NavLink
           to="/"
+          onClick={() => {
+            void signOutUser();
+          }}
           className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-sidebar-foreground hover:bg-sidebar-accent/50 transition-colors"
         >
           <LogOut className="w-4 h-4" />

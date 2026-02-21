@@ -8,19 +8,61 @@ import whiteCertifyProLogo from "@/assets/white_certify_pro_logo.png";
 import certifyProIcon from "@/assets/certify_pro_icon.png";
 import AdminAccessRequestModal from "@/components/AdminAccessRequestModal";
 import PublicCertificateVerificationModal from "@/components/PublicCertificateVerificationModal";
-import { setAuthenticated } from "@/lib/auth";
+import {
+  isSupabaseConfigured,
+  sendPasswordResetEmail,
+  signInWithEmailPassword,
+} from "@/lib/auth";
 
 const Login = () => {
   const navigate = useNavigate();
   const [adminModalOpen, setAdminModalOpen] = useState(false);
   const [verificationModalOpen, setVerificationModalOpen] = useState(false);
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [isSigningIn, setIsSigningIn] = useState(false);
+  const [authError, setAuthError] = useState("");
+  const [resetMessage, setResetMessage] = useState("");
   const [searchParams] = useSearchParams();
   const templateRedirect = searchParams.get("reason") === "templates";
   const redirectTo = searchParams.get("redirect") || "/dashboard";
 
-  const handleSignIn = () => {
-    setAuthenticated(true);
-    navigate(redirectTo);
+  const handleSignIn = async () => {
+    setAuthError("");
+    setResetMessage("");
+    setIsSigningIn(true);
+
+    try {
+      const result = await signInWithEmailPassword(email, password);
+      if (!result.success) {
+        setAuthError(result.error || "Unable to sign in. Please try again.");
+        return;
+      }
+
+      if (result.firstLoginRequired) {
+        navigate("/dashboard/profile?section=security&firstLogin=1");
+        return;
+      }
+
+      navigate(redirectTo);
+    } catch {
+      setAuthError("Unexpected authentication error. Please try again.");
+    } finally {
+      setIsSigningIn(false);
+    }
+  };
+
+  const handlePasswordReset = async () => {
+    setAuthError("");
+    setResetMessage("");
+
+    const result = await sendPasswordResetEmail(email);
+    if (!result.success) {
+      setAuthError(result.error || "Unable to send reset email.");
+      return;
+    }
+
+    setResetMessage("Password reset link sent. Please check your inbox.");
   };
 
   return (
@@ -115,6 +157,7 @@ const Login = () => {
             {/* Google Sign In */}
             <Button 
               variant="outline" 
+              type="button"
               className="w-full h-12 gap-3 font-medium text-foreground border-2 border-border hover:bg-accent/5 hover:border-accent/50 transition-all duration-300"
             >
               <svg className="w-4 h-4" viewBox="0 0 24 24">
@@ -143,27 +186,61 @@ const Login = () => {
               <div className="relative group">
                 <Mail className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground/60 group-focus-within:text-accent transition-colors" />
                 <Input 
+                  value={email}
+                  onChange={(event) => setEmail(event.target.value)}
                   placeholder="admin@institution.edu" 
+                  type="email"
+                  autoComplete="email"
                   className="pl-11 h-12 border-2 border-border bg-background/50 focus:bg-background focus:border-accent/50 focus:ring-1 focus:ring-accent/20 transition-all duration-300 placeholder:text-muted-foreground/50 font-body text-sm"
                 />
               </div>
               <div className="relative group">
                 <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground/60 group-focus-within:text-accent transition-colors" />
                 <Input 
+                  value={password}
+                  onChange={(event) => setPassword(event.target.value)}
                   type="password" 
                   placeholder="Password" 
+                  autoComplete="current-password"
                   className="pl-11 h-12 border-2 border-border bg-background/50 focus:bg-background focus:border-accent/50 focus:ring-1 focus:ring-accent/20 transition-all duration-300 placeholder:text-muted-foreground/50 font-body text-sm"
                 />
               </div>
+              <div className="flex justify-end">
+                <button
+                  type="button"
+                  onClick={() => void handlePasswordReset()}
+                  className="text-xs text-muted-foreground hover:text-foreground transition-colors"
+                >
+                  Forgot password?
+                </button>
+              </div>
+
+              {authError ? (
+                <div className="rounded-lg border border-destructive/30 bg-destructive/10 px-3 py-2 text-xs text-destructive">
+                  {authError}
+                </div>
+              ) : null}
+              {resetMessage ? (
+                <div className="rounded-lg border border-emerald-300/40 bg-emerald-100/60 px-3 py-2 text-xs text-emerald-700">
+                  {resetMessage}
+                </div>
+              ) : null}
+              {!isSupabaseConfigured ? (
+                <div className="rounded-lg border border-amber-300/40 bg-amber-100/60 px-3 py-2 text-xs text-amber-800">
+                  Authentication is not fully configured. Ask an admin to set Supabase environment values.
+                </div>
+              ) : null}
             </div>
 
             {/* Sign In Button */}
             <div className="block pt-1">
               <Button 
+                type="button"
                 className="w-full h-12 font-semibold gold-gradient text-accent-foreground hover:shadow-lg hover:shadow-amber-500/30 active:scale-98 transition-all duration-300"
-                onClick={handleSignIn}
+                onClick={() => void handleSignIn()}
+                disabled={isSigningIn}
               >
-                Sign In
+                {isSigningIn ? "Signing In..." : "Sign In"}
               </Button>
             </div>
           </div>

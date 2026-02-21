@@ -21,6 +21,7 @@ import { Switch } from "@/components/ui/switch";
 import { Progress } from "@/components/ui/progress";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { useToast } from "@/hooks/use-toast";
+import { completeFirstLoginReset, sendPasswordResetEmail } from "@/lib/auth";
 
 type ProfileForm = {
   fullName: string;
@@ -75,6 +76,7 @@ const Profile = () => {
   const [savedProfile, setSavedProfile] = useState<ProfileForm>(initialProfile);
   const [emailAlerts, setEmailAlerts] = useState(true);
   const [securityAlerts, setSecurityAlerts] = useState(true);
+  const firstLoginMode = searchParams.get("firstLogin") === "1";
 
   useEffect(() => {
     const target = searchParams.get("section");
@@ -106,6 +108,42 @@ const Profile = () => {
     toast({
       title: "Profile updated successfully",
       description: "Your account information has been saved.",
+    });
+  };
+
+  const handlePasswordReset = async () => {
+    const result = await sendPasswordResetEmail(profile.email);
+
+    if (!result.success) {
+      toast({
+        title: "Unable to send reset link",
+        description: result.error || "Please try again.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    toast({
+      title: "Password reset email sent",
+      description: "Check your inbox for reset instructions.",
+    });
+  };
+
+  const handleFinishFirstLogin = async () => {
+    const result = await completeFirstLoginReset();
+
+    if (!result.success) {
+      toast({
+        title: "Unable to complete setup",
+        description: result.error || "Please try again.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    toast({
+      title: "First-login security completed",
+      description: "Your account is now marked as active.",
     });
   };
 
@@ -233,11 +271,22 @@ const Profile = () => {
               <CardTitle className="text-lg font-heading">Security</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
+              {firstLoginMode ? (
+                <div className="rounded-md border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+                  First login detected. Please reset your password before continuing.
+                </div>
+              ) : null}
+
               {/* TODO: Add 2FA & session tracking after backend auth integration */}
               <div className="flex flex-wrap items-center gap-3">
-                <Button variant="outline" className="gap-2">
+                <Button variant="outline" className="gap-2" onClick={() => void handlePasswordReset()}>
                   <KeyRound className="w-4 h-4" /> Change Password
                 </Button>
+                {firstLoginMode ? (
+                  <Button className="gap-2" onClick={() => void handleFinishFirstLogin()}>
+                    <KeyRound className="w-4 h-4" /> I Have Reset My Password
+                  </Button>
+                ) : null}
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
