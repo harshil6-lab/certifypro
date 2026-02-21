@@ -135,10 +135,23 @@ async function processRequest(requestId:string){
           email:row.email
         });
 
-      // Email now handled by Supabase Auth SMTP automatically.
       // Keep recovery link generation intact for first-login reset workflow.
-      void (linkData?.properties?.action_link ?? appLoginUrl);
-      emailSent = true;
+      // Trigger actual email delivery via Supabase Auth SMTP.
+      const { error:resetEmailError } = await admin.auth.resetPasswordForEmail(
+        row.email,
+        {
+          redirectTo: appLoginUrl,
+        },
+      );
+
+      if (resetEmailError) {
+        notes.push(`Auth SMTP reset email failed: ${resetEmailError.message}`);
+        console.error("Auth SMTP reset email failed:", resetEmailError.message);
+        emailSent = false;
+      } else {
+        void (linkData?.properties?.action_link ?? appLoginUrl);
+        emailSent = true;
+      }
 
     } else {
       notes.push("User creation failed");
