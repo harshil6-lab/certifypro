@@ -27,6 +27,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { submitAccessRequest } from "@/lib/accessRequest";
 
 type Step = 1 | 2 | 3 | 4;
 
@@ -128,6 +129,11 @@ const AdminAccessRequestModal = ({
   const [errors, setErrors] = useState<FormErrors>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
+  const [submitError, setSubmitError] = useState("");
+  const [submissionSummary, setSubmissionSummary] = useState<{
+    status: "pending" | "approved" | "hold" | "rejected";
+    score: number;
+  } | null>(null);
 
   const currentStepTitle = useMemo(
     () => STEPS.find((item) => item.step === currentStep)?.title ?? "",
@@ -198,8 +204,28 @@ const AdminAccessRequestModal = ({
     event.preventDefault();
     if (!validateCurrentStep()) return;
 
+    setSubmitError("");
     setIsSubmitting(true);
-    await new Promise((resolve) => setTimeout(resolve, 700));
+
+    const result = await submitAccessRequest({
+      fullName: form.fullName,
+      email: form.organizationalEmail,
+      organization: form.organizationName,
+      linkedinUrl: form.linkedInProfile,
+      reasonForAccess: form.reasonForAccess,
+      organizationDocument: form.organizationalIdFile as File,
+    });
+
+    if (!result.success) {
+      setSubmitError(result.error || "Unable to submit access request. Please try again.");
+      setIsSubmitting(false);
+      return;
+    }
+
+    setSubmissionSummary({
+      status: result.status ?? "pending",
+      score: result.score ?? 0,
+    });
     setSubmitted(true);
     setIsSubmitting(false);
   };
@@ -210,6 +236,8 @@ const AdminAccessRequestModal = ({
     setErrors({});
     setIsSubmitting(false);
     setSubmitted(false);
+    setSubmitError("");
+    setSubmissionSummary(null);
   };
 
   const handleOpenChange = (value: boolean) => {
@@ -228,13 +256,18 @@ const AdminAccessRequestModal = ({
             <DialogHeader className="items-center space-y-2">
               <DialogTitle className="text-2xl font-heading">Access Request Submitted</DialogTitle>
               <DialogDescription className="text-sm text-slate-600 max-w-lg">
-                Your institutional access request has been recorded for administrative review.
-                This is a frontend submission preview and does not yet run authentication or approval automation.
+                Your institutional access request has been recorded and processed through automated validation.
               </DialogDescription>
             </DialogHeader>
             <div className="mx-auto w-full max-w-xl rounded-xl border border-slate-200 bg-white p-4 text-left text-sm text-slate-600 space-y-2">
               <p className="font-semibold text-foreground">Future-compatible request payload</p>
-              <p>Prepared for automated verification scoring, Supabase authentication linking, and admin dashboard review workflows.</p>
+              <p>Integrated with request scoring, auto-approval workflow, and admin dashboard review compatibility.</p>
+              {submissionSummary ? (
+                <p>
+                  Current status: <span className="font-semibold uppercase">{submissionSummary.status}</span>
+                  {" · "}Score: <span className="font-semibold">{submissionSummary.score}</span>
+                </p>
+              ) : null}
             </div>
             <Button className="gold-gradient text-accent-foreground" onClick={() => handleOpenChange(false)}>
               Close
@@ -509,6 +542,12 @@ const AdminAccessRequestModal = ({
                       {errors.verificationConsent ? <p className="text-xs text-destructive">{errors.verificationConsent}</p> : null}
                     </div>
                   </div>
+
+                  {submitError ? (
+                    <div className="rounded-md border border-destructive/30 bg-destructive/10 px-3 py-2 text-xs text-destructive">
+                      {submitError}
+                    </div>
+                  ) : null}
                 </div>
               ) : null}
 

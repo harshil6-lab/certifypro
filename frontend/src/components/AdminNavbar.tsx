@@ -30,7 +30,7 @@ import {
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import certifyProLogo from "@/assets/white_certify_pro_logo.png";
-import { setAuthenticated } from "@/lib/auth";
+import { signOutUser } from "@/lib/auth";
 
 const navItems = [
   { title: "Dashboard", url: "/dashboard", icon: LayoutDashboard },
@@ -45,7 +45,7 @@ const AdminNavbar = () => {
   const navigate = useNavigate();
 
   const handleSignOut = () => {
-    setAuthenticated(false);
+    void signOutUser();
   };
 
   return (
