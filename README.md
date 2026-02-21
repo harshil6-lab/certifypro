@@ -60,6 +60,14 @@ To build a trusted digital certificate infrastructure where:
 
 ---
 
+## ⚙️ Environment Configuration
+
+- Dedicated environment file location: [/.env](.env)
+- Starter template: [/.env.example](.env.example)
+- Keep real secrets only in local `.env` (already ignored by git)
+
+---
+
 ## 📂 Current Development Status
 
 ### Completed

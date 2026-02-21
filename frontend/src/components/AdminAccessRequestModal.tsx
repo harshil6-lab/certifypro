@@ -1,16 +1,25 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
+import {
+  Building2,
+  CheckCircle2,
+  FileCheck,
+  Send,
+  ShieldCheck,
+  User,
+} from "lucide-react";
 import {
   Dialog,
   DialogContent,
-  DialogHeader,
-  DialogTitle,
   DialogDescription,
   DialogFooter,
+  DialogHeader,
+  DialogTitle,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   Select,
   SelectContent,
@@ -18,29 +27,35 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import {
-  ClipboardList,
-  Search,
-  CheckCircle2,
-  LogIn,
-  Send,
-  UserPlus,
-} from "lucide-react";
 
-/* ------------------------------------------------------------------ */
-/*  Types                                                              */
-/* ------------------------------------------------------------------ */
+type Step = 1 | 2 | 3 | 4;
 
-export interface AdminAccessFormData {
+interface AdminAccessFormData {
   fullName: string;
-  institution: string;
-  email: string;
-  role: string;
-  notes: string;
+  organizationalEmail: string;
+  jobTitle: string;
+  phoneNumber: string;
+  organizationName: string;
+  organizationWebsite: string;
+  industry: string;
+  organizationSize: string;
+  country: string;
+  linkedInProfile: string;
+  reasonForAccess: string;
+  organizationalIdFile: File | null;
+  infoAccurate: boolean;
+  orgAuthorizationConfirmed: boolean;
+  verificationConsent: boolean;
 }
 
-interface FormErrors extends Partial<Record<keyof AdminAccessFormData, string>> {
-  submit?: string;
+interface FormErrors {
+  fullName?: string;
+  organizationalEmail?: string;
+  organizationName?: string;
+  organizationalIdFile?: string;
+  infoAccurate?: string;
+  orgAuthorizationConfirmed?: string;
+  verificationConsent?: string;
 }
 
 interface AdminAccessRequestModalProps {
@@ -48,336 +63,483 @@ interface AdminAccessRequestModalProps {
   onOpenChange: (open: boolean) => void;
 }
 
-/* ------------------------------------------------------------------ */
-/*  Approval guide steps                                               */
-/* ------------------------------------------------------------------ */
-
-const APPROVAL_STEPS = [
-  { icon: ClipboardList, label: "Submit Request" },
-  { icon: Search, label: "Under Review" },
-  { icon: CheckCircle2, label: "Approved" },
-  { icon: LogIn, label: "Login" },
-] as const;
-
-/* ------------------------------------------------------------------ */
-/*  Role options                                                       */
-/* ------------------------------------------------------------------ */
-
-const ROLE_OPTIONS = [
-  "Department Admin",
-  "Faculty Coordinator",
-  "Registrar",
-  "IT Administrator",
-  "Principal / Dean",
+const INDUSTRY_OPTIONS = [
+  "Education",
+  "Corporate Training",
+  "Government",
+  "Healthcare",
+  "Technology",
+  "Non-Profit",
   "Other",
-] as const;
+];
 
-/* ------------------------------------------------------------------ */
-/*  Helpers                                                            */
-/* ------------------------------------------------------------------ */
+const ORG_SIZE_OPTIONS = [
+  "1-50",
+  "51-200",
+  "201-1000",
+  "1001-5000",
+  "5000+",
+];
+
+const COUNTRY_OPTIONS = [
+  "India",
+  "United States",
+  "United Kingdom",
+  "Canada",
+  "Australia",
+  "Germany",
+  "Singapore",
+  "Other",
+];
 
 const INITIAL_FORM: AdminAccessFormData = {
   fullName: "",
-  institution: "",
-  email: "",
-  role: "",
-  notes: "",
+  organizationalEmail: "",
+  jobTitle: "",
+  phoneNumber: "",
+  organizationName: "",
+  organizationWebsite: "",
+  industry: "",
+  organizationSize: "",
+  country: "",
+  linkedInProfile: "",
+  reasonForAccess: "",
+  organizationalIdFile: null,
+  infoAccurate: false,
+  orgAuthorizationConfirmed: false,
+  verificationConsent: false,
 };
 
-function validateEmail(email: string): boolean {
-  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
-}
+const STEPS: Array<{ step: Step; title: string; icon: typeof User }> = [
+  { step: 1, title: "Personal Information", icon: User },
+  { step: 2, title: "Organization Verification", icon: Building2 },
+  { step: 3, title: "Professional Verification", icon: FileCheck },
+  { step: 4, title: "Confirmation", icon: ShieldCheck },
+];
 
-/* ------------------------------------------------------------------ */
-/*  Component                                                          */
-/* ------------------------------------------------------------------ */
+const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 const AdminAccessRequestModal = ({
   open,
   onOpenChange,
 }: AdminAccessRequestModalProps) => {
+  const [currentStep, setCurrentStep] = useState<Step>(1);
   const [form, setForm] = useState<AdminAccessFormData>({ ...INITIAL_FORM });
   const [errors, setErrors] = useState<FormErrors>({});
-  const [submitted, setSubmitted] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [submitted, setSubmitted] = useState(false);
 
-  /* ---- field change handler ---- */
-  const handleChange = (field: keyof AdminAccessFormData, value: string) => {
+  const currentStepTitle = useMemo(
+    () => STEPS.find((item) => item.step === currentStep)?.title ?? "",
+    [currentStep],
+  );
+
+  const setField = <K extends keyof AdminAccessFormData>(
+    field: K,
+    value: AdminAccessFormData[K],
+  ) => {
     setForm((prev) => ({ ...prev, [field]: value }));
-    if (errors[field]) setErrors((prev) => ({ ...prev, [field]: undefined }));
+    if (field in errors) {
+      setErrors((prev) => ({ ...prev, [field]: undefined }));
+    }
   };
 
-  /* ---- validation ---- */
-  const validate = (): boolean => {
-    const next: FormErrors = {};
-    if (!form.fullName.trim()) next.fullName = "Full name is required.";
-    if (!form.institution.trim()) next.institution = "Institution is required.";
-    if (!form.email.trim()) next.email = "Email is required.";
-    else if (!validateEmail(form.email)) next.email = "Enter a valid email address.";
-    if (!form.role) next.role = "Please select a role.";
-    setErrors(next);
-    return Object.keys(next).length === 0;
+  const validateCurrentStep = (): boolean => {
+    const nextErrors: FormErrors = {};
+
+    if (currentStep === 1) {
+      if (!form.fullName.trim()) nextErrors.fullName = "Full Name is required.";
+      if (!form.organizationalEmail.trim()) {
+        nextErrors.organizationalEmail = "Organizational Email is required.";
+      } else if (!EMAIL_REGEX.test(form.organizationalEmail)) {
+        nextErrors.organizationalEmail = "Enter a valid organizational email address.";
+      }
+    }
+
+    if (currentStep === 2) {
+      if (!form.organizationName.trim()) {
+        nextErrors.organizationName = "Organization Name is required.";
+      }
+    }
+
+    if (currentStep === 3) {
+      if (!form.organizationalIdFile) {
+        nextErrors.organizationalIdFile = "Organizational ID upload is required.";
+      }
+    }
+
+    if (currentStep === 4) {
+      if (!form.infoAccurate) {
+        nextErrors.infoAccurate = "Please confirm information accuracy.";
+      }
+      if (!form.orgAuthorizationConfirmed) {
+        nextErrors.orgAuthorizationConfirmed = "Please confirm organizational authorization.";
+      }
+      if (!form.verificationConsent) {
+        nextErrors.verificationConsent = "Please provide consent to verification checks.";
+      }
+    }
+
+    setErrors(nextErrors);
+    return Object.keys(nextErrors).length === 0;
   };
 
-  /* ---- submit ---- */
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!validate()) return;
+  const handleNext = () => {
+    if (!validateCurrentStep()) return;
+    setCurrentStep((prev) => Math.min(prev + 1, 4) as Step);
+  };
+
+  const handleBack = () => {
+    setErrors({});
+    setCurrentStep((prev) => Math.max(prev - 1, 1) as Step);
+  };
+
+  const handleSubmit = async (event: React.FormEvent) => {
+    event.preventDefault();
+    if (!validateCurrentStep()) return;
 
     setIsSubmitting(true);
-    try {
-      // Simulate API call delay for UX
-      await new Promise((resolve) => setTimeout(resolve, 800));
-      
-      // TODO: POST form data to backend API
-      // const response = await api.post("/admin-access-requests", form);
-      // if (!response.ok) throw new Error('Submission failed');
-
-      setSubmitted(true);
-    } catch (error) {
-      console.error('Submission error:', error);
-      setErrors((prev) => ({ ...prev, submit: 'Failed to submit request. Please try again.' }));
-    } finally {
-      setIsSubmitting(false);
-    }
+    await new Promise((resolve) => setTimeout(resolve, 700));
+    setSubmitted(true);
+    setIsSubmitting(false);
   };
 
-  /* ---- reset on close ---- */
+  const resetState = () => {
+    setCurrentStep(1);
+    setForm({ ...INITIAL_FORM });
+    setErrors({});
+    setIsSubmitting(false);
+    setSubmitted(false);
+  };
+
   const handleOpenChange = (value: boolean) => {
-    if (!value) {
-      setForm({ ...INITIAL_FORM });
-      setErrors({});
-      setSubmitted(false);
-    }
+    if (!value) resetState();
     onOpenChange(value);
   };
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
-      <DialogContent className="sm:max-w-[520px] max-h-[90vh] overflow-y-auto">
-        {/* ---- Success state ---- */}
+      <DialogContent className="sm:max-w-[720px] max-h-[90vh] overflow-y-auto border-slate-200 bg-gradient-to-b from-white via-slate-50/60 to-white">
         {submitted ? (
-          <div className="flex flex-col items-center gap-4 py-8 text-center animate-fade-in">
-            <div className="relative">
-              <div className="absolute inset-0 w-16 h-16 bg-green-500/20 rounded-full blur-xl" />
-              <div className="relative w-16 h-16 rounded-full bg-gradient-to-br from-green-50 to-green-100 dark:from-green-900/20 dark:to-green-900/30 flex items-center justify-center ring-2 ring-green-200 dark:ring-green-800">
-                <CheckCircle2 className="w-8 h-8 text-green-600 dark:text-green-400 animate-bounce" style={{ animationDelay: '0.15s' }} />
-              </div>
+          <div className="py-8 px-2 text-center space-y-5 animate-fade-in">
+            <div className="mx-auto h-14 w-14 rounded-full bg-emerald-100 ring-8 ring-emerald-50 flex items-center justify-center">
+              <CheckCircle2 className="h-7 w-7 text-emerald-600" />
             </div>
-            <DialogHeader className="items-center">
-              <DialogTitle className="text-2xl font-bold">Request Submitted! 🎉</DialogTitle>
-              <DialogDescription className="pt-2 text-base">
-                Your admin access request has been received and is now under review.
+            <DialogHeader className="items-center space-y-2">
+              <DialogTitle className="text-2xl font-heading">Access Request Submitted</DialogTitle>
+              <DialogDescription className="text-sm text-slate-600 max-w-lg">
+                Your institutional access request has been recorded for administrative review.
+                This is a frontend submission preview and does not yet run authentication or approval automation.
               </DialogDescription>
-              <p className="text-sm text-muted-foreground pt-3">
-                We'll send a confirmation email to<br />
-                <span className="font-semibold text-foreground">{form.email}</span>
-              </p>
             </DialogHeader>
-            <div className="w-full rounded-lg bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 p-4 text-sm text-blue-900 dark:text-blue-200 space-y-2">
-              <p className="font-medium">What happens next?</p>
-              <ul className="space-y-1 text-left">
-                <li>✓ Your request is queued for review</li>
-                <li>✓ Review typically takes 2-3 business days</li>
-                <li>✓ You'll receive email notification once approved</li>
-              </ul>
+            <div className="mx-auto w-full max-w-xl rounded-xl border border-slate-200 bg-white p-4 text-left text-sm text-slate-600 space-y-2">
+              <p className="font-semibold text-foreground">Future-compatible request payload</p>
+              <p>Prepared for automated verification scoring, Supabase authentication linking, and admin dashboard review workflows.</p>
             </div>
-            <Button
-              className="mt-4 gold-gradient text-accent-foreground hover:opacity-90"
-              onClick={() => handleOpenChange(false)}
-            >
-              Got it, thanks!
+            <Button className="gold-gradient text-accent-foreground" onClick={() => handleOpenChange(false)}>
+              Close
             </Button>
           </div>
         ) : (
           <>
-            {/* ---- Header ---- */}
-            <DialogHeader>
-              <DialogTitle className="flex items-center gap-2 text-xl">
-                <UserPlus className="w-5 h-5" />
-                Request Admin Access
-              </DialogTitle>
-              <DialogDescription>
-                Fill in the details below to request administrator privileges.
-                Your request will be reviewed by the CertifyPro team.
+            <DialogHeader className="space-y-2">
+              <DialogTitle className="text-xl font-heading">Request Institutional Access</DialogTitle>
+              <DialogDescription className="text-slate-600">
+                Submit your organization-verified profile to request platform access.
               </DialogDescription>
             </DialogHeader>
 
-            {/* ---- Approval guide ---- */}
-            <div className="flex items-center justify-between gap-1 rounded-lg border bg-muted/40 px-4 py-3">
-              {APPROVAL_STEPS.map((step, i) => (
-                <div key={step.label} className="flex items-center gap-1">
-                  <div className="flex flex-col items-center gap-1 min-w-[56px]">
-                    <step.icon className="w-4 h-4 text-muted-foreground" />
-                    <span className="text-[11px] leading-tight text-center text-muted-foreground">
-                      {step.label}
-                    </span>
-                  </div>
-                  {i < APPROVAL_STEPS.length - 1 && (
-                    <div className="w-6 border-t border-dashed border-muted-foreground/40 mx-0.5" />
-                  )}
-                </div>
-              ))}
+            <div className="rounded-xl border border-slate-200 bg-white/90 px-4 py-4">
+              <div className="flex flex-wrap items-center gap-3">
+                {STEPS.map((item, index) => {
+                  const isDone = item.step < currentStep;
+                  const isActive = item.step === currentStep;
+
+                  return (
+                    <div key={item.step} className="flex items-center gap-3 min-w-0">
+                      <div className="flex items-center gap-2 min-w-0">
+                        <div
+                          className={`h-8 w-8 rounded-full border flex items-center justify-center ${
+                            isDone
+                              ? "border-emerald-500 bg-emerald-500 text-white"
+                              : isActive
+                                ? "border-accent bg-accent/10 text-accent"
+                                : "border-slate-300 bg-white text-slate-400"
+                          }`}
+                        >
+                          <item.icon className="h-4 w-4" />
+                        </div>
+                        <span
+                          className={`text-xs sm:text-sm ${
+                            isActive ? "text-foreground font-medium" : "text-slate-500"
+                          }`}
+                        >
+                          {item.title}
+                        </span>
+                      </div>
+                      {index < STEPS.length - 1 ? (
+                        <div className="hidden md:block h-px w-8 bg-slate-200" />
+                      ) : null}
+                    </div>
+                  );
+                })}
+              </div>
+              <p className="mt-3 text-xs text-slate-500">Step {currentStep} of 4 · {currentStepTitle}</p>
             </div>
 
-            {/* ---- Form ---- */}
-            <form onSubmit={handleSubmit} className="space-y-4" noValidate>
-              {/* Full Name */}
-              <div className="space-y-1.5">
-                <Label htmlFor="admin-fullname" className="text-sm font-semibold">
-                  Full Name <span className="text-destructive">*</span>
-                </Label>
-                <Input
-                  id="admin-fullname"
-                  placeholder="e.g., Dr. Sarah Chen"
-                  value={form.fullName}
-                  onChange={(e) => handleChange("fullName", e.target.value)}
-                  aria-invalid={!!errors.fullName}
-                  aria-describedby={errors.fullName ? "err-fullname" : undefined}
-                  className="h-10 transition-colors focus:ring-2 focus:ring-amber-400/50"
-                  disabled={isSubmitting}
-                />
-                {errors.fullName && (
-                  <p id="err-fullname" className="text-xs text-destructive font-medium" role="alert">
-                    ⚠ {errors.fullName}
-                  </p>
-                )}
-              </div>
+            <form className="space-y-5" onSubmit={handleSubmit} noValidate>
+              {currentStep === 1 ? (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="space-y-1.5 md:col-span-2">
+                    <Label htmlFor="fullName">Full Name *</Label>
+                    <Input
+                      id="fullName"
+                      value={form.fullName}
+                      onChange={(e) => setField("fullName", e.target.value)}
+                      placeholder="e.g., Dr. Sarah Chen"
+                      aria-invalid={!!errors.fullName}
+                    />
+                    {errors.fullName ? <p className="text-xs text-destructive">{errors.fullName}</p> : null}
+                  </div>
 
-              {/* Institution */}
-              <div className="space-y-1.5">
-                <Label htmlFor="admin-institution" className="text-sm font-semibold">
-                  Institution <span className="text-destructive">*</span>
-                </Label>
-                <Input
-                  id="admin-institution"
-                  placeholder="e.g., Harvard University"
-                  value={form.institution}
-                  onChange={(e) => handleChange("institution", e.target.value)}
-                  aria-invalid={!!errors.institution}
-                  aria-describedby={errors.institution ? "err-institution" : undefined}
-                  className="h-10 transition-colors focus:ring-2 focus:ring-amber-400/50"
-                  disabled={isSubmitting}
-                />
-                {errors.institution && (
-                  <p id="err-institution" className="text-xs text-destructive font-medium" role="alert">
-                    ⚠ {errors.institution}
-                  </p>
-                )}
-              </div>
+                  <div className="space-y-1.5 md:col-span-2">
+                    <Label htmlFor="organizationalEmail">Organizational Email *</Label>
+                    <Input
+                      id="organizationalEmail"
+                      type="email"
+                      value={form.organizationalEmail}
+                      onChange={(e) => setField("organizationalEmail", e.target.value)}
+                      placeholder="name@institution.edu"
+                      aria-invalid={!!errors.organizationalEmail}
+                    />
+                    <p className="text-xs text-slate-500">No personal emails preferred.</p>
+                    {errors.organizationalEmail ? <p className="text-xs text-destructive">{errors.organizationalEmail}</p> : null}
+                  </div>
 
-              {/* Official Email */}
-              <div className="space-y-1.5">
-                <Label htmlFor="admin-email" className="text-sm font-semibold">
-                  Official Email <span className="text-destructive">*</span>
-                </Label>
-                <Input
-                  id="admin-email"
-                  type="email"
-                  placeholder="name@university.edu"
-                  value={form.email}
-                  onChange={(e) => handleChange("email", e.target.value)}
-                  aria-invalid={!!errors.email}
-                  aria-describedby={errors.email ? "err-email" : "hint-email"}
-                  className="h-10 transition-colors focus:ring-2 focus:ring-amber-400/50"
-                  disabled={isSubmitting}
-                  autoComplete="email"
-                />
-                <p id="hint-email" className="text-xs text-muted-foreground">
-                  We'll use this to confirm your request
-                </p>
-                {errors.email && (
-                  <p id="err-email" className="text-xs text-destructive font-medium" role="alert">
-                    ⚠ {errors.email}
-                  </p>
-                )}
-              </div>
+                  <div className="space-y-1.5">
+                    <Label htmlFor="jobTitle">Job Title / Role</Label>
+                    <Input
+                      id="jobTitle"
+                      value={form.jobTitle}
+                      onChange={(e) => setField("jobTitle", e.target.value)}
+                      placeholder="Faculty Coordinator"
+                    />
+                  </div>
 
-              {/* Role / Purpose */}
-              <div className="space-y-1.5">
-                <Label htmlFor="admin-role" className="text-sm font-semibold">
-                  Role / Purpose <span className="text-destructive">*</span>
-                </Label>
-                <Select
-                  value={form.role}
-                  onValueChange={(v) => handleChange("role", v)}
-                  disabled={isSubmitting}
-                >
-                  <SelectTrigger
-                    id="admin-role"
-                    aria-invalid={!!errors.role}
-                    aria-describedby={errors.role ? "err-role" : undefined}
-                    className="h-10 transition-colors focus:ring-2 focus:ring-amber-400/50"
-                  >
-                    <SelectValue placeholder="Select your role" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {ROLE_OPTIONS.map((r) => (
-                      <SelectItem key={r} value={r}>
-                        {r}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                {errors.role && (
-                  <p id="err-role" className="text-xs text-destructive font-medium" role="alert">
-                    ⚠ {errors.role}
-                  </p>
-                )}
-              </div>
-
-              {/* Optional Notes */}
-              <div className="space-y-1.5">
-                <Label htmlFor="admin-notes" className="text-sm font-semibold">
-                  Additional Notes <span className="text-muted-foreground text-xs font-normal">(optional)</span>
-                </Label>
-                <Textarea
-                  id="admin-notes"
-                  placeholder="E.g., I need access to manage certificates for our Computer Science department..."
-                  value={form.notes}
-                  onChange={(e) => handleChange("notes", e.target.value)}
-                  rows={3}
-                  className="resize-none transition-colors focus:ring-2 focus:ring-amber-400/50"
-                  disabled={isSubmitting}
-                />
-                <p className="text-xs text-muted-foreground">
-                  Max 500 characters ({form.notes.length}/500)
-                </p>
-              </div>
-
-              {errors.submit && (
-                <div className="rounded-lg bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 p-3" role="alert">
-                  <p className="text-sm text-red-700 dark:text-red-200">{errors.submit}</p>
+                  <div className="space-y-1.5">
+                    <Label htmlFor="phoneNumber">Phone Number (optional)</Label>
+                    <Input
+                      id="phoneNumber"
+                      value={form.phoneNumber}
+                      onChange={(e) => setField("phoneNumber", e.target.value)}
+                      placeholder="+91 98765 43210"
+                    />
+                  </div>
                 </div>
-              )}
+              ) : null}
 
-              {/* Submit */}
-              <DialogFooter className="pt-4">
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={() => handleOpenChange(false)}
-                  disabled={isSubmitting}
-                >
-                  Cancel
-                </Button>
-                <Button
-                  type="submit"
-                  disabled={isSubmitting}
-                  className="gap-2 gold-gradient text-accent-foreground hover:opacity-90 transition-all disabled:opacity-60 disabled:cursor-not-allowed"
-                >
-                  {isSubmitting ? (
-                    <>
-                      <span className="inline-block h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent" />
-                      Submitting...
-                    </>
+              {currentStep === 2 ? (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="space-y-1.5 md:col-span-2">
+                    <Label htmlFor="organizationName">Organization Name *</Label>
+                    <Input
+                      id="organizationName"
+                      value={form.organizationName}
+                      onChange={(e) => setField("organizationName", e.target.value)}
+                      placeholder="Institution / Company name"
+                      aria-invalid={!!errors.organizationName}
+                    />
+                    {errors.organizationName ? <p className="text-xs text-destructive">{errors.organizationName}</p> : null}
+                  </div>
+
+                  <div className="space-y-1.5 md:col-span-2">
+                    <Label htmlFor="organizationWebsite">Organization Website URL</Label>
+                    <Input
+                      id="organizationWebsite"
+                      type="url"
+                      value={form.organizationWebsite}
+                      onChange={(e) => setField("organizationWebsite", e.target.value)}
+                      placeholder="https://www.organization.org"
+                    />
+                  </div>
+
+                  <div className="space-y-1.5">
+                    <Label>Industry</Label>
+                    <Select value={form.industry} onValueChange={(value) => setField("industry", value)}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select industry" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {INDUSTRY_OPTIONS.map((option) => (
+                          <SelectItem value={option} key={option}>
+                            {option}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div className="space-y-1.5">
+                    <Label>Organization Size</Label>
+                    <Select value={form.organizationSize} onValueChange={(value) => setField("organizationSize", value)}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select size" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {ORG_SIZE_OPTIONS.map((option) => (
+                          <SelectItem value={option} key={option}>
+                            {option}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div className="space-y-1.5 md:col-span-2">
+                    <Label>Country / Location</Label>
+                    <Select value={form.country} onValueChange={(value) => setField("country", value)}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select country or region" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {COUNTRY_OPTIONS.map((option) => (
+                          <SelectItem value={option} key={option}>
+                            {option}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+              ) : null}
+
+              {currentStep === 3 ? (
+                <div className="space-y-4">
+                  <div className="space-y-1.5">
+                    <Label htmlFor="linkedInProfile">LinkedIn Profile Link (optional)</Label>
+                    <Input
+                      id="linkedInProfile"
+                      type="url"
+                      value={form.linkedInProfile}
+                      onChange={(e) => setField("linkedInProfile", e.target.value)}
+                      placeholder="https://linkedin.com/in/your-profile"
+                    />
+                  </div>
+
+                  <div className="space-y-1.5">
+                    <Label htmlFor="organizationalIdFile">Organizational ID Upload *</Label>
+                    <Input
+                      id="organizationalIdFile"
+                      type="file"
+                      accept=".pdf,.png,.jpg,.jpeg"
+                      onChange={(e) => setField("organizationalIdFile", e.target.files?.[0] ?? null)}
+                      aria-invalid={!!errors.organizationalIdFile}
+                    />
+                    <p className="text-xs text-slate-500">Allowed formats: PDF / PNG / JPG.</p>
+                    {form.organizationalIdFile ? (
+                      <p className="text-xs text-foreground">Selected file: {form.organizationalIdFile.name}</p>
+                    ) : null}
+                    {errors.organizationalIdFile ? <p className="text-xs text-destructive">{errors.organizationalIdFile}</p> : null}
+                  </div>
+
+                  <div className="space-y-1.5">
+                    <Label htmlFor="reasonForAccess">Reason for Access</Label>
+                    <Textarea
+                      id="reasonForAccess"
+                      rows={4}
+                      value={form.reasonForAccess}
+                      onChange={(e) => setField("reasonForAccess", e.target.value)}
+                      placeholder="Describe your intended use case and the team or department scope."
+                    />
+                  </div>
+                </div>
+              ) : null}
+
+              {currentStep === 4 ? (
+                <div className="space-y-4">
+                  <div className="rounded-xl border border-slate-200 bg-white p-4 text-sm text-slate-600 space-y-2">
+                    <p className="font-semibold text-foreground">Confirmation</p>
+                    <p>
+                      Review your information and confirm declarations before submitting your access request.
+                    </p>
+                  </div>
+
+                  <div className="space-y-3">
+                    <div className="space-y-1">
+                      <div className="flex items-start gap-2.5">
+                        <Checkbox
+                          id="infoAccurate"
+                          checked={form.infoAccurate}
+                          onCheckedChange={(checked) => setField("infoAccurate", Boolean(checked))}
+                        />
+                        <Label htmlFor="infoAccurate" className="text-sm leading-snug">
+                          Information is accurate.
+                        </Label>
+                      </div>
+                      {errors.infoAccurate ? <p className="text-xs text-destructive">{errors.infoAccurate}</p> : null}
+                    </div>
+
+                    <div className="space-y-1">
+                      <div className="flex items-start gap-2.5">
+                        <Checkbox
+                          id="orgAuthorizationConfirmed"
+                          checked={form.orgAuthorizationConfirmed}
+                          onCheckedChange={(checked) => setField("orgAuthorizationConfirmed", Boolean(checked))}
+                        />
+                        <Label htmlFor="orgAuthorizationConfirmed" className="text-sm leading-snug">
+                          Organization authorization confirmed.
+                        </Label>
+                      </div>
+                      {errors.orgAuthorizationConfirmed ? (
+                        <p className="text-xs text-destructive">{errors.orgAuthorizationConfirmed}</p>
+                      ) : null}
+                    </div>
+
+                    <div className="space-y-1">
+                      <div className="flex items-start gap-2.5">
+                        <Checkbox
+                          id="verificationConsent"
+                          checked={form.verificationConsent}
+                          onCheckedChange={(checked) => setField("verificationConsent", Boolean(checked))}
+                        />
+                        <Label htmlFor="verificationConsent" className="text-sm leading-snug">
+                          Consent to verification checks.
+                        </Label>
+                      </div>
+                      {errors.verificationConsent ? <p className="text-xs text-destructive">{errors.verificationConsent}</p> : null}
+                    </div>
+                  </div>
+                </div>
+              ) : null}
+
+              <DialogFooter className="pt-2 flex-col-reverse sm:flex-row sm:justify-between gap-2">
+                <div className="flex items-center gap-2">
+                  {currentStep > 1 ? (
+                    <Button type="button" variant="outline" onClick={handleBack} disabled={isSubmitting}>
+                      Back
+                    </Button>
+                  ) : null}
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <Button type="button" variant="ghost" onClick={() => handleOpenChange(false)} disabled={isSubmitting}>
+                    Cancel
+                  </Button>
+                  {currentStep < 4 ? (
+                    <Button type="button" className="gold-gradient text-accent-foreground" onClick={handleNext}>
+                      Next Step
+                    </Button>
                   ) : (
-                    <>
-                      <Send className="w-4 h-4" />
-                      Submit Request
-                    </>
+                    <Button type="submit" className="gold-gradient text-accent-foreground gap-2" disabled={isSubmitting}>
+                      {isSubmitting ? (
+                        <span className="inline-block h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent" />
+                      ) : (
+                        <Send className="h-4 w-4" />
+                      )}
+                      Submit Access Request
+                    </Button>
                   )}
-                </Button>
+                </div>
               </DialogFooter>
             </form>
           </>
