@@ -13,7 +13,10 @@ declare const Deno: {
 
 const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
 const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-const appLoginUrl = Deno.env.get("APP_LOGIN_URL") ?? "http://localhost:8080/login";
+const resetPasswordRedirectUrl =
+  Deno.env.get("APP_RESET_PASSWORD_URL") ??
+  Deno.env.get("APP_LOGIN_URL") ??
+  "http://localhost:8080/reset-password";
 
 if (!supabaseUrl || !serviceRoleKey) {
   console.error("❌ Missing Supabase secrets");
@@ -129,28 +132,44 @@ async function processRequest(requestId:string){
 
       approvedUserId=user.user.id;
 
-      const { data:linkData } =
-        await admin.auth.admin.generateLink({
-          type:"recovery",
-          email:row.email
-        });
+      try {
+        const { error:generateLinkError } =
+          await admin.auth.admin.generateLink({
+            type:"recovery",
+            email:row.email,
+            options: {
+              redirectTo: resetPasswordRedirectUrl,
+            },
+          });
 
-      // Keep recovery link generation intact for first-login reset workflow.
-      // Trigger actual email delivery via Supabase Auth SMTP.
-      const { error:resetEmailError } = await admin.auth.resetPasswordForEmail(
-        row.email,
-        {
-          redirectTo: appLoginUrl,
-        },
-      );
+        if (generateLinkError) {
+          throw generateLinkError;
+        }
 
-      if (resetEmailError) {
-        notes.push(`Auth SMTP reset email failed: ${resetEmailError.message}`);
-        console.error("Auth SMTP reset email failed:", resetEmailError.message);
-        emailSent = false;
-      } else {
-        void (linkData?.properties?.action_link ?? appLoginUrl);
+        const { error:resetEmailError } = await admin.auth.resetPasswordForEmail(
+          row.email,
+          {
+            redirectTo: resetPasswordRedirectUrl,
+          },
+        );
+
+        if (resetEmailError) {
+          throw resetEmailError;
+        }
+
         emailSent = true;
+        console.info("Recovery email triggered", {
+          requestId: row.id,
+          status,
+        });
+      } catch (emailError) {
+        emailSent = false;
+        notes.push("Recovery email trigger failed");
+        console.warn("Recovery email trigger failed", {
+          requestId: row.id,
+          status,
+          reason: emailError instanceof Error ? emailError.message : String(emailError),
+        });
       }
 
     } else {
