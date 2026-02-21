@@ -96,6 +96,18 @@ const getEmailDomain = (email: string): string => {
   return idx > -1 ? email.slice(idx + 1).toLowerCase() : "";
 };
 
+const getDomainRoot = (domain: string): string => {
+  const normalized = domain.toLowerCase().trim();
+  const parts = normalized.split(".").filter(Boolean);
+  if (parts.length === 0) return "";
+
+  if (parts.length >= 3) {
+    return parts[0];
+  }
+
+  return parts[0];
+};
+
 const looksCorporateEmail = (email: string): boolean => {
   const domain = getEmailDomain(email);
   return Boolean(domain) && !corporateFreeDomains.has(domain);
@@ -105,13 +117,16 @@ const organizationMatchesDomain = (organization: string, email: string): boolean
   const domain = getEmailDomain(email);
   if (!domain) return false;
 
+  const domainRoot = getDomainRoot(domain);
+  if (!domainRoot) return false;
+
   const orgTokens = normalizeText(organization)
     .split(" ")
     .filter((token) => token.length > 2);
 
   if (orgTokens.length === 0) return false;
 
-  return orgTokens.some((token) => domain.includes(token));
+  return orgTokens.some((token) => domain.includes(token) || token.includes(domainRoot));
 };
 
 const hasValidFormatChecks = (row: AccessRequestRow): boolean => {
@@ -133,22 +148,41 @@ const hasValidFormatChecks = (row: AccessRequestRow): boolean => {
   return emailValid && linkedInValid && documentValid;
 };
 
-const bucketObjectExists = async (objectPath: string | null): Promise<boolean> => {
+const bucketObjectExists = async (
+  objectPath: string | null,
+  traceId: string,
+): Promise<boolean> => {
   if (!objectPath) return false;
 
-  const normalizedPath = objectPath.startsWith("org-documents/")
-    ? objectPath.replace(/^org-documents\//, "")
-    : objectPath;
+  const normalizedPath = objectPath
+    .replace(/^org-documents\//i, "")
+    .replace(/^Org_ids\//i, "")
+    .replace(/^\/+/, "");
 
-  const { data, error } = await admin.storage
-    .from("org-documents")
-    .download(normalizedPath);
+  const candidateBuckets = ["Org_ids", "org-documents"];
 
-  if (error || !data) {
-    return false;
+  for (const bucket of candidateBuckets) {
+    const { data, error } = await admin.storage
+      .from(bucket)
+      .download(normalizedPath);
+
+    if (!error && data) {
+      log("info", "Document found in storage bucket.", {
+        traceId,
+        bucket,
+        objectPath: normalizedPath,
+      });
+      return true;
+    }
   }
 
-  return true;
+  log("warn", "Document not found in candidate storage buckets.", {
+    traceId,
+    objectPath: normalizedPath,
+    candidateBuckets,
+  });
+
+  return false;
 };
 
 const statusFromScore = (score: number): "approved" | "hold" | "rejected" => {
@@ -177,7 +211,7 @@ const sendWelcomeEmail = async (
   traceId: string,
 ): Promise<boolean> => {
   if (!resendApiKey) {
-    log("warn", "RESEND_API_KEY missing; skipping welcome email.", { traceId, to });
+    log("warn", "Email skipped: API key missing", { traceId, to });
     return false;
   }
 
@@ -248,33 +282,51 @@ const processAccessRequest = async (requestId: string, traceId: string): Promise
 
   let score = 0;
 
-  if (looksCorporateEmail(requestRow.email)) {
+  const hasCorporateEmail = looksCorporateEmail(requestRow.email);
+  const hasOrgMatch = organizationMatchesDomain(requestRow.organization, requestRow.email);
+  const hasDocument = await bucketObjectExists(requestRow.org_document_url, traceId);
+  const hasLinkedIn = Boolean(requestRow.linkedin_url && requestRow.linkedin_url.trim().length > 0);
+  const hasFormatValidity = hasValidFormatChecks(requestRow);
+  const hasOcrPlaceholder = Boolean(requestRow.org_document_url && requestRow.org_document_url.trim().length > 0);
+
+  if (hasCorporateEmail) {
     score += 25;
   } else {
     notes.push("Non-corporate email domain detected.");
   }
 
-  if (organizationMatchesDomain(requestRow.organization, requestRow.email)) {
-    score += 25;
+  if (hasOrgMatch) {
+    score += 20;
   } else {
     notes.push("Organization name does not strongly match email domain.");
   }
 
-  const documentExists = await bucketObjectExists(requestRow.org_document_url);
-  if (documentExists) {
+  if (hasDocument) {
     score += 20;
   } else {
     notes.push("Organization document is missing or inaccessible.");
   }
 
-  if (requestRow.linkedin_url && requestRow.linkedin_url.trim().length > 0) {
+  if (hasLinkedIn) {
     score += 10;
   }
 
-  if (hasValidFormatChecks(requestRow)) {
-    score += 20;
+  if (hasFormatValidity) {
+    score += 15;
   } else {
     notes.push("One or more format checks failed.");
+  }
+
+  if (hasOcrPlaceholder) {
+    score += 10;
+  }
+
+  if (
+    score === 0 &&
+    (requestRow.email.trim().length > 0 || requestRow.organization.trim().length > 0)
+  ) {
+    score = 10;
+    notes.push("Applied minimum score floor due to partial data availability.");
   }
 
   let status = statusFromScore(score);
@@ -403,7 +455,7 @@ Deno.serve(async (request: Request) => {
         hasServiceRoleKey: Boolean(serviceRoleKey),
       });
       return new Response(
-        JSON.stringify({ error: "Supabase server configuration missing." }),
+        JSON.stringify({ success: false, error: "Supabase server configuration missing." }),
         {
           status: 500,
           headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -411,22 +463,27 @@ Deno.serve(async (request: Request) => {
       );
     }
 
-    let body: { requestId?: unknown } = {};
+    let body: { requestId?: unknown; request_id?: unknown } = {};
     try {
-      body = (await request.json()) as { requestId?: unknown };
+      body = (await request.json()) as { requestId?: unknown; request_id?: unknown };
     } catch {
       log("warn", "Invalid JSON body in request.", { traceId });
-      return new Response(JSON.stringify({ error: "Invalid JSON body." }), {
+      return new Response(JSON.stringify({ success: false, error: "Invalid JSON body." }), {
         status: 400,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
-    const requestId = typeof body.requestId === "string" ? body.requestId : "";
+    const requestId =
+      typeof body.request_id === "string"
+        ? body.request_id
+        : typeof body.requestId === "string"
+          ? body.requestId
+          : "";
 
     if (!requestId) {
       log("warn", "requestId missing in request body.", { traceId });
-      return new Response(JSON.stringify({ error: "requestId is required." }), {
+      return new Response(JSON.stringify({ success: false, error: "requestId is required." }), {
         status: 400,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
@@ -448,6 +505,7 @@ Deno.serve(async (request: Request) => {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   } catch (error) {
+    console.error("PROCESS ACCESS ERROR:", error);
     log("error", "Unhandled function exception.", {
       traceId,
       error: error instanceof Error ? error.message : "Unknown runtime error",

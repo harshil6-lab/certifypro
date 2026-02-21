@@ -30,6 +30,19 @@ const getFileExtension = (name: string): string => {
   return extension ? extension.toLowerCase() : "";
 };
 
+const createSafeRandomId = (): string => {
+  if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") {
+    return crypto.randomUUID();
+  }
+
+  if (typeof crypto !== "undefined" && typeof crypto.getRandomValues === "function") {
+    const bytes = crypto.getRandomValues(new Uint8Array(16));
+    return Array.from(bytes, (byte) => byte.toString(16).padStart(2, "0")).join("");
+  }
+
+  return `fallback-${Date.now()}-${Math.floor(Math.random() * 1_000_000_000)}`;
+};
+
 const uploadOrganizationDocument = async (file: File): Promise<string> => {
   if (!supabase) {
     throw new Error("Supabase client is unavailable.");
@@ -40,22 +53,29 @@ const uploadOrganizationDocument = async (file: File): Promise<string> => {
     throw new Error("Invalid document format. Allowed: PDF, PNG, JPG.");
   }
 
-  const randomId = crypto.randomUUID();
+  const randomId = createSafeRandomId();
   const path = `requests/${Date.now()}-${randomId}-${sanitizeFileName(file.name)}`;
 
-  const { error } = await supabase.storage
-    .from("org-documents")
-    .upload(path, file, {
-      cacheControl: "3600",
-      upsert: false,
-      contentType: file.type || "application/octet-stream",
-    });
+  const candidateBuckets = ["Org_ids", "org-documents"];
+  let uploadError: string | null = null;
 
-  if (error) {
-    throw new Error(error.message || "Document upload failed.");
+  for (const bucket of candidateBuckets) {
+    const { error } = await supabase.storage
+      .from(bucket)
+      .upload(path, file, {
+        cacheControl: "3600",
+        upsert: false,
+        contentType: file.type || "application/octet-stream",
+      });
+
+    if (!error) {
+      return `${bucket}/${path}`;
+    }
+
+    uploadError = error.message || "Document upload failed.";
   }
 
-  return path;
+  throw new Error(uploadError || "Document upload failed.");
 };
 
 export async function submitAccessRequest(
@@ -93,20 +113,23 @@ export async function submitAccessRequest(
       };
     }
 
-    const { data: processResult, error: invokeError } = await supabase.functions.invoke(
-      "process-access-request",
-      {
-        body: { requestId: requestRow.id },
-      },
-    );
+    let processResult: { status?: "pending" | "approved" | "hold" | "rejected"; score?: number } | null = null;
 
-    if (invokeError) {
-      return {
-        success: true,
-        requestId: requestRow.id,
-        status: "pending",
-        score: requestRow.score ?? 0,
-      };
+    try {
+      const { data, error: invokeError } = await supabase.functions.invoke(
+        "process-access-request",
+        {
+          body: { request_id: requestRow.id },
+        },
+      );
+
+      if (invokeError) {
+        console.error("Edge function invoke failed:", invokeError);
+      } else {
+        processResult = data as { status?: "pending" | "approved" | "hold" | "rejected"; score?: number };
+      }
+    } catch (error) {
+      console.error("Edge function invoke failed:", error);
     }
 
     return {
