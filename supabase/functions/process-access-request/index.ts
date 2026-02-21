@@ -13,8 +13,6 @@ declare const Deno: {
 
 const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
 const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-const resendApiKey = Deno.env.get("RESEND_API_KEY") ?? "";
-const resendFromEmail = Deno.env.get("RESEND_FROM_EMAIL") ?? "no-reply@certifypro.app";
 const appLoginUrl = Deno.env.get("APP_LOGIN_URL") ?? "http://localhost:8080/login";
 
 if (!supabaseUrl || !serviceRoleKey) {
@@ -63,48 +61,6 @@ async function documentExists(path:string|null){
   }
 
   return false;
-}
-
-/* ------------------------------------------------ */
-/* EMAIL */
-/* ------------------------------------------------ */
-
-async function sendWelcomeEmail(
-  email:string,
-  password:string,
-  resetLink:string
-){
-  if(!resendApiKey) return false;
-
-  const html = `
-    <div style="font-family:sans-serif">
-      <h2>Welcome to CertifyPro</h2>
-      <p>Your access request is approved.</p>
-      <p><b>Login:</b> ${appLoginUrl}</p>
-      <p><b>Password:</b> ${password}</p>
-      <p><a href="${resetLink}">Reset password</a></p>
-    </div>
-  `;
-
-  try{
-    const res = await fetch("https://api.resend.com/emails",{
-      method:"POST",
-      headers:{
-        Authorization:`Bearer ${resendApiKey}`,
-        "Content-Type":"application/json"
-      },
-      body:JSON.stringify({
-        from:resendFromEmail,
-        to:[email],
-        subject:"CertifyPro Access Approved",
-        html
-      })
-    });
-
-    return res.ok;
-  }catch{
-    return false;
-  }
 }
 
 /* ------------------------------------------------ */
@@ -179,11 +135,10 @@ async function processRequest(requestId:string){
           email:row.email
         });
 
-      emailSent = await sendWelcomeEmail(
-        row.email,
-        password,
-        linkData?.properties?.action_link ?? appLoginUrl
-      );
+      // Email now handled by Supabase Auth SMTP automatically.
+      // Keep recovery link generation intact for first-login reset workflow.
+      void (linkData?.properties?.action_link ?? appLoginUrl);
+      emailSent = true;
 
     } else {
       notes.push("User creation failed");
