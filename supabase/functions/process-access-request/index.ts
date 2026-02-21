@@ -1,3 +1,5 @@
+// Supabase Edge Function: process-access-request
+
 // @ts-ignore Supabase Edge Runtime resolves remote ESM import at deploy/runtime.
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { corsHeaders } from "../_shared/cors.ts";
@@ -9,517 +11,243 @@ declare const Deno: {
   serve: (handler: (request: Request) => Response | Promise<Response>) => void;
 };
 
-type AccessRequestRow = {
-  id: string;
-  full_name: string;
-  email: string;
-  organization: string;
-  linkedin_url: string | null;
-  org_document_url: string | null;
-  status: string;
-  score: number;
-};
-
-type ProcessResult = {
-  status: "approved" | "hold" | "rejected";
-  score: number;
-  approvedUserId?: string;
-  emailDispatched?: boolean;
-  notes: string[];
-  requestId?: string;
-};
-
-type LogLevel = "info" | "warn" | "error";
-
-const log = (
-  level: LogLevel,
-  message: string,
-  context: Record<string, unknown> = {},
-) => {
-  const payload = {
-    level,
-    message,
-    ts: new Date().toISOString(),
-    ...context,
-  };
-
-  if (level === "error") {
-    console.error(JSON.stringify(payload));
-    return;
-  }
-
-  if (level === "warn") {
-    console.warn(JSON.stringify(payload));
-    return;
-  }
-
-  console.log(JSON.stringify(payload));
-};
-
-const corporateFreeDomains = new Set([
-  "gmail.com",
-  "yahoo.com",
-  "outlook.com",
-  "hotmail.com",
-  "live.com",
-  "aol.com",
-  "proton.me",
-  "protonmail.com",
-  "icloud.com",
-]);
-
-const supabaseUrl = Deno.env.get("SUPABASE_URL") ?? "";
-const serviceRoleKey =
-  Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ??
-  Deno.env.get("SERVICE_ROLE_KEY") ??
-  "";
+const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 const resendApiKey = Deno.env.get("RESEND_API_KEY") ?? "";
 const resendFromEmail = Deno.env.get("RESEND_FROM_EMAIL") ?? "no-reply@certifypro.app";
 const appLoginUrl = Deno.env.get("APP_LOGIN_URL") ?? "http://localhost:8080/login";
 
+if (!supabaseUrl || !serviceRoleKey) {
+  console.error("❌ Missing Supabase secrets");
+}
+
 const admin = createClient(supabaseUrl, serviceRoleKey, {
-  auth: {
-    autoRefreshToken: false,
-    persistSession: false,
-  },
+  auth: { autoRefreshToken: false, persistSession: false },
 });
 
-const normalizeText = (value: string) =>
-  value
-    .toLowerCase()
-    .replace(/[^a-z0-9\s]/g, " ")
-    .replace(/\s+/g, " ")
-    .trim();
+/* ------------------------------------------------ */
+/* UTILITIES */
+/* ------------------------------------------------ */
 
-const getEmailDomain = (email: string): string => {
-  const idx = email.lastIndexOf("@");
-  return idx > -1 ? email.slice(idx + 1).toLowerCase() : "";
-};
+const corporateFreeDomains = [
+  "gmail.com","yahoo.com","outlook.com","hotmail.com",
+  "live.com","icloud.com","protonmail.com"
+];
 
-const getDomainRoot = (domain: string): string => {
-  const normalized = domain.toLowerCase().trim();
-  const parts = normalized.split(".").filter(Boolean);
-  if (parts.length === 0) return "";
+const getDomain = (email:string) =>
+  email.split("@")[1]?.toLowerCase() ?? "";
 
-  if (parts.length >= 3) {
-    return parts[0];
+const normalize = (v:string) =>
+  v.toLowerCase().replace(/[^a-z0-9]/g,"");
+
+const statusFromScore = (s:number) =>
+  s >= 70 ? "approved" : s >= 40 ? "hold" : "rejected";
+
+const tempPassword = () =>
+  crypto.randomUUID().slice(0,14)+"!A";
+
+/* ------------------------------------------------ */
+/* STORAGE CHECK */
+/* ------------------------------------------------ */
+
+async function documentExists(path:string|null){
+  if(!path) return false;
+
+  const clean = path.replace(/^\/+/,"");
+
+  for(const bucket of ["Org_ids","org-documents"]){
+    const { data,error } =
+      await admin.storage.from(bucket).download(clean);
+
+    if(!error && data) return true;
   }
-
-  return parts[0];
-};
-
-const looksCorporateEmail = (email: string): boolean => {
-  const domain = getEmailDomain(email);
-  return Boolean(domain) && !corporateFreeDomains.has(domain);
-};
-
-const organizationMatchesDomain = (organization: string, email: string): boolean => {
-  const domain = getEmailDomain(email);
-  if (!domain) return false;
-
-  const domainRoot = getDomainRoot(domain);
-  if (!domainRoot) return false;
-
-  const orgTokens = normalizeText(organization)
-    .split(" ")
-    .filter((token) => token.length > 2);
-
-  if (orgTokens.length === 0) return false;
-
-  return orgTokens.some((token) => domain.includes(token) || token.includes(domainRoot));
-};
-
-const hasValidFormatChecks = (row: AccessRequestRow): boolean => {
-  const emailValid = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(row.email);
-  const linkedInValid =
-    !row.linkedin_url ||
-    (() => {
-      try {
-        const url = new URL(row.linkedin_url);
-        return url.hostname.includes("linkedin.com");
-      } catch {
-        return false;
-      }
-    })();
-
-  const documentValid =
-    !row.org_document_url || /\.(pdf|png|jpg|jpeg)$/i.test(row.org_document_url);
-
-  return emailValid && linkedInValid && documentValid;
-};
-
-const bucketObjectExists = async (
-  objectPath: string | null,
-  traceId: string,
-): Promise<boolean> => {
-  if (!objectPath) return false;
-
-  const normalizedPath = objectPath
-    .replace(/^org-documents\//i, "")
-    .replace(/^Org_ids\//i, "")
-    .replace(/^\/+/, "");
-
-  const candidateBuckets = ["Org_ids", "org-documents"];
-
-  for (const bucket of candidateBuckets) {
-    const { data, error } = await admin.storage
-      .from(bucket)
-      .download(normalizedPath);
-
-    if (!error && data) {
-      log("info", "Document found in storage bucket.", {
-        traceId,
-        bucket,
-        objectPath: normalizedPath,
-      });
-      return true;
-    }
-  }
-
-  log("warn", "Document not found in candidate storage buckets.", {
-    traceId,
-    objectPath: normalizedPath,
-    candidateBuckets,
-  });
 
   return false;
-};
+}
 
-const statusFromScore = (score: number): "approved" | "hold" | "rejected" => {
-  if (score >= 70) return "approved";
-  if (score >= 40) return "hold";
-  return "rejected";
-};
+/* ------------------------------------------------ */
+/* EMAIL */
+/* ------------------------------------------------ */
 
-const generateTemporaryPassword = (): string => {
-  const alphabet = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz23456789!@#$%^&*";
-  const length = 14;
-  const bytes = crypto.getRandomValues(new Uint8Array(length));
-  let password = "";
-
-  for (let i = 0; i < bytes.length; i += 1) {
-    password += alphabet[bytes[i] % alphabet.length];
-  }
-
-  return password;
-};
-
-const sendWelcomeEmail = async (
-  to: string,
-  temporaryPassword: string,
-  recoveryLink: string,
-  traceId: string,
-): Promise<boolean> => {
-  if (!resendApiKey) {
-    log("warn", "Email skipped: API key missing", { traceId, to });
-    return false;
-  }
+async function sendWelcomeEmail(
+  email:string,
+  password:string,
+  resetLink:string
+){
+  if(!resendApiKey) return false;
 
   const html = `
-  <div style="font-family:Arial,sans-serif;max-width:640px;margin:auto;padding:24px;color:#0f172a;">
-    <h2 style="margin:0 0 12px;font-size:22px;">Welcome to CertifyPro</h2>
-    <p style="margin:0 0 12px;">Your institutional access request has been approved.</p>
-    <p style="margin:0 0 12px;"><strong>Login URL:</strong> <a href="${appLoginUrl}">${appLoginUrl}</a></p>
-    <p style="margin:0 0 12px;"><strong>Temporary Password:</strong> ${temporaryPassword}</p>
-    <p style="margin:0 0 12px;"><strong>Password Reset Link:</strong> <a href="${recoveryLink}">Set your new password</a></p>
-    <p style="margin:0;">For security, please reset your password on first login.</p>
-  </div>`;
+    <div style="font-family:sans-serif">
+      <h2>Welcome to CertifyPro</h2>
+      <p>Your access request is approved.</p>
+      <p><b>Login:</b> ${appLoginUrl}</p>
+      <p><b>Password:</b> ${password}</p>
+      <p><a href="${resetLink}">Reset password</a></p>
+    </div>
+  `;
 
-  try {
-    const response = await fetch("https://api.resend.com/emails", {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${resendApiKey}`,
-        "Content-Type": "application/json",
+  try{
+    const res = await fetch("https://api.resend.com/emails",{
+      method:"POST",
+      headers:{
+        Authorization:`Bearer ${resendApiKey}`,
+        "Content-Type":"application/json"
       },
-      body: JSON.stringify({
-        from: resendFromEmail,
-        to: [to],
-        subject: "Your CertifyPro access is approved",
-        html,
-      }),
+      body:JSON.stringify({
+        from:resendFromEmail,
+        to:[email],
+        subject:"CertifyPro Access Approved",
+        html
+      })
     });
 
-    if (!response.ok) {
-      const reason = await response.text();
-      log("warn", "Welcome email dispatch failed.", {
-        traceId,
-        status: response.status,
-        reason,
-      });
-      return false;
-    }
-
-    return true;
-  } catch (error) {
-    log("error", "Welcome email request threw exception.", {
-      traceId,
-      error: error instanceof Error ? error.message : "Unknown email error",
-    });
+    return res.ok;
+  }catch{
     return false;
   }
-};
+}
 
-const processAccessRequest = async (requestId: string, traceId: string): Promise<ProcessResult> => {
-  const notes: string[] = [];
+/* ------------------------------------------------ */
+/* MAIN PROCESS */
+/* ------------------------------------------------ */
 
-  log("info", "Starting access request processing.", { traceId, requestId });
+async function processRequest(requestId:string){
 
-  const { data: requestRow, error: fetchError } = await admin
+  const { data:row, error } = await admin
     .from("access_requests")
-    .select("id, full_name, email, organization, linkedin_url, org_document_url, status, score")
-    .eq("id", requestId)
-    .single<AccessRequestRow>();
+    .select("*")
+    .eq("id",requestId)
+    .single();
 
-  if (fetchError || !requestRow) {
-    log("error", "Failed to fetch access request row.", {
-      traceId,
-      requestId,
-      error: fetchError?.message ?? "not found",
-    });
-    throw new Error("Access request not found.");
-  }
+  if(error || !row) throw new Error("Request not found");
 
   let score = 0;
+  const notes:string[] = [];
 
-  const hasCorporateEmail = looksCorporateEmail(requestRow.email);
-  const hasOrgMatch = organizationMatchesDomain(requestRow.organization, requestRow.email);
-  const hasDocument = await bucketObjectExists(requestRow.org_document_url, traceId);
-  const hasLinkedIn = Boolean(requestRow.linkedin_url && requestRow.linkedin_url.trim().length > 0);
-  const hasFormatValidity = hasValidFormatChecks(requestRow);
-  const hasOcrPlaceholder = Boolean(requestRow.org_document_url && requestRow.org_document_url.trim().length > 0);
-
-  if (hasCorporateEmail) {
+  /* EMAIL CHECK */
+  const domain = getDomain(row.email);
+  if(domain && !corporateFreeDomains.includes(domain))
     score += 25;
-  } else {
-    notes.push("Non-corporate email domain detected.");
-  }
+  else notes.push("Free email domain");
 
-  if (hasOrgMatch) {
+  /* ORG MATCH */
+  if(normalize(domain).includes(normalize(row.organization)))
     score += 20;
-  } else {
-    notes.push("Organization name does not strongly match email domain.");
-  }
+  else notes.push("Org mismatch");
 
-  if (hasDocument) {
+  /* DOCUMENT */
+  if(await documentExists(row.org_document_url))
     score += 20;
-  } else {
-    notes.push("Organization document is missing or inaccessible.");
-  }
+  else notes.push("Document missing");
 
-  if (hasLinkedIn) {
-    score += 10;
-  }
+  /* LINKEDIN */
+  if(row.linkedin_url) score += 10;
 
-  if (hasFormatValidity) {
-    score += 15;
-  } else {
-    notes.push("One or more format checks failed.");
-  }
+  /* BASIC FORMAT */
+  if(row.email.includes("@")) score += 15;
 
-  if (hasOcrPlaceholder) {
-    score += 10;
-  }
+  /* OCR placeholder */
+  if(row.org_document_url) score += 10;
 
-  if (
-    score === 0 &&
-    (requestRow.email.trim().length > 0 || requestRow.organization.trim().length > 0)
-  ) {
-    score = 10;
-    notes.push("Applied minimum score floor due to partial data availability.");
-  }
+  const status = statusFromScore(score);
 
-  let status = statusFromScore(score);
-  let approvedUserId: string | undefined;
-  let emailDispatched = false;
+  let approvedUserId=null;
+  let emailSent=false;
 
-  log("info", "Validation scoring completed.", {
-    traceId,
-    requestId,
-    score,
-    status,
-  });
+  if(status==="approved"){
 
-  if (status === "approved") {
-    const temporaryPassword = generateTemporaryPassword();
+    const password=tempPassword();
 
-    const { data: createdUser, error: createUserError } = await admin.auth.admin.createUser({
-      email: requestRow.email,
-      password: temporaryPassword,
-      email_confirm: true,
-      user_metadata: {
-        first_login_required: true,
-        access_request_id: requestRow.id,
-        organization: requestRow.organization,
-      },
-    });
-
-    if (createUserError || !createdUser?.user?.id) {
-      notes.push(`User auto-creation failed: ${createUserError?.message ?? "unknown error"}`);
-      status = "hold";
-      log("warn", "Auto user creation failed; moved to hold.", {
-        traceId,
-        requestId,
-        reason: createUserError?.message ?? "unknown",
-      });
-    } else {
-      approvedUserId = createdUser.user.id;
-
-      const { data: recoveryLinkData, error: recoveryLinkError } = await admin.auth.admin.generateLink({
-        type: "recovery",
-        email: requestRow.email,
+    const { data:user,error:createErr } =
+      await admin.auth.admin.createUser({
+        email:row.email,
+        password,
+        email_confirm:true,
+        user_metadata:{
+          first_login_required:true,
+          access_request_id:row.id
+        }
       });
 
-      if (recoveryLinkError) {
-        notes.push(`Password reset link generation failed: ${recoveryLinkError.message}`);
-        log("warn", "Recovery link generation failed.", {
-          traceId,
-          requestId,
-          reason: recoveryLinkError.message,
+    if(!createErr && user?.user){
+
+      approvedUserId=user.user.id;
+
+      const { data:linkData } =
+        await admin.auth.admin.generateLink({
+          type:"recovery",
+          email:row.email
         });
-      }
 
-      const recoveryLink = recoveryLinkData?.properties?.action_link ?? appLoginUrl;
-      emailDispatched = await sendWelcomeEmail(
-        requestRow.email,
-        temporaryPassword,
-        recoveryLink,
-        traceId,
+      emailSent = await sendWelcomeEmail(
+        row.email,
+        password,
+        linkData?.properties?.action_link ?? appLoginUrl
       );
 
-      if (!emailDispatched) {
-        notes.push("Welcome email was not sent (missing or invalid email provider settings).");
-      }
+    } else {
+      notes.push("User creation failed");
     }
   }
 
-  const { error: updateError } = await admin
-    .from("access_requests")
+  /* UPDATE REQUEST */
+
+  const { error:updateError } =
+    await admin.from("access_requests")
     .update({
-      status,
       score,
-      approved_user_id: approvedUserId ?? null,
-      validation_notes: notes.length ? notes.join(" ") : "Auto validation completed successfully.",
+      status,
+      approved_user_id:approvedUserId,
+      validation_notes:notes.join(", ")
     })
-    .eq("id", requestRow.id);
+    .eq("id",row.id);
 
-  if (updateError) {
-    log("error", "Failed to update access request status.", {
-      traceId,
-      requestId,
-      error: updateError.message,
-    });
-    throw new Error(updateError.message);
+  if(updateError){
+    console.error("Update failed:",updateError);
+    throw updateError;
   }
 
-  log("info", "Access request processing completed.", {
-    traceId,
-    requestId,
-    score,
-    status,
-    approvedUserId: approvedUserId ?? null,
-    emailDispatched,
-  });
+  return { score,status,approvedUserId,emailSent };
+}
 
-  return {
-    status,
-    score,
-    approvedUserId,
-    emailDispatched,
-    notes,
-    requestId,
-  };
-};
+/* ------------------------------------------------ */
+/* EDGE HANDLER */
+/* ------------------------------------------------ */
 
-Deno.serve(async (request: Request) => {
-  const traceId = crypto.randomUUID();
-  console.log("Service key exists:", !!Deno.env.get("SUPABASE_SERVICE_ROLE_KEY"));
+Deno.serve(async(req: Request)=>{
 
-  if (request.method === "OPTIONS") {
-    return new Response("ok", { headers: corsHeaders });
-  }
+  if(req.method==="OPTIONS")
+    return new Response("ok",{headers:corsHeaders});
 
-  try {
-    log("info", "Incoming process-access-request invocation.", {
-      traceId,
-      method: request.method,
-      hasSupabaseUrl: Boolean(supabaseUrl),
-      hasServiceRoleKey: Boolean(serviceRoleKey),
-      hasResendKey: Boolean(resendApiKey),
-    });
+  try{
 
-    if (!supabaseUrl || !serviceRoleKey) {
-      log("error", "Missing required Supabase server secrets.", {
-        traceId,
-        hasSupabaseUrl: Boolean(supabaseUrl),
-        hasServiceRoleKey: Boolean(serviceRoleKey),
+    const body=await req.json();
+    const requestId=body.request_id||body.requestId;
+
+    if(!requestId)
+      return new Response(JSON.stringify({error:"requestId required"}),{
+        status:400,headers:{...corsHeaders,"Content-Type":"application/json"}
       });
-      return new Response(
-        JSON.stringify({ success: false, error: "Supabase server configuration missing." }),
-        {
-          status: 500,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        },
-      );
-    }
 
-    let body: { requestId?: unknown; request_id?: unknown } = {};
-    try {
-      body = (await request.json()) as { requestId?: unknown; request_id?: unknown };
-    } catch {
-      log("warn", "Invalid JSON body in request.", { traceId });
-      return new Response(JSON.stringify({ success: false, error: "Invalid JSON body." }), {
-        status: 400,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
-
-    const requestId =
-      typeof body.request_id === "string"
-        ? body.request_id
-        : typeof body.requestId === "string"
-          ? body.requestId
-          : "";
-
-    if (!requestId) {
-      log("warn", "requestId missing in request body.", { traceId });
-      return new Response(JSON.stringify({ success: false, error: "requestId is required." }), {
-        status: 400,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
-
-    const result = await processAccessRequest(requestId, traceId);
+    const result=await processRequest(requestId);
 
     return new Response(JSON.stringify({
-      success: true,
-      status: result.status,
-      score: result.score,
-      requestId: result.requestId,
-      approvedUserId: result.approvedUserId ?? null,
-      emailDispatched: result.emailDispatched ?? false,
-      notes: result.notes,
-      traceId,
-    }), {
-      status: 200,
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
+      success:true,
+      ...result
+    }),{
+      headers:{...corsHeaders,"Content-Type":"application/json"}
     });
-  } catch (error) {
-    console.error("PROCESS ACCESS ERROR:", error);
-    log("error", "Unhandled function exception.", {
-      traceId,
-      error: error instanceof Error ? error.message : "Unknown runtime error",
+
+  }catch(err){
+
+    console.error(err);
+
+    return new Response(JSON.stringify({
+      success:false,
+      error:String(err)
+    }),{
+      status:500,
+      headers:{...corsHeaders,"Content-Type":"application/json"}
     });
-    return new Response(
-      JSON.stringify({
-        success: false,
-        error: error instanceof Error ? error.message : "Unexpected processing error.",
-        traceId,
-      }),
-      {
-        status: 500,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      },
-    );
   }
 });
