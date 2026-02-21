@@ -25,6 +25,7 @@ import Verify from "./pages/Verify";
 import VerifyResult from "./pages/VerifyResult";
 import Help from "./pages/Help";
 import Profile from "./pages/Profile";
+import ResetPassword from "./pages/ResetPassword";
 import NotFound from "./pages/NotFound";
 import PrivacyPolicy from "./pages/PrivacyPolicy";
 
@@ -112,6 +113,7 @@ const App = () => {
             <Route path="/contact" element={<Contact />} />
             <Route path="/privacy-policy" element={<PrivacyPolicy />} />
             <Route path="/login" element={<Login />} />
+            <Route path="/reset-password" element={<ResetPassword />} />
             <Route path="/verify" element={<Verify />} />
             <Route path="/verify/:certId" element={<VerifyResult />} />
             <Route
