@@ -54,12 +54,15 @@ const statusConfig = {
 
 const Registry = () => {
   const [search, setSearch] = useState("");
+  const [statusFilter, setStatusFilter] = useState("all");
 
-  const filtered = certificates.filter(
-    (c) =>
+  const filtered = certificates.filter((c) => {
+    const matchesSearch =
       c.name.toLowerCase().includes(search.toLowerCase()) ||
-      c.id.toLowerCase().includes(search.toLowerCase())
-  );
+      c.id.toLowerCase().includes(search.toLowerCase());
+    const matchesStatus = statusFilter === "all" || c.status === statusFilter;
+    return matchesSearch && matchesStatus;
+  });
 
   return (
     <div className="p-8 max-w-[1200px] mx-auto space-y-6 animate-fade-in">
@@ -76,13 +79,13 @@ const Registry = () => {
               <Search className="absolute left-3 top-2.5 w-4 h-4 text-muted-foreground" />
               <Input
                 placeholder="Search by name or certificate ID..."
-                className="pl-10"
+                className="pl-10 focus:ring-2 focus:ring-accent/20 transition-shadow"
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
               />
             </div>
-            <Select defaultValue="all">
-              <SelectTrigger className="w-40">
+            <Select value={statusFilter} onValueChange={setStatusFilter}>
+              <SelectTrigger className="w-40 hover:border-accent/50 transition-colors">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -92,7 +95,7 @@ const Registry = () => {
                 <SelectItem value="revoked">Revoked</SelectItem>
               </SelectContent>
             </Select>
-            <Button variant="outline" size="sm" className="gap-2">
+            <Button variant="outline" size="sm" className="gap-2 hover:bg-accent/5 hover:border-accent/50 transition-colors">
               <Filter className="w-4 h-4" /> More Filters
             </Button>
           </div>
@@ -117,7 +120,7 @@ const Registry = () => {
               {filtered.map((cert) => {
                 const status = statusConfig[cert.status as keyof typeof statusConfig];
                 return (
-                  <TableRow key={cert.id}>
+                  <TableRow key={cert.id} className="hover:bg-accent/5 transition-colors cursor-pointer">
                     <TableCell className="font-mono text-sm">{cert.id}</TableCell>
                     <TableCell className="font-medium">{cert.name}</TableCell>
                     <TableCell className="text-sm text-muted-foreground">{cert.course}</TableCell>
@@ -131,7 +134,7 @@ const Registry = () => {
                     <TableCell className="text-right">
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
-                          <Button variant="ghost" size="sm">
+                          <Button variant="ghost" size="sm" className="hover:bg-accent/10 transition-colors">
                             <MoreHorizontal className="w-4 h-4" />
                           </Button>
                         </DropdownMenuTrigger>
@@ -156,8 +159,8 @@ const Registry = () => {
       <div className="flex items-center justify-between text-sm text-muted-foreground">
         <span>Showing {filtered.length} of {certificates.length} certificates</span>
         <div className="flex gap-2">
-          <Button variant="outline" size="sm" disabled>Previous</Button>
-          <Button variant="outline" size="sm">Next</Button>
+          <Button variant="outline" size="sm" disabled className="hover:bg-accent/5 transition-colors">Previous</Button>
+          <Button variant="outline" size="sm" className="hover:bg-accent/5 hover:border-accent/50 transition-colors">Next</Button>
         </div>
       </div>
     </div>

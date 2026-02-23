@@ -157,28 +157,28 @@ const Index = () => {
               <div className="absolute -inset-4 rounded-2xl bg-yellow-100/20 blur-2xl opacity-60" />
               <div className="relative rotate-[2deg] md:rotate-[3deg] transition-all duration-300 ease-out hover:rotate-0 hover:scale-105">
                 <div className="relative rounded-2xl border border-slate-200 bg-white shadow-xl hover:shadow-2xl [--float-rotate:0deg] animate-[float_6s_ease-in-out_infinite]">
-                <div className="p-6 space-y-4">
-                  <p className="text-sm font-semibold tracking-tight text-foreground">Certificate Preview</p>
-                  <div className="aspect-[1.414/1] rounded-xl border border-slate-200 bg-white p-6 relative overflow-hidden">
-                    <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,hsl(43_90%_52%_/_0.06),transparent_65%)]" />
-                    <div className="relative z-10 h-full flex flex-col justify-between text-center">
-                      <div className="space-y-1.5">
-                        <div className="mx-auto w-10 h-10 rounded-full gold-gradient flex items-center justify-center">
-                          <BadgeCheck className="w-5 h-5 text-accent-foreground" />
+                  <div className="p-6 space-y-4">
+                    <p className="text-sm font-semibold tracking-tight text-foreground">Certificate Preview</p>
+                    <div className="aspect-[1.414/1] rounded-xl border border-slate-200 bg-white p-6 relative overflow-hidden">
+                      <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,hsl(43_90%_52%_/_0.06),transparent_65%)]" />
+                      <div className="relative z-10 h-full flex flex-col justify-between text-center">
+                        <div className="space-y-1.5">
+                          <div className="mx-auto w-10 h-10 rounded-full gold-gradient flex items-center justify-center">
+                            <BadgeCheck className="w-5 h-5 text-accent-foreground" />
+                          </div>
+                          <p className="text-xs uppercase tracking-wider text-slate-500">Certificate of Professional Completion</p>
+                          <h3 className="text-xl font-heading font-semibold tracking-tight text-foreground">Advanced Security Workshop</h3>
+                          <p className="text-sm text-slate-600">Awarded to {"{{RECIPIENT_NAME}}"}</p>
                         </div>
-                        <p className="text-xs uppercase tracking-wider text-slate-500">Certificate of Professional Completion</p>
-                        <h3 className="text-xl font-heading font-semibold tracking-tight text-foreground">Advanced Security Workshop</h3>
-                        <p className="text-sm text-slate-600">Awarded to {"{{RECIPIENT_NAME}}"}</p>
-                      </div>
 
-                      <div className="grid grid-cols-3 items-end text-xs text-slate-500 gap-2">
-                        <span className="text-left">Date: {"{{ISSUE_DATE}}"}</span>
-                        <div className="mx-auto w-16 h-16 rounded-md border-2 border-dashed border-accent/70 bg-accent/5" />
-                        <span className="text-right">Issuer Signature</span>
+                        <div className="grid grid-cols-3 items-end text-xs text-slate-500 gap-2">
+                          <span className="text-left">Date: {"{{ISSUE_DATE}}"}</span>
+                          <div className="mx-auto w-16 h-16 rounded-md border-2 border-dashed border-accent/70 bg-accent/5" />
+                          <span className="text-right">Issuer Signature</span>
+                        </div>
                       </div>
                     </div>
                   </div>
-                </div>
                 </div>
               </div>
             </div>
@@ -193,23 +193,28 @@ const Index = () => {
             <p className="text-slate-600 leading-relaxed">Production-ready frontend modules prepared for backend integration.</p>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-5 sm:gap-6">
             {features.map((feature) => (
-              <Card key={feature.title} className="group rounded-2xl card-shadow border-border/60 overflow-hidden transition-all duration-300 hover:-translate-y-1 hover:card-shadow-lg hover:border-accent/40">
-                <div className="aspect-[16/8] w-full overflow-hidden bg-gradient-to-br from-primary/5 to-accent/10 p-3 sm:p-4">
-                  <img
-                    src={feature.image}
-                    alt={feature.title}
-                    className="h-full w-full rounded-xl object-contain shadow-[0_10px_24px_rgba(13,27,58,0.12)] transition-transform duration-500 group-hover:scale-105"
-                    loading="lazy"
-                  />
-                </div>
-                <CardContent className="p-5 space-y-3">
-                  <div className="w-10 h-10 rounded-lg bg-accent/10 flex items-center justify-center transition-colors group-hover:bg-accent/20">
-                    <feature.icon className="w-5 h-5 text-accent" />
+              <Card key={feature.title} className="group rounded-2xl card-shadow border-border/60 overflow-hidden transition-all duration-300 hover:shadow-xl hover:-translate-y-1 hover:border-accent/40 bg-card">
+                <div className="aspect-[16/8] w-full overflow-hidden bg-gradient-to-br from-primary/5 to-accent/10 p-4 sm:p-5 relative">
+                  <div className="absolute inset-0 bg-grid-slate-200/50 [mask-image:linear-gradient(0deg,white,rgba(255,255,255,0.6))] dark:[mask-image:linear-gradient(0deg,black,rgba(0,0,0,0.6))]" />
+                  <div className="relative h-full w-full rounded-xl overflow-hidden shadow-lg transition-transform duration-500 group-hover:scale-[1.02]">
+                    <img
+                      src={feature.image}
+                      alt={feature.title}
+                      className="h-full w-full object-cover"
+                      loading="lazy"
+                    />
                   </div>
-                  <p className="font-semibold text-foreground">{feature.title}</p>
-                  <p className="text-sm text-muted-foreground leading-relaxed">{feature.description}</p>
+                </div>
+                <CardContent className="p-6 space-y-3">
+                  <div className="inline-flex h-10 w-10 items-center justify-center rounded-lg bg-accent/10 transition-colors group-hover:bg-accent/20">
+                    <feature.icon className="h-5 w-5 text-accent" />
+                  </div>
+                  <div>
+                    <h3 className="font-heading font-semibold text-lg text-foreground tracking-tight">{feature.title}</h3>
+                    <p className="text-sm text-muted-foreground leading-relaxed mt-1">{feature.description}</p>
+                  </div>
                 </CardContent>
               </Card>
             ))}
@@ -222,23 +227,25 @@ const Index = () => {
 
         <div className="h-px w-full bg-gradient-to-r from-transparent via-border to-transparent" />
 
-        <section className="space-y-7 bg-slate-50 p-5 sm:p-6 rounded-2xl">
+        <section className="space-y-7 bg-slate-50/50 p-5 sm:p-6 rounded-2xl">
           <div className="space-y-2">
             <h2 className="text-2xl md:text-3xl font-heading font-semibold tracking-tight text-foreground">How It Works</h2>
             <p className="text-slate-600 leading-relaxed">A simple workflow for secure certificate automation at scale.</p>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-5 sm:gap-6">
             {workflowSteps.map((step, index) => (
-              <div key={step.title} className="rounded-2xl border border-slate-200 bg-white p-5 space-y-3">
+              <div key={step.title} className="group relative rounded-2xl border border-border bg-card p-6 space-y-4 transition-all duration-300 hover:shadow-lg hover:-translate-y-1 hover:border-accent/30">
                 <div className="flex items-center justify-between">
-                  <div className="w-10 h-10 rounded-lg bg-accent/10 flex items-center justify-center">
-                    <step.icon className="w-5 h-5 text-accent" />
+                  <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-accent/10 text-accent transition-colors group-hover:bg-accent group-hover:text-accent-foreground">
+                    <step.icon className="h-6 w-6" />
                   </div>
-                  <span className="text-xs font-medium text-slate-500">Step {index + 1}</span>
+                  <span className="text-xs font-bold uppercase tracking-wider text-muted-foreground/60">Step {index + 1}</span>
                 </div>
-                <p className="text-base font-semibold tracking-tight text-foreground">{step.title}</p>
-                <p className="text-sm text-slate-600 leading-relaxed">{step.description}</p>
+                <div>
+                  <h3 className="text-lg font-heading font-semibold tracking-tight text-foreground">{step.title}</h3>
+                  <p className="mt-2 text-sm text-muted-foreground leading-relaxed">{step.description}</p>
+                </div>
               </div>
             ))}
           </div>
@@ -246,28 +253,37 @@ const Index = () => {
 
         <div className="h-px w-full bg-gradient-to-r from-transparent via-border to-transparent" />
 
-        <section className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-center bg-white p-5 sm:p-6 rounded-2xl">
-          <div className="space-y-4">
-            <h2 className="text-2xl md:text-3xl font-heading font-semibold tracking-tight text-foreground">Built for institutions that care about trust and speed</h2>
-            <p className="text-slate-600 leading-relaxed">
+        <section className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-center bg-card p-6 sm:p-8 rounded-2xl border border-border/50 shadow-sm overflow-hidden">
+          <div className="space-y-6 order-2 lg:order-1">
+            <h2 className="text-3xl font-heading font-bold tracking-tight text-foreground sm:text-4xl">
+              Built for institutions that care about trust <span className="text-accent">&</span> speed
+            </h2>
+            <p className="text-lg text-muted-foreground leading-relaxed">
               CertifyPro started as a focused solution for academic teams managing high-volume issuance and verification requests. The platform is designed with a modular, backend-ready frontend architecture so teams can scale from pilot to enterprise rollout with confidence.
             </p>
-            <div className="grid grid-cols-2 gap-3">
-              <div className="rounded-2xl border border-border bg-card p-4">
-                <p className="text-lg font-heading font-bold text-foreground">70%+</p>
-                <p className="text-xs text-slate-600">Faster issuance workflows</p>
+            <div className="grid grid-cols-2 gap-4 pt-2">
+              <div className="rounded-xl border border-border bg-background p-5 hover:border-accent/40 transition-colors">
+                <p className="text-3xl font-heading font-bold text-foreground">70%<span className="text-accent text-xl">+</span></p>
+                <p className="text-sm font-medium text-muted-foreground mt-1">Faster issuance workflows</p>
               </div>
-              <div className="rounded-2xl border border-border bg-card p-4">
-                <p className="text-lg font-heading font-bold text-foreground">99.9%</p>
-                <p className="text-xs text-slate-600">Verification reliability target</p>
+              <div className="rounded-xl border border-border bg-background p-5 hover:border-accent/40 transition-colors">
+                <p className="text-3xl font-heading font-bold text-foreground">99.9%</p>
+                <p className="text-sm font-medium text-muted-foreground mt-1">Verification reliability target</p>
               </div>
             </div>
+
+            <div className="pt-2">
+              <Button variant="ghost" className="group gap-2 px-0 hover:bg-transparent hover:text-accent">
+                Read our deployment guide <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
+              </Button>
+            </div>
           </div>
-          <div className="rounded-2xl border border-border/60 overflow-hidden card-shadow-lg">
+          <div className="order-1 lg:order-2 relative rounded-2xl overflow-hidden shadow-2xl transition-transform hover:scale-[1.02] duration-500">
+            <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent z-10" />
             <img
               src="https://images.unsplash.com/photo-1523240795612-9a054b0db644?auto=format&fit=crop&w=1200&q=80"
-              alt="Team collaborating on digital certification workflow"
-              className="h-full w-full object-cover"
+              alt="Students collaborating"
+              className="h-full w-full object-cover aspect-video"
               loading="lazy"
             />
           </div>
@@ -275,44 +291,44 @@ const Index = () => {
 
         <div className="h-px w-full bg-gradient-to-r from-transparent via-border to-transparent" />
 
-        <section className="space-y-7 bg-slate-50 p-5 sm:p-6 rounded-2xl">
+        <section className="space-y-7 bg-slate-50/50 p-5 sm:p-6 rounded-2xl">
           <TrustedInstitutionsSection />
 
-          <div className="rounded-2xl bg-white p-6 sm:p-7">
-            <div className="space-y-2 mb-6">
+          <div className="rounded-2xl bg-card p-6 sm:p-8 border border-border/50 shadow-sm transition-all hover:shadow-md">
+            <div className="space-y-2 mb-8">
               <h3 className="text-xl sm:text-2xl font-heading font-semibold tracking-tight text-foreground">Expected Impact for Institutions</h3>
-              <p className="text-sm sm:text-base text-slate-600 leading-relaxed max-w-3xl">
+              <p className="text-sm sm:text-base text-muted-foreground leading-relaxed max-w-3xl">
                 Here’s how institutions and training teams are expected to benefit from CertifyPro once deployed.
               </p>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-              <div className="flex items-start gap-3">
-                <div className="w-10 h-10 rounded-full bg-accent/10 flex items-center justify-center shrink-0">
-                  <Quote className="w-5 h-5 text-accent" />
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 sm:gap-8">
+              <div className="flex items-start gap-4 p-4 rounded-xl bg-muted/30 transition-colors hover:bg-muted/50">
+                <div className="h-10 w-10 shrink-0 rounded-full bg-accent/10 flex items-center justify-center">
+                  <Quote className="h-5 w-5 text-accent" />
                 </div>
                 <div className="space-y-3">
-                  <p className="text-sm sm:text-base text-slate-700 leading-relaxed">
+                  <p className="text-sm sm:text-base text-foreground/80 leading-relaxed italic">
                     “As faculty coordinators, we expect CertifyPro to significantly reduce manual certificate work and improve verification trust for students and employers.”
                   </p>
                   <div>
                     <p className="text-sm font-semibold text-foreground">Academic Program Coordinator</p>
-                    <p className="text-xs text-slate-500">Expected Use Case</p>
+                    <p className="text-xs text-muted-foreground">Expected Use Case</p>
                   </div>
                 </div>
               </div>
 
-              <div className="flex items-start gap-3">
-                <div className="w-10 h-10 rounded-full bg-accent/10 flex items-center justify-center shrink-0">
-                  <Quote className="w-5 h-5 text-accent" />
+              <div className="flex items-start gap-4 p-4 rounded-xl bg-muted/30 transition-colors hover:bg-muted/50">
+                <div className="h-10 w-10 shrink-0 rounded-full bg-accent/10 flex items-center justify-center">
+                  <Quote className="h-5 w-5 text-accent" />
                 </div>
                 <div className="space-y-3">
-                  <p className="text-sm sm:text-base text-slate-700 leading-relaxed">
+                  <p className="text-sm sm:text-base text-foreground/80 leading-relaxed italic">
                     “The verification-first workflow should help institutions maintain credibility and simplify certificate audits.”
                   </p>
                   <div>
                     <p className="text-sm font-semibold text-foreground">Training Institute Faculty</p>
-                    <p className="text-xs text-slate-500">Projected Feedback</p>
+                    <p className="text-xs text-muted-foreground">Projected Feedback</p>
                   </div>
                 </div>
               </div>
@@ -322,22 +338,22 @@ const Index = () => {
 
         <div className="h-px w-full bg-gradient-to-r from-transparent via-border to-transparent" />
 
-        <section className="space-y-7 bg-white p-5 sm:p-6 rounded-2xl">
+        <section className="space-y-7 bg-card p-5 sm:p-6 rounded-2xl border border-border/50 shadow-sm">
           <div className="space-y-2 text-center max-w-3xl mx-auto">
             <h2 className="text-2xl md:text-3xl font-heading font-semibold tracking-tight text-foreground">Security &amp; Compliance</h2>
-            <p className="text-slate-600 leading-relaxed">
+            <p className="text-muted-foreground leading-relaxed">
               CertifyPro ensures secure certificate issuance, trusted verification, and data protection aligned with institutional standards.
             </p>
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4 sm:gap-5">
             {securityHighlights.map((item) => (
-              <div key={item.title} className="rounded-xl border border-slate-200 bg-slate-50 p-5 space-y-3">
-                <div className="w-10 h-10 rounded-lg bg-accent/10 flex items-center justify-center">
-                  <item.icon className="w-5 h-5 text-accent" />
+              <div key={item.title} className="group rounded-xl border border-border bg-muted/30 p-5 space-y-3 transition-all hover:bg-muted/50 hover:border-accent/30 hover:shadow-sm">
+                <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-accent/10 text-accent transition-colors group-hover:bg-accent group-hover:text-accent-foreground">
+                  <item.icon className="h-5 w-5" />
                 </div>
                 <h3 className="text-base font-semibold tracking-tight text-foreground">{item.title}</h3>
-                <p className="text-sm text-slate-600 leading-relaxed">{item.description}</p>
+                <p className="text-sm text-muted-foreground leading-relaxed">{item.description}</p>
               </div>
             ))}
           </div>
@@ -345,7 +361,7 @@ const Index = () => {
 
         <div className="h-px w-full bg-gradient-to-r from-transparent via-border to-transparent" />
 
-        <section className="space-y-7 bg-slate-50 p-5 sm:p-6 rounded-2xl">
+        <section className="space-y-7 bg-slate-50/50 p-5 sm:p-6 rounded-2xl">
           <div className="space-y-2 text-center max-w-3xl mx-auto">
             <h2 className="text-2xl md:text-3xl font-heading font-semibold tracking-tight text-foreground">Frequently Asked Questions</h2>
             <p className="text-slate-600 leading-relaxed">
@@ -353,14 +369,14 @@ const Index = () => {
             </p>
           </div>
 
-          <div className="max-w-4xl mx-auto rounded-2xl border border-slate-200 bg-white px-5 sm:px-6">
+          <div className="max-w-4xl mx-auto rounded-2xl border border-border bg-card px-5 sm:px-6 shadow-sm">
             <Accordion type="single" collapsible className="w-full">
               {faqs.map((faq, index) => (
-                <AccordionItem key={faq.question} value={`faq-${index}`} className="border-slate-200">
-                  <AccordionTrigger className="text-left text-sm sm:text-base font-semibold tracking-tight text-foreground hover:no-underline hover:text-accent transition-colors">
+                <AccordionItem key={faq.question} value={`faq-${index}`} className="border-border/50">
+                  <AccordionTrigger className="text-left text-sm sm:text-base font-semibold tracking-tight text-foreground hover:no-underline hover:text-accent transition-colors py-4">
                     {faq.question}
                   </AccordionTrigger>
-                  <AccordionContent className="text-sm text-slate-600 leading-relaxed">
+                  <AccordionContent className="text-sm text-muted-foreground leading-relaxed pb-4">
                     {faq.answer}
                   </AccordionContent>
                 </AccordionItem>
@@ -371,31 +387,34 @@ const Index = () => {
 
         <div className="h-px w-full bg-gradient-to-r from-transparent via-border to-transparent" />
 
-        <section className="rounded-2xl bg-gradient-to-b from-slate-50 to-white p-8 sm:p-10 text-center border border-slate-200 space-y-5">
-          <h2 className="text-3xl md:text-4xl font-heading font-semibold tracking-tight text-foreground">
-            Start Issuing Secure Certificates Today
-          </h2>
-          <p className="text-slate-600 leading-relaxed max-w-3xl mx-auto">
-            Automate certificate generation, ensure trusted verification, and streamline academic or corporate credential workflows.
-          </p>
+        <section className="rounded-2xl bg-gradient-to-b from-card to-background p-8 sm:p-12 text-center border border-border/60 shadow-lg space-y-6 relative overflow-hidden">
+          <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,hsl(43,90%,50%,0.05),transparent_50%)]" />
+          <div className="relative z-10 space-y-6">
+            <h2 className="text-3xl md:text-5xl font-heading font-bold tracking-tight text-foreground drop-shadow-sm">
+              Start Issuing Secure Certificates Today
+            </h2>
+            <p className="text-muted-foreground text-lg leading-relaxed max-w-3xl mx-auto">
+              Automate certificate generation, ensure trusted verification, and streamline academic or corporate credential workflows.
+            </p>
 
-          <div className="flex flex-wrap justify-center items-center gap-3 pt-1">
-            <Link to="/login">
-              <Button className="gold-gradient text-accent-foreground gap-2 transition-all duration-200 ease-out hover:-translate-y-0.5 hover:shadow-lg hover:opacity-95">
-                Request Access <ArrowRight className="w-4 h-4" />
-              </Button>
-            </Link>
-            <Link to="/verify">
-              <Button variant="outline" className="bg-white border-slate-300 text-foreground hover:bg-slate-50 transition-all duration-200 ease-out hover:-translate-y-0.5 hover:shadow-md">
-                Verify Certificate
-              </Button>
-            </Link>
+            <div className="flex flex-wrap justify-center items-center gap-4 pt-2">
+              <Link to="/login">
+                <Button size="lg" className="gold-gradient text-accent-foreground gap-2 transition-all duration-300 hover:scale-105 hover:shadow-lg hover:shadow-accent/20">
+                  Request Access <ArrowRight className="w-4 h-4" />
+                </Button>
+              </Link>
+              <Link to="/verify">
+                <Button size="lg" variant="outline" className="bg-background/50 backdrop-blur-sm border-border hover:bg-muted/50 transition-all duration-300 hover:scale-105">
+                  Verify Certificate
+                </Button>
+              </Link>
+            </div>
           </div>
         </section>
 
         <LandingFooter />
-      </main>
-    </div>
+      </main >
+    </div >
   );
 };
 

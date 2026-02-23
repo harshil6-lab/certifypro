@@ -52,21 +52,21 @@ const About = () => {
         </section>
 
         <section className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <Card className="rounded-2xl card-shadow border-border/60">
+          <Card className="rounded-2xl card-shadow border-border/60 hover:card-shadow-lg hover:-translate-y-1 transition-all duration-300">
             <CardContent className="p-5 space-y-3">
               <Target className="w-5 h-5 text-accent" />
               <p className="font-semibold text-foreground">Mission</p>
               <p className="text-sm text-muted-foreground">Build trustworthy, scalable certificate experiences for institutions and learners.</p>
             </CardContent>
           </Card>
-          <Card className="rounded-2xl card-shadow border-border/60">
+          <Card className="rounded-2xl card-shadow border-border/60 hover:card-shadow-lg hover:-translate-y-1 transition-all duration-300">
             <CardContent className="p-5 space-y-3">
               <Users className="w-5 h-5 text-accent" />
               <p className="font-semibold text-foreground">Audience</p>
               <p className="text-sm text-muted-foreground">Universities, training companies, employers, and students needing reliable verification workflows.</p>
             </CardContent>
           </Card>
-          <Card className="rounded-2xl card-shadow border-border/60">
+          <Card className="rounded-2xl card-shadow border-border/60 hover:card-shadow-lg hover:-translate-y-1 transition-all duration-300">
             <CardContent className="p-5 space-y-3">
               <Lightbulb className="w-5 h-5 text-accent" />
               <p className="font-semibold text-foreground">Approach</p>

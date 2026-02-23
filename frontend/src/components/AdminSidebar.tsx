@@ -25,15 +25,15 @@ export function AdminSidebar() {
   const location = useLocation();
 
   return (
-    <aside className="w-64 min-h-screen bg-sidebar flex flex-col border-r border-sidebar-border">
+    <aside className="w-64 min-h-screen bg-sidebar flex flex-col border-r border-sidebar-border shadow-xl z-20 transition-all duration-300">
       {/* Logo */}
-      <div className="p-6 border-b border-sidebar-border">
-        <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-lg gold-gradient flex items-center justify-center">
+      <div className="p-6 border-b border-sidebar-border bg-sidebar/50 backdrop-blur-sm">
+        <div className="flex items-center gap-3 group">
+          <div className="w-10 h-10 rounded-xl gold-gradient flex items-center justify-center shadow-lg shadow-accent/20 transition-transform group-hover:scale-105">
             <img src={certifyProIcon} alt="CertifyPro Logo" className="h-5 w-5 object-contain" />
           </div>
           <div>
-            <h1 className="text-lg font-heading font-bold text-sidebar-accent-foreground tracking-tight">
+            <h1 className="text-lg font-heading font-bold text-sidebar-accent-foreground tracking-tight group-hover:text-white transition-colors">
               CertifyPro
             </h1>
             <p className="text-xs text-sidebar-muted">Certificate Authority</p>
@@ -42,26 +42,26 @@ export function AdminSidebar() {
       </div>
 
       {/* Navigation */}
-      <nav className="flex-1 p-4 space-y-1">
-        <p className="text-xs font-medium text-sidebar-muted uppercase tracking-wider px-3 mb-3">
+      <nav className="flex-1 p-4 space-y-1.5 overflow-y-auto custom-scrollbar">
+        <p className="text-xs font-bold text-sidebar-muted uppercase tracking-wider px-4 mb-3 mt-2">
           Management
         </p>
+
         {navItems.map((item) => {
           const isActive = location.pathname === item.url;
           return (
             <NavLink
               key={item.url}
               to={item.url}
-              className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${
-                isActive
-                  ? "bg-sidebar-accent text-sidebar-accent-foreground"
-                  : "text-sidebar-foreground hover:bg-sidebar-accent/50 hover:text-sidebar-accent-foreground"
-              }`}
+              className={`group flex items-center gap-3.5 px-4 py-3 rounded-lg text-[15px] font-medium transition-all duration-200 ${isActive
+                ? "bg-sidebar-accent/15 text-sidebar-primary shadow-sm border border-sidebar-border/60 translate-x-1"
+                : "text-sidebar-foreground/80 hover:bg-sidebar-accent/10 hover:text-sidebar-accent-foreground hover:translate-x-1"
+                }`}
             >
-              <item.icon className={`w-4 h-4 ${isActive ? "text-sidebar-primary" : ""}`} />
+              <item.icon className={`w-5 h-5 transition-colors ${isActive ? "text-sidebar-primary" : "text-sidebar-muted/80 group-hover:text-sidebar-primary"}`} />
               {item.title}
               {isActive && (
-                <div className="ml-auto w-1.5 h-1.5 rounded-full bg-sidebar-primary" />
+                <div className="ml-auto w-1.5 h-1.5 rounded-full bg-sidebar-primary shadow-lg shadow-primary/50" />
               )}
             </NavLink>
           );
@@ -69,24 +69,23 @@ export function AdminSidebar() {
       </nav>
 
       {/* Bottom */}
-      <div className="p-4 border-t border-sidebar-border space-y-1">
+      <div className="p-4 border-t border-sidebar-border space-y-1 bg-sidebar/30">
         <NavLink
           to="/help"
-          className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-sidebar-foreground hover:bg-sidebar-accent/50 transition-colors"
+          className="group flex items-center gap-3.5 px-4 py-3 rounded-lg text-[15px] font-medium text-sidebar-foreground/80 hover:bg-sidebar-accent/10 hover:text-sidebar-accent-foreground transition-all duration-200"
         >
-          <HelpCircle className="w-4 h-4" />
+          <HelpCircle className="w-5 h-5 text-sidebar-muted/80 group-hover:text-sidebar-primary transition-colors" />
           Help & Manual
         </NavLink>
-        <NavLink
-          to="/"
+        <button
           onClick={() => {
             void signOutUser();
           }}
-          className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-sidebar-foreground hover:bg-sidebar-accent/50 transition-colors"
+          className="w-full group flex items-center gap-3.5 px-4 py-3 rounded-lg text-[15px] font-medium text-sidebar-foreground/80 hover:bg-destructive/10 hover:text-destructive transition-all duration-200"
         >
-          <LogOut className="w-4 h-4" />
+          <LogOut className="w-5 h-5 text-sidebar-muted/80 group-hover:text-destructive transition-colors" />
           Sign Out
-        </NavLink>
+        </button>
       </div>
     </aside>
   );

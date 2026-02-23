@@ -122,7 +122,7 @@ const ResetPassword = () => {
     const {
       data: { subscription },
     } = supabase
-      ? supabase.auth.onAuthStateChange((event, session) => {
+        ? supabase.auth.onAuthStateChange((event, session) => {
           if (!mounted) {
             return;
           }
@@ -138,7 +138,7 @@ const ResetPassword = () => {
             setIsRecoverySession(false);
           }
         })
-      : { data: { subscription: { unsubscribe: () => undefined } } };
+        : { data: { subscription: { unsubscribe: () => undefined } } };
 
     return () => {
       mounted = false;
@@ -239,7 +239,7 @@ const ResetPassword = () => {
                   value={newPassword}
                   onChange={(event) => setNewPassword(event.target.value)}
                   placeholder="Enter new password"
-                  className="h-11"
+                  className="h-11 bg-background/50 border-input/60 focus-visible:ring-offset-0 focus-visible:ring-2 focus-visible:ring-ring transition-all"
                 />
               </div>
 
@@ -254,7 +254,7 @@ const ResetPassword = () => {
                   value={confirmPassword}
                   onChange={(event) => setConfirmPassword(event.target.value)}
                   placeholder="Confirm new password"
-                  className="h-11"
+                  className="h-11 bg-background/50 border-input/60 focus-visible:ring-offset-0 focus-visible:ring-2 focus-visible:ring-ring transition-all"
                 />
               </div>
 
@@ -281,7 +281,7 @@ const ResetPassword = () => {
 
               <Button
                 type="button"
-                className="w-full h-11 gold-gradient text-accent-foreground font-semibold"
+                className="w-full h-11 gold-gradient text-accent-foreground font-semibold hover:opacity-90 transition-opacity"
                 disabled={!canSubmit}
                 onClick={() => void handleSubmit()}
               >

@@ -49,21 +49,21 @@ const AdminNavbar = () => {
   };
 
   return (
-    <header className="sticky top-0 z-40 w-full border-b border-slate-700 bg-gradient-to-r from-slate-800 via-slate-800 to-slate-900 shadow-[0_10px_30px_rgba(0,0,0,0.3)]">
+    <header className="sticky top-0 z-40 w-full border-b border-sidebar-border bg-sidebar/95 backdrop-blur-md shadow-lg transition-all duration-300">
       <div className="mx-auto flex min-h-16 max-w-7xl items-center gap-4 px-4 sm:px-6">
-        <div className="flex items-center shrink-0 pr-3">
-          <img src={certifyProLogo} alt="CertifyPro Logo" className="h-9 sm:h-10 w-auto object-contain" />
+        <div className="flex items-center shrink-0 pr-3 transition-transform hover:scale-105 duration-300">
+          <img src={certifyProLogo} alt="CertifyPro Logo" className="h-9 sm:h-10 w-auto object-contain drop-shadow-md" />
         </div>
 
-        <nav className="hidden xl:flex flex-1 min-w-0 items-center justify-center gap-0.5">
+        <nav className="hidden xl:flex flex-1 min-w-0 items-center justify-center gap-1">
           {navItems.map((item) => (
             <NavLink
               key={item.url}
               to={item.url}
-              className="inline-flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium text-slate-300 transition-all duration-200 hover:bg-white/10 hover:text-white"
-              activeClassName="bg-amber-500/20 text-amber-300 ring-1 ring-amber-400/50 shadow-sm"
+              className="group inline-flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium text-sidebar-foreground transition-all duration-200 hover:bg-sidebar-accent/50 hover:text-sidebar-accent-foreground"
+              activeClassName="bg-sidebar-accent text-sidebar-primary ring-1 ring-sidebar-border shadow-sm"
             >
-              <item.icon className="h-4 w-4" />
+              <item.icon className="h-4 w-4 transition-colors group-hover:text-sidebar-primary" />
               <span className="hidden sm:inline">{item.title}</span>
             </NavLink>
           ))}
@@ -75,73 +75,67 @@ const AdminNavbar = () => {
               <Button
                 variant="ghost"
                 size="icon"
-                className="xl:hidden text-slate-300 hover:bg-white/10 hover:text-white hover:border-slate-600"
+                className="xl:hidden text-sidebar-foreground hover:bg-sidebar-accent/50 hover:text-sidebar-accent-foreground"
                 aria-label="Open navigation menu"
               >
                 <Menu className="h-5 w-5" />
               </Button>
             </SheetTrigger>
-            <SheetContent side="left" className="bg-gradient-to-b from-slate-900 to-slate-950 border-slate-700">
+            <SheetContent side="left" className="bg-sidebar border-sidebar-border">
               <SheetHeader>
-                <SheetTitle className="flex items-center gap-2 text-white">
+                <SheetTitle className="flex items-center gap-2 text-sidebar-accent-foreground">
                   <img src={certifyProLogo} alt="CertifyPro Logo" className="h-8 w-auto object-contain" />
                 </SheetTitle>
               </SheetHeader>
-              <div className="mt-6 space-y-2">
+              <div className="mt-8 space-y-3">
                 {navItems.map((item) => (
                   <SheetClose key={item.url} asChild>
                     <NavLink
                       to={item.url}
-                      className="flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-slate-300 hover:bg-white/10 hover:text-white transition-all duration-200"
-                      activeClassName="bg-amber-500/20 text-amber-300 ring-1 ring-amber-400/50"
+                      className="flex items-center gap-4 rounded-xl px-4 py-3 text-[15px] font-medium text-sidebar-foreground transition-all duration-200 hover:bg-sidebar-accent/10 hover:text-sidebar-accent-foreground"
+                      activeClassName="bg-sidebar-accent/15 text-sidebar-primary ring-1 ring-sidebar-border"
                     >
-                      <item.icon className="h-4 w-4" />
+                      <item.icon className="h-5 w-5" />
                       {item.title}
                     </NavLink>
                   </SheetClose>
                 ))}
 
-                <div className="my-3 h-px bg-slate-700" />
+                <div className="my-6 h-px bg-sidebar-border/60" />
 
                 <SheetClose asChild>
                   <NavLink
                     to="/dashboard/profile"
-                    className="flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-slate-300 hover:bg-white/10 hover:text-white transition-all duration-200"
-                    activeClassName="bg-amber-500/20 text-amber-300 ring-1 ring-amber-400/50"
+                    className="flex items-center gap-4 rounded-xl px-4 py-3 text-[15px] font-medium text-sidebar-foreground hover:bg-sidebar-accent/10 hover:text-sidebar-accent-foreground transition-all duration-200"
+                    activeClassName="bg-sidebar-accent/15 text-sidebar-primary ring-1 ring-sidebar-border"
                   >
-                    <UserCircle className="h-4 w-4" />
+                    <UserCircle className="h-5 w-5" />
                     My Profile
                   </NavLink>
                 </SheetClose>
-                <SheetClose asChild>
-                  <NavLink
-                    to="/dashboard/profile?section=security"
-                    className="flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-slate-300 hover:bg-white/10 hover:text-white transition-all duration-200"
-                  >
-                    <Shield className="h-4 w-4" />
-                    Account Settings
-                  </NavLink>
-                </SheetClose>
+
                 <SheetClose asChild>
                   <NavLink
                     to="/help"
-                    className="flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-slate-300 hover:bg-white/10 hover:text-white transition-all duration-200"
-                    activeClassName="bg-amber-500/20 text-amber-300 ring-1 ring-amber-400/50"
+                    className="flex items-center gap-4 rounded-xl px-4 py-3 text-[15px] font-medium text-sidebar-foreground hover:bg-sidebar-accent/10 hover:text-sidebar-accent-foreground transition-all duration-200"
+                    activeClassName="bg-sidebar-accent/15 text-sidebar-primary ring-1 ring-sidebar-border"
                   >
-                    <HelpCircle className="h-4 w-4" />
+                    <HelpCircle className="h-5 w-5" />
                     User Manual
                   </NavLink>
                 </SheetClose>
-                <SheetClose asChild>
-                  <NavLink
-                    to="/"
-                    onClick={handleSignOut}
-                    className="flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-slate-300 hover:bg-white/10 hover:text-white transition-all duration-200"
-                  >
-                    <LogOut className="h-4 w-4" />
-                    Sign Out
-                  </NavLink>
-                </SheetClose>
+
+                <div className="mt-4 pt-4 border-t border-sidebar-border/60">
+                  <SheetClose asChild>
+                    <button
+                      onClick={handleSignOut}
+                      className="w-full flex items-center gap-4 rounded-xl px-4 py-3 text-[15px] font-medium text-sidebar-foreground hover:bg-destructive/10 hover:text-destructive transition-all duration-200 text-left"
+                    >
+                      <LogOut className="h-5 w-5" />
+                      Sign Out
+                    </button>
+                  </SheetClose>
+                </div>
               </div>
             </SheetContent>
           </Sheet>

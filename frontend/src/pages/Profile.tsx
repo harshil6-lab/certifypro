@@ -150,16 +150,16 @@ const Profile = () => {
   return (
     <div className="p-8 max-w-[1240px] mx-auto space-y-6">
       <div className="grid grid-cols-1 lg:grid-cols-4 gap-6 items-start">
-        <Card className="card-shadow lg:col-span-1 lg:sticky lg:top-24">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-base font-heading">Profile Menu</CardTitle>
+        <Card className="card-shadow lg:col-span-1 lg:sticky lg:top-24 h-fit transition-all duration-300">
+          <CardHeader className="pb-3 border-b border-border/40">
+            <CardTitle className="text-base font-heading font-semibold">Profile Menu</CardTitle>
           </CardHeader>
-          <CardContent className="space-y-2">
+          <CardContent className="space-y-1 pt-4">
             {sectionLinks.map((item) => (
               <a
                 key={item.id}
                 href={`#${item.id}`}
-                className="block rounded-md border border-border px-3 py-2 text-sm text-foreground hover:bg-muted/60 transition-colors"
+                className="flex items-center gap-2 rounded-md px-3 py-2 text-sm font-medium text-muted-foreground transition-all hover:bg-accent/10 hover:text-accent hover:pl-4 focus:bg-accent/10 focus:text-accent"
               >
                 {item.label}
               </a>
@@ -167,65 +167,83 @@ const Profile = () => {
           </CardContent>
         </Card>
 
-        <div className="lg:col-span-3 space-y-6">
-          <Card id="overview" className="card-shadow">
-            <CardContent className="p-6">
-              <div className="flex flex-col md:flex-row md:items-center gap-5">
-                <Avatar className="h-24 w-24 border border-border">
-                  <AvatarFallback className="bg-primary/10 text-primary text-2xl font-semibold">SC</AvatarFallback>
+        <div className="lg:col-span-3 space-y-8 animate-fade-in">
+          <Card id="overview" className="card-shadow overflow-hidden">
+            <div className="h-32 bg-gradient-to-r from-primary/10 via-accent/5 to-background border-b border-border/50"></div>
+            <CardContent className="p-6 relative">
+              <div className="flex flex-col md:flex-row md:items-end gap-6 -mt-16 mb-6">
+                <Avatar className="h-32 w-32 border-4 border-background shadow-xl">
+                  <AvatarFallback className="bg-primary/10 text-primary text-4xl font-heading font-bold">SC</AvatarFallback>
                 </Avatar>
 
-                <div className="space-y-2">
-                  <h1 className="text-2xl font-heading font-bold text-foreground">{profile.fullName}</h1>
+                <div className="space-y-2 pb-2">
+                  <h1 className="text-3xl font-heading font-bold text-foreground">{profile.fullName}</h1>
                   <div className="flex flex-wrap items-center gap-2">
-                    <Badge className={profile.role === "Super Admin" ? "gold-gradient text-accent-foreground" : ""}>
+                    <Badge className={profile.role === "Super Admin" ? "gold-gradient text-accent-foreground shadow-sm" : "bg-secondary text-secondary-foreground"}>
                       {profile.role}
                     </Badge>
-                    <Badge variant="outline">Enterprise Account</Badge>
+                    <Badge variant="outline" className="border-accent/40 text-muted-foreground bg-accent/5">Enterprise Account</Badge>
                   </div>
-                  <p className="text-sm text-muted-foreground flex items-center gap-1.5">
-                    <Building2 className="w-4 h-4" /> {profile.organization}
-                  </p>
-                  <p className="text-sm text-muted-foreground flex items-center gap-1.5">
-                    <CalendarDays className="w-4 h-4" /> Joined: {profile.joined}
-                  </p>
                 </div>
               </div>
 
-              <div className="mt-5 space-y-2">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
+                <div className="flex items-center gap-3 p-3 rounded-lg border border-border/50 bg-muted/20">
+                  <Building2 className="w-5 h-5 text-muted-foreground" />
+                  <div>
+                    <p className="text-xs text-muted-foreground">Organization</p>
+                    <p className="text-sm font-medium">{profile.organization}</p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-3 p-3 rounded-lg border border-border/50 bg-muted/20">
+                  <CalendarDays className="w-5 h-5 text-muted-foreground" />
+                  <div>
+                    <p className="text-xs text-muted-foreground">Member Since</p>
+                    <p className="text-sm font-medium">{profile.joined}</p>
+                  </div>
+                </div>
+              </div>
+
+              <div className="space-y-3">
                 <div className="flex items-center justify-between text-sm">
-                  <span className="text-muted-foreground">Profile Completion</span>
-                  <span className="font-medium text-foreground">{completionScore}%</span>
+                  <span className="font-medium text-muted-foreground">Profile Completion</span>
+                  <span className="font-bold text-accent">{completionScore}%</span>
                 </div>
-                <Progress value={completionScore} />
+                <Progress value={completionScore} className="h-2" />
               </div>
 
-              <div className="mt-5 grid grid-cols-1 sm:grid-cols-3 gap-3">
-                <Card className="border border-border">
-                  <CardContent className="p-4 flex items-center justify-between">
+              <div className="mt-8 grid grid-cols-1 sm:grid-cols-3 gap-4">
+                <Card className="group border border-border/60 bg-card hover:border-accent/30 hover:shadow-lg hover:-translate-y-1 transition-all duration-300">
+                  <CardContent className="p-5 flex items-center justify-between">
                     <div>
-                      <p className="text-xs text-muted-foreground">Templates Created</p>
-                      <p className="text-xl font-heading font-bold">24</p>
+                      <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Templates</p>
+                      <p className="text-2xl font-heading font-bold text-foreground mt-1">24</p>
                     </div>
-                    <FileText className="w-5 h-5 text-accent" />
+                    <div className="h-10 w-10 rounded-full bg-accent/10 flex items-center justify-center group-hover:bg-accent/20 transition-colors">
+                      <FileText className="w-5 h-5 text-accent" />
+                    </div>
                   </CardContent>
                 </Card>
-                <Card className="border border-border">
-                  <CardContent className="p-4 flex items-center justify-between">
+                <Card className="group border border-border/60 bg-card hover:border-accent/30 hover:shadow-lg hover:-translate-y-1 transition-all duration-300">
+                  <CardContent className="p-5 flex items-center justify-between">
                     <div>
-                      <p className="text-xs text-muted-foreground">Certificates Issued</p>
-                      <p className="text-xl font-heading font-bold">1,280</p>
+                      <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Certificates</p>
+                      <p className="text-2xl font-heading font-bold text-foreground mt-1">1,280</p>
                     </div>
-                    <Shield className="w-5 h-5 text-accent" />
+                    <div className="h-10 w-10 rounded-full bg-accent/10 flex items-center justify-center group-hover:bg-accent/20 transition-colors">
+                      <Shield className="w-5 h-5 text-accent" />
+                    </div>
                   </CardContent>
                 </Card>
-                <Card className="border border-border">
-                  <CardContent className="p-4 flex items-center justify-between">
+                <Card className="group border border-border/60 bg-card hover:border-accent/30 hover:shadow-lg hover:-translate-y-1 transition-all duration-300">
+                  <CardContent className="p-5 flex items-center justify-between">
                     <div>
-                      <p className="text-xs text-muted-foreground">Active Admins</p>
-                      <p className="text-xl font-heading font-bold">6</p>
+                      <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Admins</p>
+                      <p className="text-2xl font-heading font-bold text-foreground mt-1">6</p>
                     </div>
-                    <Users className="w-5 h-5 text-accent" />
+                    <div className="h-10 w-10 rounded-full bg-accent/10 flex items-center justify-center group-hover:bg-accent/20 transition-colors">
+                      <Users className="w-5 h-5 text-accent" />
+                    </div>
                   </CardContent>
                 </Card>
               </div>
@@ -233,36 +251,44 @@ const Profile = () => {
           </Card>
 
           <Card className="card-shadow">
-            <CardHeader>
-              <CardTitle className="text-lg font-heading">Personal Information</CardTitle>
+            <CardHeader className="border-b border-border/40 pb-4">
+              <CardTitle className="text-lg font-heading flex items-center gap-2">
+                <UserCircle2 className="w-5 h-5 text-accent" /> Personal Information
+              </CardTitle>
             </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="space-y-1.5">
-                  <label className="text-sm font-medium">Full Name</label>
-                  <Input value={profile.fullName} onChange={(e) => onFieldChange("fullName", e.target.value)} />
+            <CardContent className="space-y-6 pt-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="space-y-2">
+                  <label className="text-sm font-medium text-muted-foreground">Full Name</label>
+                  <Input
+                    value={profile.fullName}
+                    onChange={(e) => onFieldChange("fullName", e.target.value)}
+                    className="h-11 bg-background/50 focus-visible:ring-offset-0 transition-all"
+                  />
                 </div>
-                <div className="space-y-1.5">
-                  <label className="text-sm font-medium">Email</label>
-                  <Input value={profile.email} readOnly className="bg-muted/40" />
+                <div className="space-y-2">
+                  <label className="text-sm font-medium text-muted-foreground">Email</label>
+                  <Input value={profile.email} readOnly className="h-11 bg-muted/40 text-muted-foreground" />
                 </div>
-                <div className="space-y-1.5">
-                  <label className="text-sm font-medium">Phone</label>
-                  <Input value={profile.phone} onChange={(e) => onFieldChange("phone", e.target.value)} />
+                <div className="space-y-2">
+                  <label className="text-sm font-medium text-muted-foreground">Phone</label>
+                  <Input value={profile.phone} onChange={(e) => onFieldChange("phone", e.target.value)} className="h-11 bg-background/50 focus-visible:ring-offset-0 transition-all" />
                 </div>
-                <div className="space-y-1.5">
-                  <label className="text-sm font-medium">Department</label>
-                  <Input value={profile.department} onChange={(e) => onFieldChange("department", e.target.value)} />
+                <div className="space-y-2">
+                  <label className="text-sm font-medium text-muted-foreground">Department</label>
+                  <Input value={profile.department} onChange={(e) => onFieldChange("department", e.target.value)} className="h-11 bg-background/50 focus-visible:ring-offset-0 transition-all" />
                 </div>
-                <div className="space-y-1.5 md:col-span-2">
-                  <label className="text-sm font-medium">Designation</label>
-                  <Input value={profile.designation} onChange={(e) => onFieldChange("designation", e.target.value)} />
+                <div className="space-y-2 md:col-span-2">
+                  <label className="text-sm font-medium text-muted-foreground">Designation</label>
+                  <Input value={profile.designation} onChange={(e) => onFieldChange("designation", e.target.value)} className="h-11 bg-background/50 focus-visible:ring-offset-0 transition-all" />
                 </div>
               </div>
 
-              <Button onClick={saveChanges} disabled={!hasChanges} className="gap-2">
-                <Save className="w-4 h-4" /> Save Changes
-              </Button>
+              <div className="flex justify-end pt-4">
+                <Button onClick={saveChanges} disabled={!hasChanges} className="gap-2 gold-gradient text-accent-foreground shadow-md transition-all hover:opacity-90">
+                  <Save className="w-4 h-4" /> Save Changes
+                </Button>
+              </div>
             </CardContent>
           </Card>
 
