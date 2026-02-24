@@ -42,30 +42,30 @@ const AccessControl = () => {
           <h1 className="text-3xl font-heading font-bold text-foreground">Access Control</h1>
           <p className="text-muted-foreground mt-1">Manage administrator access and permissions</p>
         </div>
-        <Button className="gold-gradient text-accent-foreground hover:opacity-90 gap-2">
+        <Button className="gold-gradient text-accent-foreground hover:opacity-90 transition-opacity gap-2 shadow-md">
           <UserPlus className="w-4 h-4" /> Invite Admin
         </Button>
       </div>
 
       {/* Invite card */}
-      <Card className="card-shadow border-2 border-dashed border-accent/30">
+      <Card className="card-shadow border-2 border-dashed border-accent/30 hover:border-accent/50 transition-colors">
         <CardContent className="p-5">
           <div className="flex flex-wrap items-end gap-4">
             <div className="flex-1 min-w-[240px]">
               <label className="text-sm font-medium text-foreground mb-1.5 block">Invite by Email</label>
               <div className="relative">
                 <Mail className="absolute left-3 top-2.5 w-4 h-4 text-muted-foreground" />
-                <Input placeholder="colleague@institution.edu" className="pl-10" />
+                <Input placeholder="colleague@institution.edu" className="pl-10 focus:ring-2 focus:ring-accent/20 transition-shadow" />
               </div>
             </div>
             <div className="w-40">
               <label className="text-sm font-medium text-foreground mb-1.5 block">Role</label>
-              <select className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm">
+              <select className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus:ring-2 focus:ring-accent/20 focus:outline-none transition-shadow">
                 <option>Admin</option>
                 <option>Super Admin</option>
               </select>
             </div>
-            <Button className="gap-2">
+            <Button className="gap-2 gold-gradient text-accent-foreground hover:opacity-90 transition-opacity">
               <UserPlus className="w-4 h-4" /> Send Invite
             </Button>
           </div>
@@ -92,7 +92,7 @@ const AccessControl = () => {
             </TableHeader>
             <TableBody>
               {admins.map((admin) => (
-                <TableRow key={admin.email}>
+                <TableRow key={admin.email} className="hover:bg-accent/5 transition-colors">
                   <TableCell>
                     <div className="flex items-center gap-3">
                       <Avatar className="h-9 w-9">
@@ -121,7 +121,7 @@ const AccessControl = () => {
                   <TableCell className="text-right">
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" size="sm">
+                        <Button variant="ghost" size="sm" className="hover:bg-accent/10 transition-colors">
                           <MoreHorizontal className="w-4 h-4" />
                         </Button>
                       </DropdownMenuTrigger>

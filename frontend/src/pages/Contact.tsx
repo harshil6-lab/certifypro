@@ -27,7 +27,7 @@ const Contact = () => {
         </section>
 
         <section className="grid grid-cols-1 lg:grid-cols-2 gap-5">
-          <Card className="rounded-2xl card-shadow border-border/60 bg-card/80">
+          <Card className="rounded-2xl card-shadow border-border/60 bg-card/80 hover:card-shadow-lg transition-all duration-300">
             <CardContent className="p-6 space-y-4">
               <p className="text-lg font-semibold text-foreground">Email Contacts</p>
               <p className="text-sm text-muted-foreground">Connect directly with our team via the following addresses:</p>
@@ -36,7 +36,7 @@ const Contact = () => {
                   <a
                     key={email}
                     href={`mailto:${email}`}
-                    className="inline-flex items-center gap-2 rounded-full border border-border/70 bg-background px-3 py-1.5 text-xs sm:text-sm text-foreground hover:border-accent/40 hover:bg-accent/5 transition-colors"
+                    className="inline-flex items-center gap-2 rounded-full border border-border/70 bg-background px-3 py-1.5 text-xs sm:text-sm text-foreground hover:border-accent/40 hover:bg-accent/5 transition-all duration-200 hover:shadow-sm"
                   >
                     <Mail className="w-4 h-4 text-accent" />
                     {email}
@@ -46,14 +46,14 @@ const Contact = () => {
             </CardContent>
           </Card>
 
-          <Card className="rounded-2xl card-shadow border-border/60 bg-card/80">
+          <Card className="rounded-2xl card-shadow border-border/60 bg-card/80 hover:card-shadow-lg transition-all duration-300">
             <CardContent className="p-6 space-y-4">
               <p className="text-lg font-semibold text-foreground">Send a Message</p>
               <div className="space-y-3">
-                <Input placeholder="Name" />
-                <Input placeholder="Email" type="email" />
-                <Textarea placeholder="Message" className="min-h-32" />
-                <Button className="w-full gold-gradient text-accent-foreground gap-2">
+                <Input placeholder="Name" className="focus:ring-2 focus:ring-accent/20 transition-shadow" />
+                <Input placeholder="Email" type="email" className="focus:ring-2 focus:ring-accent/20 transition-shadow" />
+                <Textarea placeholder="Message" className="min-h-32 focus:ring-2 focus:ring-accent/20 transition-shadow" />
+                <Button className="w-full gold-gradient text-accent-foreground gap-2 hover:opacity-90 transition-opacity shadow-md">
                   <Send className="w-4 h-4" /> Send Message
                 </Button>
               </div>

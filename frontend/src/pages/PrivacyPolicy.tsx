@@ -5,12 +5,12 @@ const PrivacyPolicy = () => {
   return (
     <div className="min-h-screen flex flex-col bg-gradient-to-b from-background via-background to-muted/20">
       <PublicNavbar />
-      
+
       <main className="flex-1">
         <div className="mx-auto max-w-[1000px] px-4 sm:px-6 lg:px-8 py-12 md:py-16">
           {/* Header */}
           <div className="mb-10 md:mb-12">
-            <h1 className="text-3xl md:text-4xl lg:text-5xl font-bold text-foreground mb-3">
+            <h1 className="text-3xl md:text-4xl lg:text-5xl font-heading font-bold text-foreground mb-3 tracking-tight">
               Privacy Policy — CertifyPro
             </h1>
             <p className="text-sm text-muted-foreground">
@@ -19,20 +19,20 @@ const PrivacyPolicy = () => {
           </div>
 
           {/* Content */}
-          <div className="prose prose-slate dark:prose-invert max-w-none space-y-8">
-            
+          <div className="prose prose-slate dark:prose-invert max-w-none space-y-8 font-sans">
+
             {/* Introduction */}
-            <section>
-              <p className="text-muted-foreground leading-relaxed mb-4">
+            <section className="bg-card/50 backdrop-blur-sm p-6 rounded-xl border border-border/50 shadow-sm">
+              <p className="text-muted-foreground leading-relaxed">
                 CertifyPro ("we," "our," or "us") provides a certificate automation and verification platform designed for educational institutions, training organizations, and enterprises. We are committed to protecting your privacy and ensuring transparency about how your data is collected, used, and protected.
               </p>
             </section>
 
             {/* Information We Collect */}
             <section>
-              <h2 className="text-2xl font-bold text-foreground mb-4">1. Information We Collect</h2>
-              
-              <h3 className="text-xl font-semibold text-foreground mb-3 mt-6">A. Account Information</h3>
+              <h2 className="text-2xl font-heading font-bold text-foreground mb-4">1. Information We Collect</h2>
+
+              <h3 className="text-xl font-heading font-semibold text-foreground mb-3 mt-6">A. Account Information</h3>
               <p className="text-muted-foreground leading-relaxed mb-3">
                 When administrators or organizations register:
               </p>
@@ -43,7 +43,7 @@ const PrivacyPolicy = () => {
                 <li>Role or designation</li>
                 <li>Authentication credentials</li>
               </ul>
-              
+
               <h3 className="text-xl font-semibold text-foreground mb-3 mt-6">B. Certificate Data</h3>
               <p className="text-muted-foreground leading-relaxed mb-3">
                 To generate and verify certificates:

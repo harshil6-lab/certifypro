@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState, type DragEvent } from "react";
-import { Upload, QrCode, Info, Move, Loader2, Sparkles, WandSparkles, Eye, Pencil } from "lucide-react";
+import { Upload, QrCode, Info, Move, Loader2, Sparkles, WandSparkles, Eye, Pencil, ChevronLeft, ChevronRight, LayoutGrid } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -51,6 +51,8 @@ const Templates = () => {
   const [modalMode, setModalMode] = useState<"preview" | "edit">("preview");
   const [draftByTemplate, setDraftByTemplate] = useState<Record<string, CertificateDraft>>({});
   const [loading, setLoading] = useState(true);
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 6;
 
   const [dragActive, setDragActive] = useState(false);
   const [uploadedTemplateName, setUploadedTemplateName] = useState("sample-certificate-layout.pdf");
@@ -110,6 +112,17 @@ const Templates = () => {
     }
     return officialTemplates.filter((template) => template.category === selectedCategory);
   }, [selectedCategory]);
+
+  // Reset to page 1 when category changes
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [selectedCategory]);
+
+  const totalPages = Math.ceil(filteredTemplates.length / itemsPerPage);
+  const paginatedTemplates = filteredTemplates.slice(
+    (currentPage - 1) * itemsPerPage,
+    currentPage * itemsPerPage
+  );
 
   const currentDraft = selectedTemplate
     ? draftByTemplate[selectedTemplate.id] ?? normalizeDraft({}, selectedTemplate.title)
@@ -189,7 +202,10 @@ const Templates = () => {
                     key={category}
                     variant={selectedCategory === category ? "default" : "outline"}
                     size="sm"
-                    className={selectedCategory === category ? "gold-gradient text-accent-foreground" : ""}
+                    className={`transition-all duration-200 ${selectedCategory === category
+                      ? "gold-gradient text-accent-foreground shadow-sm"
+                      : "hover:border-accent/50 hover:bg-accent/5"
+                      }`}
                     onClick={() => setSelectedCategory(category)}
                   >
                     {category}
@@ -197,22 +213,48 @@ const Templates = () => {
                 ))}
               </div>
 
-              <p className="text-xs text-muted-foreground">
-                Editable fields only: Recipient Name, Certificate Title, Description, Issuer Signature 1, Authority Signature 2, Date Issued, Logo Upload. QR placement is locked.
-              </p>
+              <div className="flex items-center justify-between text-xs text-muted-foreground border-b border-border pb-3">
+                <p>Showing {paginatedTemplates.length} of {filteredTemplates.length} templates</p>
+                <div className="flex items-center gap-2">
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    className="h-7 w-7"
+                    onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                    disabled={currentPage === 1}
+                  >
+                    <ChevronLeft className="h-4 w-4" />
+                  </Button>
+                  <span className="font-medium text-foreground">
+                    Page {currentPage} / {Math.max(1, totalPages)}
+                  </span>
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    className="h-7 w-7"
+                    onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                    disabled={currentPage === totalPages || totalPages === 0}
+                  >
+                    <ChevronRight className="h-4 w-4" />
+                  </Button>
+                </div>
+              </div>
 
               {loading ? (
-                <div className="h-48 rounded-lg border border-dashed border-border flex items-center justify-center text-muted-foreground text-sm">
-                  <Loader2 className="w-4 h-4 mr-2 animate-spin" /> Loading template library...
+                <div className="h-[500px] rounded-lg border border-dashed border-border flex items-center justify-center text-muted-foreground text-sm">
+                  <Loader2 className="w-6 h-6 mr-2 animate-spin text-accent" /> Loading template library...
                 </div>
               ) : (
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {filteredTemplates.map((template) => (
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
+                  {paginatedTemplates.map((template) => (
                     <div
                       key={template.id}
-                      className={`rounded-xl border p-4 space-y-4 transition-all ${selectedTemplateId === template.id ? "border-accent bg-accent/5" : "border-border bg-card hover:border-accent/40"}`}
+                      className={`rounded-2xl border p-4 flex flex-col transition-all duration-300 cursor-pointer group hover:-translate-y-1 ${selectedTemplateId === template.id
+                        ? "border-accent bg-accent/5 shadow-md"
+                        : "border-border bg-card hover:border-accent/40 hover:shadow-lg"
+                        }`}
                     >
-                      <div className="aspect-[1.414/1] rounded-lg border border-border bg-white p-2 relative overflow-hidden">
+                      <div className="aspect-[1.414/1] rounded-xl border border-border bg-white p-2 relative overflow-hidden group-hover:scale-[1.01] transition-transform duration-300 shadow-inner">
                         <CertificateTemplate
                           styleType={template.styleType}
                           draft={draftByTemplate[template.id] ?? normalizeDraft({}, template.title)}
@@ -221,29 +263,69 @@ const Templates = () => {
                         />
                       </div>
 
-                      <div className="space-y-2">
-                        <div className="flex items-center justify-between gap-2">
-                          <p className="text-sm font-semibold text-foreground line-clamp-1">{template.title}</p>
-                          <Badge variant="outline" className="text-[10px]">{template.category}</Badge>
+                      <div className="flex-1 flex flex-col justify-between mt-4">
+                        <div className="space-y-2">
+                          <div className="flex items-start justify-between gap-2">
+                            <p className="text-sm font-bold text-foreground line-clamp-1" title={template.title}>{template.title}</p>
+                            <Badge variant="outline" className="text-[10px] px-1.5 h-5 shrink-0">{template.category}</Badge>
+                          </div>
+                          <div className="flex flex-wrap gap-1.5">
+                            <Badge className="bg-accent/10 text-accent border border-accent/20 text-[10px] px-1.5 h-5">Official</Badge>
+                            <Badge variant="outline" className="text-[10px] px-1.5 h-5">Locked</Badge>
+                          </div>
                         </div>
-                        <div className="flex flex-wrap gap-2">
-                          <Badge className="bg-accent/10 text-accent border border-accent/20">Official Template</Badge>
-                          <Badge variant="outline">Brand Locked</Badge>
-                        </div>
-                      </div>
 
-                      <div className="flex items-center gap-2">
-                        <Button variant="outline" size="sm" className="gap-1.5" onClick={() => openOfficialTemplate(template, "preview")}>
-                          <Eye className="w-3.5 h-3.5" /> Preview
-                        </Button>
-                        <Button size="sm" className="gap-1.5" onClick={() => openOfficialTemplate(template, "edit")}>
-                          <Pencil className="w-3.5 h-3.5" /> Edit
-                        </Button>
+                        <div className="flex items-center gap-2 mt-4">
+                          <Button variant="outline" size="sm" className="h-8 text-xs flex-1 gap-1.5 hover:bg-accent/10 hover:border-accent/50 transition-colors" onClick={() => openOfficialTemplate(template, "preview")}>
+                            <Eye className="w-3.5 h-3.5" /> Preview
+                          </Button>
+                          <Button size="sm" className="h-8 text-xs flex-1 gap-1.5 gold-gradient text-accent-foreground hover:opacity-90 transition-opacity" onClick={() => openOfficialTemplate(template, "edit")}>
+                            <Pencil className="w-3.5 h-3.5" /> Edit
+                          </Button>
+                        </div>
                       </div>
                     </div>
                   ))}
+
+                  {paginatedTemplates.length === 0 && (
+                    <div className="col-span-full h-40 flex flex-col items-center justify-center text-muted-foreground border-2 border-dashed border-border rounded-xl">
+                      <LayoutGrid className="w-8 h-8 opacity-20 mb-2" />
+                      <p>No templates found in this category.</p>
+                    </div>
+                  )}
                 </div>
               )}
+
+              {/* Pagination Footer */}
+              <div className="flex items-center justify-center pt-2 gap-4">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="gap-2"
+                  onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                  disabled={currentPage === 1}
+                >
+                  <ChevronLeft className="w-4 h-4" /> Previous
+                </Button>
+                <div className="flex gap-1.5">
+                  {Array.from({ length: totalPages }).map((_, i) => (
+                    <button
+                      key={i}
+                      className={`w-2 h-2 rounded-full transition-all ${currentPage === i + 1 ? "bg-accent w-4" : "bg-muted-foreground/30 hover:bg-muted-foreground/50"}`}
+                      onClick={() => setCurrentPage(i + 1)}
+                    />
+                  ))}
+                </div>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="gap-2"
+                  onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                  disabled={currentPage === totalPages || totalPages === 0}
+                >
+                  Next <ChevronRight className="w-4 h-4" />
+                </Button>
+              </div>
             </CardContent>
           </Card>
         </div>

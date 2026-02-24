@@ -62,45 +62,45 @@ const Dashboard = () => {
   return (
     <>
       <div className="p-8 max-w-[1200px] mx-auto space-y-8 animate-fade-in">
-        {/* Header */}
-        <div className="flex items-start justify-between">
-          <div>
-            <h1 className="text-3xl font-heading font-bold text-foreground">
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+          <div className="space-y-2">
+            <h1 className="text-3xl sm:text-4xl font-heading font-bold text-foreground">
               Welcome back, Admin
             </h1>
-            <p className="text-muted-foreground mt-1">
-              Here's what's happening with your certificates today.
+            <p className="text-lg text-muted-foreground/90">
+              Overview of your certificate issuance and verification tasks.
             </p>
             {profile?.organization ? (
-              <p className="mt-2 text-xs inline-flex items-center rounded-full border border-accent/30 bg-accent/5 px-2.5 py-1 text-accent">
-                Workspace: {profile.organization}
-              </p>
+              <span className="inline-flex items-center gap-1.5 rounded-full border border-accent/40 bg-accent/10 px-3 py-1 text-sm font-medium text-accent">
+                <span className="w-2 h-2 rounded-full bg-accent animate-pulse" />
+                {profile.organization}
+              </span>
             ) : null}
           </div>
           <Link to="/help">
-            <Button variant="outline" size="sm" className="gap-2">
-              <HelpCircle className="w-4 h-4" />
-              User Manual
+            <Button size="lg" className="gap-2 shadow-sm text-base h-11 px-6 bg-primary hover:bg-primary/90 text-primary-foreground transition-all duration-300">
+              <HelpCircle className="w-5 h-5" />
+              View User Guide
             </Button>
           </Link>
         </div>
 
         {/* Stats */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5">
           {stats.map((stat) => (
-            <Card key={stat.label} className="card-shadow hover:card-shadow-lg transition-shadow">
-              <CardContent className="p-5">
+            <Card key={stat.label} className="card-shadow hover:shadow-lg transition-all duration-300 hover:-translate-y-1 hover:border-accent/40 cursor-default bg-card/60 backdrop-blur-sm">
+              <CardContent className="p-6">
                 <div className="flex items-start justify-between">
-                  <div className="space-y-1">
-                    <p className="text-sm text-muted-foreground">{stat.label}</p>
-                    <p className="text-2xl font-heading font-bold text-foreground">{stat.value}</p>
-                    <p className="text-xs text-muted-foreground flex items-center gap-1">
-                      <TrendingUp className="w-3 h-3 text-success" />
+                  <div className="space-y-2">
+                    <p className="text-base font-medium text-muted-foreground">{stat.label}</p>
+                    <p className="text-3xl font-heading font-bold text-foreground tracking-tight">{stat.value}</p>
+                    <p className="text-sm font-medium text-muted-foreground/80 flex items-center gap-1.5 bg-muted/50 w-fit px-2 py-0.5 rounded-md">
+                      <TrendingUp className="w-3.5 h-3.5 text-success" />
                       {stat.change}
                     </p>
                   </div>
-                  <div className="w-10 h-10 rounded-lg bg-accent/10 flex items-center justify-center">
-                    <stat.icon className="w-5 h-5 text-accent" />
+                  <div className="w-12 h-12 rounded-xl bg-accent/10 flex items-center justify-center transition-colors group-hover:bg-accent/20">
+                    <stat.icon className="w-6 h-6 text-accent" />
                   </div>
                 </div>
               </CardContent>
@@ -109,30 +109,41 @@ const Dashboard = () => {
         </div>
 
         {/* Workflow Tracker */}
-        <Card className="card-shadow">
-          <CardHeader className="pb-4">
-            <CardTitle className="text-lg font-heading">Certificate Workflow</CardTitle>
-            <p className="text-sm text-muted-foreground">Follow these steps to issue certificates</p>
+        <Card className="card-shadow border-t-4 border-t-accent">
+          <CardHeader className="pb-6 border-b border-border/40">
+            <div className="flex items-center gap-2">
+              <div className="h-8 w-1 bg-accent rounded-full" />
+              <div>
+                <CardTitle className="text-xl font-heading font-bold">Certificate Workflow</CardTitle>
+                <p className="text-base text-muted-foreground mt-1">Follow these 4 steps to issue new certificates</p>
+              </div>
+            </div>
           </CardHeader>
-          <CardContent>
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+          <CardContent className="pt-6">
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
               {workflowSteps.map((step, i) => (
-                <Link to={step.link} key={step.step}>
-                  <div className={`relative p-4 rounded-lg border-2 transition-all hover:card-shadow group ${
-                    step.done ? "border-success/30 bg-success/5" : "border-border hover:border-accent/50"
-                  }`}>
-                    <div className="flex items-center gap-3 mb-2">
-                      <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold ${
-                        step.done ? "bg-success text-success-foreground" : "bg-muted text-muted-foreground"
-                      }`}>
-                        {step.done ? <CheckCircle2 className="w-4 h-4" /> : step.step}
+                <Link to={step.link} key={step.step} className="block h-full">
+                  <div className={`relative h-full p-5 rounded-xl border-2 transition-all duration-300 group hover:-translate-y-1 hover:shadow-md ${step.done ? "border-success/40 bg-success/5 hover:border-success/60" : "border-border hover:border-accent/60 hover:bg-accent/5"
+                    }`}>
+                    <div className="flex flex-col gap-4">
+                      <div className="flex items-center justify-between">
+                        <div className={`w-10 h-10 rounded-full flex items-center justify-center text-sm font-bold shadow-sm ${step.done ? "bg-success text-success-foreground" : "bg-secondary text-secondary-foreground"
+                          }`}>
+                          {step.done ? <CheckCircle2 className="w-5 h-5" /> : step.step}
+                        </div>
+                        <step.icon className={`w-6 h-6 ${step.done ? "text-success" : "text-muted-foreground group-hover:text-accent"} transition-colors`} />
                       </div>
-                      <step.icon className="w-4 h-4 text-muted-foreground" />
+
+                      <div className="space-y-1">
+                        <h3 className="font-bold text-base text-foreground group-hover:text-primary transition-colors">{step.title}</h3>
+                        <p className="text-sm text-muted-foreground leading-snug">{step.desc}</p>
+                      </div>
                     </div>
-                    <h3 className="font-medium text-sm text-foreground">{step.title}</h3>
-                    <p className="text-xs text-muted-foreground mt-1">{step.desc}</p>
+
                     {i < workflowSteps.length - 1 && (
-                      <ArrowRight className="hidden md:block absolute -right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground/40 z-10" />
+                      <div className="hidden md:block absolute -right-3 top-1/2 -translate-y-1/2 z-10 bg-background rounded-full p-1 border border-border">
+                        <ArrowRight className="w-4 h-4 text-muted-foreground/60" />
+                      </div>
                     )}
                   </div>
                 </Link>
@@ -149,7 +160,7 @@ const Dashboard = () => {
           <CardContent>
             <div className="space-y-3">
               {recentActivity.map((item, i) => (
-                <div key={i} className="flex items-center justify-between py-3 border-b last:border-0">
+                <div key={i} className="flex items-center justify-between py-3 border-b last:border-0 rounded-lg px-2 transition-colors hover:bg-accent/5 cursor-default">
                   <div className="flex items-center gap-3">
                     <div className="w-2 h-2 rounded-full bg-accent" />
                     <div>
