@@ -13,13 +13,14 @@ declare const Deno: {
 
 const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
 const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-const resetPasswordRedirectUrl =
-  Deno.env.get("APP_RESET_PASSWORD_URL") ??
-  Deno.env.get("APP_LOGIN_URL") ??
-  "http://localhost:8080/reset-password";
+const resetPasswordRedirectUrl = Deno.env.get("APP_RESET_PASSWORD_URL");
 
 if (!supabaseUrl || !serviceRoleKey) {
   console.error("❌ Missing Supabase secrets");
+}
+
+if (!resetPasswordRedirectUrl) {
+  console.error("⚠️ Missing APP_RESET_PASSWORD_URL secret for invite redirects");
 }
 
 const admin = createClient(supabaseUrl, serviceRoleKey, {
@@ -43,9 +44,6 @@ const normalize = (v:string) =>
 
 const statusFromScore = (s:number) =>
   s >= 70 ? "approved" : s >= 40 ? "hold" : "rejected";
-
-const tempPassword = () =>
-  crypto.randomUUID().slice(0,14)+"!A";
 
 /* ------------------------------------------------ */
 /* STORAGE CHECK */
@@ -113,67 +111,47 @@ async function processRequest(requestId:string){
   let approvedUserId=null;
   let emailSent=false;
 
+  /* APPROVED: Invite user via Supabase Auth */
   if(status==="approved"){
 
-    const password=tempPassword();
+    console.info("✅ Inviting approved user", {
+      requestId: row.id,
+      email: row.email,
+      score,
+    });
 
-    const { data:user,error:createErr } =
-      await admin.auth.admin.createUser({
-        email:row.email,
-        password,
-        email_confirm:true,
-        user_metadata:{
-          first_login_required:true,
-          access_request_id:row.id
+    try {
+      const { data: inviteData, error: inviteError } = await admin.auth.admin.inviteUserByEmail(
+        row.email,
+        {
+          redirectTo: resetPasswordRedirectUrl,
+          data: {
+            first_login: true,
+            access_request_id: row.id
+          }
         }
-      });
+      );
 
-    if(!createErr && user?.user){
-
-      approvedUserId=user.user.id;
-
-      try {
-        const { error:generateLinkError } =
-          await admin.auth.admin.generateLink({
-            type:"recovery",
-            email:row.email,
-            options: {
-              redirectTo: resetPasswordRedirectUrl,
-            },
-          });
-
-        if (generateLinkError) {
-          throw generateLinkError;
-        }
-
-        const { error:resetEmailError } = await admin.auth.resetPasswordForEmail(
-          row.email,
-          {
-            redirectTo: resetPasswordRedirectUrl,
-          },
-        );
-
-        if (resetEmailError) {
-          throw resetEmailError;
-        }
-
-        emailSent = true;
-        console.info("Recovery email triggered", {
-          requestId: row.id,
-          status,
-        });
-      } catch (emailError) {
-        emailSent = false;
-        notes.push("Recovery email trigger failed");
-        console.warn("Recovery email trigger failed", {
-          requestId: row.id,
-          status,
-          reason: emailError instanceof Error ? emailError.message : String(emailError),
-        });
+      if (inviteError) {
+        throw inviteError;
       }
 
-    } else {
-      notes.push("User creation failed");
+      if (inviteData?.user) {
+        approvedUserId = inviteData.user.id;
+        emailSent = true;
+        console.info("✅ User invited successfully, Invite email sent via Supabase Auth", {
+          requestId: row.id,
+          userId: approvedUserId,
+          email: row.email,
+        });
+      }
+    } catch (inviteError) {
+      emailSent = false;
+      notes.push("User invite failed");
+      console.error("❌ User invite failed", {
+        requestId: row.id,
+        error: inviteError instanceof Error ? inviteError.message : String(inviteError),
+      });
     }
   }
 
