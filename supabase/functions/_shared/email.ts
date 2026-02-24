@@ -39,29 +39,38 @@ export async function sendEmail(
   const smtpPassword = env?.get("SMTP_PASSWORD");
   const smtpFrom = env?.get("SMTP_FROM_EMAIL");
 
-  // Hard fail if config missing (better than silent fail)
+  // Validate SMTP configuration before attempting to send
   if (!smtpHost || !smtpPort || !smtpUser || !smtpPassword || !smtpFrom) {
-    console.error("SMTP configuration missing", {
+    console.error("❌ SMTP configuration incomplete", {
       smtpHost: !!smtpHost,
       smtpPort: !!smtpPort,
       smtpUser: !!smtpUser,
       smtpPassword: !!smtpPassword,
       smtpFrom: !!smtpFrom,
     });
-    return { success: false, error: "SMTP not configured correctly" };
+    return { success: false, error: "SMTP secrets not configured in Supabase Edge Function" };
   }
+
+  console.info("📧 Preparing to send email via SMTP", {
+    to: options.to,
+    subject: options.subject,
+    smtpHost,
+    smtpPort,
+  });
 
   const client = new SmtpClient();
 
   try {
+    console.info("🔌 Connecting to SMTP server...");
     await client.connect({
       hostname: smtpHost,
       port: Number(smtpPort),
       username: smtpUser,
       password: smtpPassword,
-      tls: false, // ✅ correct for port 587
+      tls: false, // Required for port 587 (STARTTLS)
     });
 
+    console.info("📤 Sending email...");
     await client.send({
       from: smtpFrom,
       to: options.to,
@@ -71,17 +80,23 @@ export async function sendEmail(
 
     await client.close();
 
-    console.info("SMTP email sent", {
+    console.info("✅ SMTP email sent successfully", {
       to: options.to,
       subject: options.subject,
     });
 
     return { success: true };
   } catch (err) {
-    console.error("SMTP send failed", {
+    console.error("❌ SMTP send failed", {
+      to: options.to,
+      subject: options.subject,
       error: err instanceof Error ? err.message : String(err),
+      stack: err instanceof Error ? err.stack : undefined,
     });
-    return { success: false, error: "SMTP send failed" };
+    return { 
+      success: false, 
+      error: `SMTP send failed: ${err instanceof Error ? err.message : String(err)}` 
+    };
   }
 }
 
