@@ -146,21 +146,12 @@ async function processRequest(requestId:string){
           throw generateLinkError;
         }
 
-        const { error:resetEmailError } = await admin.auth.resetPasswordForEmail(
-          row.email,
-          {
-            redirectTo: resetPasswordRedirectUrl,
-          },
-        );
-
-        if (resetEmailError) {
-          throw resetEmailError;
-        }
-
         emailSent = true;
-        console.info("Recovery email triggered", {
+        console.info("Supabase recovery email triggered", {
           requestId: row.id,
           status,
+          userId: approvedUserId,
+          email: row.email,
         });
       } catch (emailError) {
         emailSent = false;
@@ -174,6 +165,11 @@ async function processRequest(requestId:string){
 
     } else {
       notes.push("User creation failed");
+      console.error("User creation failed for approved request", {
+        requestId: row.id,
+        status,
+        createError: createErr?.message || "unknown error",
+      });
     }
   }
 
