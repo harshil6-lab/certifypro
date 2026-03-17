@@ -56,9 +56,9 @@ export async function loginWithGoogle(): Promise<GoogleAuthResponse> {
     const { error } = await supabase.auth.signInWithOAuth({
       provider: "google",
       options: {
-        // Redirect to this page after OAuth succeeds
+        // Redirect to callback page after OAuth succeeds
         // The session will be automatically in URL/localStorage
-        redirectTo: `${window.location.origin}/login`,
+        redirectTo: `${window.location.origin}/auth/callback`,
       },
     });
 

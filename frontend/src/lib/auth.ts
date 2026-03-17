@@ -1,5 +1,6 @@
 import type { AuthChangeEvent, Session } from "@supabase/supabase-js";
 import { isSupabaseConfigured, supabase } from "@/lib/supabaseClient";
+import { checkUserExists } from "@/services/userService";
 
 const AUTH_KEY = "certifypro_auth";
 
@@ -58,7 +59,31 @@ export async function initializeAuthSession(): Promise<SessionSnapshot> {
       return { authenticated: false, firstLoginRequired: false };
     }
 
-    const verified = isEmailVerified(data.session ?? null);
+    const session = data.session ?? null;
+    const verified = isEmailVerified(session);
+
+    // Post-login re-validation: ensure the authenticated email exists in our DB
+    if (session?.user?.email) {
+      try {
+        console.log("🔐 Post-login: validating user in database", { email: session.user.email });
+        const exists = await checkUserExists(session.user.email);
+        if (!exists) {
+          console.warn("❌ Post-login validation failed - signing out", { email: session.user.email });
+          await supabase.auth.signOut().catch(() => undefined);
+          setAuthFlag(false);
+          return { authenticated: false, firstLoginRequired: false };
+        }
+
+        console.log("✅ Post-login validation passed", { email: session.user.email });
+      } catch (err) {
+        console.error("❌ Error during post-login validation", { error: err instanceof Error ? err.message : String(err) });
+        // On validation error, be conservative and sign out
+        await supabase.auth.signOut().catch(() => undefined);
+        setAuthFlag(false);
+        return { authenticated: false, firstLoginRequired: false };
+      }
+    }
+
     setAuthFlag(verified);
 
     return {
@@ -85,9 +110,41 @@ export function subscribeToAuthChanges(
   const {
     data: { subscription },
   } = supabase.auth.onAuthStateChange((event, session) => {
-    const verified = isEmailVerified(session);
-    setAuthFlag(verified);
-    callback(verified, event, verified ? isFirstLoginRequired(session) : false);
+    (async () => {
+      const verified = isEmailVerified(session);
+
+      // Post-login validation on relevant events
+      if (event === "SIGNED_IN" || event === "USER_UPDATED" || event === "TOKEN_REFRESHED") {
+        const email = session?.user?.email;
+        if (email) {
+          console.log("🔐 Auth event:", event, { email });
+          try {
+            const exists = await checkUserExists(email);
+            if (!exists) {
+              console.warn("❌ Post-login validation failed on auth change - signing out", { email, event });
+              await supabase.auth.signOut().catch(() => undefined);
+              setAuthFlag(false);
+              callback(false, event, false);
+              return;
+            }
+
+            console.log("✅ Post-login validation success on auth change", { email, event });
+            setAuthFlag(verified);
+            callback(verified, event, verified ? isFirstLoginRequired(session) : false);
+            return;
+          } catch (err) {
+            console.error("❌ Error during auth-change validation", { error: err instanceof Error ? err.message : String(err) });
+            await supabase.auth.signOut().catch(() => undefined);
+            setAuthFlag(false);
+            callback(false, event, false);
+            return;
+          }
+        }
+      }
+
+      setAuthFlag(verified);
+      callback(verified, event, verified ? isFirstLoginRequired(session) : false);
+    })();
   });
 
   return () => subscription.unsubscribe();

@@ -9,7 +9,7 @@
  * - loading: Whether Google auth is in progress
  */
 
-import React, { createContext, useContext, useState, useCallback } from "react";
+import React, { createContext, useContext, useState, useCallback, useEffect } from "react";
 import {
   loginWithGoogle,
   handleGoogleCallback,
@@ -21,6 +21,7 @@ import {
   showGoogleAuthError,
   showGoogleAuthSuccess,
 } from "@/utils/notifications";
+import { supabase } from "@/lib/supabaseClient";
 
 /**
  * Type for validated Google user
@@ -64,6 +65,32 @@ export function GoogleAuthProvider({
 }) {
   const [googleUser, setGoogleUser] = useState<GoogleUser | null>(null);
   const [loading, setLoading] = useState(false);
+
+  /**
+   * Session Listener - Helps track OAuth flow for debugging
+   * 
+   * CRITICAL FOR DEBUGGING:
+   * This logs auth state changes which helps identify:
+   * - When OAuth happens
+   * - When session is created
+   * - When validation succeeds/fails
+   */
+  useEffect(() => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      (event, session) => {
+        console.log("🔐 Auth event:", event);
+        if (session?.user?.email) {
+          console.log("📧 Session user:", session.user.email);
+        } else {
+          console.log("❌ No session user found");
+        }
+      }
+    );
+
+    return () => {
+      subscription?.unsubscribe();
+    };
+  }, []);
 
   /**
    * Initiate Google Login
