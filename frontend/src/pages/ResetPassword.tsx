@@ -176,9 +176,10 @@ const ResetPassword = () => {
         return;
       }
 
-      setSubmitSuccess("Password reset successful. Redirecting to login...");
+      setSubmitSuccess("Password reset successful. Redirecting to dashboard...");
+      console.log("Password updated — redirecting to dashboard");
       setTimeout(() => {
-        navigate("/login", { replace: true });
+        navigate("/dashboard", { replace: true });
       }, 1200);
     } catch {
       setSubmitError("Network error. Please check your connection and try again.");

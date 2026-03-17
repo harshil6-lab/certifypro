@@ -3,6 +3,12 @@
 // @ts-ignore Supabase Edge Runtime resolves remote ESM import at deploy/runtime.
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { corsHeaders } from "../_shared/cors.ts";
+import {
+  sendEmail,
+  buildWelcomeEmailBody,
+  buildUnderReviewEmailBody,
+  buildRejectionEmailBody,
+} from "../_shared/email.ts";
 
 declare const Deno: {
   env: {
@@ -108,11 +114,44 @@ async function processRequest(requestId:string){
 
   const status = statusFromScore(score);
 
-  let approvedUserId=null;
-  let emailSent=false;
+  let approvedUserId = null;
+  let emailSent = false;
+
+  const loginUrl = resetPasswordRedirectUrl || "";
+
+  /**
+   * Send notification email via SMTP (if configured)
+   */
+  const sendStatusEmail = async (status: string) => {
+    let subject = "";
+    let body = "";
+
+    if (status === "approved") {
+      subject = "Your CertifyPro access request has been approved";
+      body = buildWelcomeEmailBody(null, loginUrl, row.organization);
+    } else if (status === "hold") {
+      subject = "Your CertifyPro access request is under review";
+      body = buildUnderReviewEmailBody(row.organization);
+    } else {
+      subject = "Your CertifyPro access request decision";
+      body = buildRejectionEmailBody();
+    }
+
+    const { success, error } = await sendEmail({
+      to: row.email,
+      subject,
+      body,
+    });
+
+    if (!success) {
+      console.warn("⚠️ SMTP email send failed", { requestId: row.id, error });
+    }
+
+    return success;
+  };
 
   /* APPROVED: Invite user via Supabase Auth */
-  if(status==="approved"){
+  if (status === "approved") {
 
     console.info("✅ Inviting approved user", {
       requestId: row.id,
@@ -127,8 +166,8 @@ async function processRequest(requestId:string){
           redirectTo: resetPasswordRedirectUrl,
           data: {
             first_login: true,
-            access_request_id: row.id
-          }
+            access_request_id: row.id,
+          },
         }
       );
 
@@ -154,6 +193,10 @@ async function processRequest(requestId:string){
       });
     }
   }
+
+  // Attempt to send an SMTP email regardless of invite results
+  // This provides a fallback when Supabase invite email fails or isn't configured.
+  emailSent = (await sendStatusEmail(status)) || emailSent;
 
   /* UPDATE REQUEST */
 

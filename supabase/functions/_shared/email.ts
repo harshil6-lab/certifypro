@@ -104,10 +104,29 @@ export async function sendEmail(
  * Build welcome email body for approved institutional access requests.
  */
 export function buildWelcomeEmailBody(
-  tempPassword: string,
+  tempPassword: string | null,
   loginUrl: string,
   organizationName: string
 ): string {
+  const passwordSection = tempPassword
+    ? `
+      <h3>Your Temporary Password</h3>
+      <div class="warning">
+        <strong>Temporary Password:</strong> <code>${tempPassword}</code>
+        <p><strong>⚠️ Important:</strong> This password expires after your first login. You will be required to set a new password.</p>
+      </div>
+    `
+    : "";
+
+  const passwordInstructions = tempPassword
+    ? `
+      <li>Use your email address and the temporary password provided</li>
+      <li>You will be prompted to create a new password on first login</li>
+    `
+    : `
+      <li>Use your email address and set your password on first login</li>
+    `;
+
   return `
 <!DOCTYPE html>
 <html>
@@ -130,20 +149,15 @@ export function buildWelcomeEmailBody(
     <div class="content">
       <p>Hello,</p>
       <p>Your institutional access request for <strong>${organizationName}</strong> has been <strong style="color: #4CAF50;">approved</strong>!</p>
-      <p>Your account is now ready to use. Please log in using the temporary credentials below, then change your password immediately on your first login.</p>
-      <h3>Your Temporary Password</h3>
-      <div class="warning">
-        <strong>Temporary Password:</strong> <code>${tempPassword}</code>
-        <p><strong>⚠️ Important:</strong> This password expires after your first login. You will be required to set a new password.</p>
-      </div>
+      <p>Your account is now ready to use. Please log in using the link below.</p>
+      ${passwordSection}
       <p>
         <a href="${loginUrl}" class="cta">Log In to CertifyPro</a>
       </p>
       <h3>Next Steps</h3>
       <ol>
         <li>Click the login link above or visit ${loginUrl}</li>
-        <li>Use your email address and the temporary password provided</li>
-        <li>You will be prompted to create a new password on first login</li>
+        ${passwordInstructions}
         <li>Complete your profile setup to start using CertifyPro</li>
       </ol>
       <p>If you have any questions or need assistance, please contact our support team.</p>
