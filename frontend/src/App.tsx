@@ -5,7 +5,6 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Navigate, Route, Routes, useLocation } from "react-router-dom";
 import { AdminLayout } from "@/components/AdminLayout";
-import { GoogleAuthProvider } from "@/context/GoogleAuthContext";
 import {
   initializeAuthSession,
   isAuthenticated,
@@ -29,7 +28,6 @@ import Profile from "./pages/Profile";
 import ResetPassword from "./pages/ResetPassword";
 import NotFound from "./pages/NotFound";
 import PrivacyPolicy from "./pages/PrivacyPolicy";
-import OAuthCallback from "./pages/OAuthCallback";
 
 const queryClient = new QueryClient();
 
@@ -107,19 +105,17 @@ const App = () => {
       <TooltipProvider>
         <Toaster />
         <Sonner />
-        <GoogleAuthProvider>
-          <BrowserRouter>
-            <Routes>
-              <Route path="/" element={<Index />} />
-              <Route path="/about" element={<About />} />
-              <Route path="/features" element={<FeaturesPage />} />
-              <Route path="/contact" element={<Contact />} />
-              <Route path="/privacy-policy" element={<PrivacyPolicy />} />
-              <Route path="/login" element={<Login />} />
-              <Route path="/auth/callback" element={<OAuthCallback />} />
-              <Route path="/reset-password" element={<ResetPassword />} />
-              <Route path="/verify" element={<Verify />} />
-              <Route path="/verify/:certId" element={<VerifyResult />} />
+        <BrowserRouter>
+          <Routes>
+            <Route path="/" element={<Index />} />
+            <Route path="/about" element={<About />} />
+            <Route path="/features" element={<FeaturesPage />} />
+            <Route path="/contact" element={<Contact />} />
+            <Route path="/privacy-policy" element={<PrivacyPolicy />} />
+            <Route path="/login" element={<Login />} />
+            <Route path="/reset-password" element={<ResetPassword />} />
+            <Route path="/verify" element={<Verify />} />
+            <Route path="/verify/:certId" element={<VerifyResult />} />
             <Route
               element={(
                 <ProtectedAdminLayout
@@ -141,7 +137,6 @@ const App = () => {
             <Route path="*" element={<NotFound />} />
           </Routes>
         </BrowserRouter>
-        </GoogleAuthProvider>
       </TooltipProvider>
     </QueryClientProvider>
   );
