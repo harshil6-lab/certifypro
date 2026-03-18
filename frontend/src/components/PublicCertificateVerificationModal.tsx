@@ -19,6 +19,7 @@ import {
   Loader2,
   Lock,
 } from "lucide-react";
+import { verifyCertificate } from "@/services/apiService";
 
 interface PublicCertificateVerificationModalProps {
   open: boolean;
@@ -56,28 +57,23 @@ const PublicCertificateVerificationModal = ({
     setError("");
     
     try {
-      // Simulate API call delay
-      await new Promise((resolve) => setTimeout(resolve, 1200));
+        const data = await verifyCertificate(certId.trim());
 
-      // TODO: Replace with actual API call
-      // const response = await api.post("/verify-certificate", { certificateId: certId });
-      // if (!response.ok) throw new Error('Certificate not found');
-      // setResult(response.data);
+        // Expected shape: { valid: boolean, certificate: { ... } }
+        if (!data || !data.certificate) {
+          throw new Error("Certificate not found");
+        }
 
-      // Mock successful verification
-      if (certId.toUpperCase().startsWith("CERT")) {
+        const cert = data.certificate;
         setResult({
-          certificateId: certId.toUpperCase(),
-          issuingInstitution: "Harvard University",
-          recipientName: "John Anderson",
-          issueDate: "2024-01-15",
-          status: "verified",
+          certificateId: cert.id || cert.certificate_id || cert.qr_token || certId,
+          issuingInstitution: cert.data?.issuingInstitution || cert.data?.institution || "",
+          recipientName: cert.data?.recipientName || cert.data?.full_name || "",
+          issueDate: cert.issued_at || cert.data?.issued_at || "",
+          status: data.valid ? "verified" : "invalid",
         });
-      } else {
-        throw new Error("Certificate not found in system");
-      }
 
-      setState("success");
+        setState("success");
     } catch (err) {
       setError(err instanceof Error ? err.message : "Verification failed");
       setState("error");

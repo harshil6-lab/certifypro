@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { Search, QrCode, ShieldCheck, CheckCircle2, XCircle } from "lucide-react";
+import { verifyCertificate } from "@/services/apiService";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { PublicNavbar } from "@/components/landing/PublicNavbar";
@@ -9,16 +10,26 @@ import { Card, CardContent } from "@/components/ui/card";
 const Verify = () => {
   const [certId, setCertId] = useState("");
   const [result, setResult] = useState<"idle" | "verified" | "not-found">("idle");
+  const [loading, setLoading] = useState(false);
+  const [details, setDetails] = useState<any | null>(null);
 
   const handleVerify = () => {
-    if (!certId.trim()) {
-      return;
-    }
-    if (certId.trim().toUpperCase().startsWith("CERT-")) {
-      setResult("verified");
-      return;
-    }
-    setResult("not-found");
+    if (!certId.trim()) return;
+    setLoading(true);
+    setDetails(null);
+    verifyCertificate(certId.trim())
+      .then((data) => {
+        if (data && data.valid) {
+          setResult("verified");
+          setDetails(data.certificate || null);
+        } else {
+          setResult("not-found");
+        }
+      })
+      .catch(() => {
+        setResult("not-found");
+      })
+      .finally(() => setLoading(false));
   };
 
   return (
@@ -64,10 +75,15 @@ const Verify = () => {
                 <p className="text-sm text-muted-foreground">Result will appear here after verification.</p>
               ) : null}
               {result === "verified" ? (
-                <div className="flex items-center gap-2">
-                  <CheckCircle2 className="w-4 h-4 text-success" />
-                  <p className="text-sm text-success font-medium">Certificate is valid. (Frontend mock result)</p>
-                </div>
+                  <div className="flex items-start gap-3">
+                    <CheckCircle2 className="w-4 h-4 text-success mt-1" />
+                    <div>
+                      <p className="text-sm text-success font-medium">Certificate is valid.</p>
+                      {details?.data && (
+                        <p className="text-xs text-muted-foreground mt-1">Recipient: {details.data.full_name || details.data.recipientName}</p>
+                      )}
+                    </div>
+                  </div>
               ) : null}
               {result === "not-found" ? (
                 <div className="flex items-center gap-2">
