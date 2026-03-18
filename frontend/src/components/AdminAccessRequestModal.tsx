@@ -35,6 +35,7 @@ interface AdminAccessFormData {
   fullName: string;
   organizationalEmail: string;
   jobTitle: string;
+  phoneCountry: string;
   phoneNumber: string;
   organizationName: string;
   organizationWebsite: string;
@@ -93,10 +94,211 @@ const COUNTRY_OPTIONS = [
   "Other",
 ];
 
+const PHONE_DIAL_CODE_OPTIONS = [
+  { value: "AF", label: "Afghanistan", dialCode: "+93" },
+  { value: "AL", label: "Albania", dialCode: "+355" },
+  { value: "DZ", label: "Algeria", dialCode: "+213" },
+  { value: "AD", label: "Andorra", dialCode: "+376" },
+  { value: "AO", label: "Angola", dialCode: "+244" },
+  { value: "AG", label: "Antigua and Barbuda", dialCode: "+1" },
+  { value: "AR", label: "Argentina", dialCode: "+54" },
+  { value: "AM", label: "Armenia", dialCode: "+374" },
+  { value: "AU", label: "Australia", dialCode: "+61" },
+  { value: "AT", label: "Austria", dialCode: "+43" },
+  { value: "AZ", label: "Azerbaijan", dialCode: "+994" },
+  { value: "BS", label: "Bahamas", dialCode: "+1" },
+  { value: "BH", label: "Bahrain", dialCode: "+973" },
+  { value: "BD", label: "Bangladesh", dialCode: "+880" },
+  { value: "BB", label: "Barbados", dialCode: "+1" },
+  { value: "BY", label: "Belarus", dialCode: "+375" },
+  { value: "BE", label: "Belgium", dialCode: "+32" },
+  { value: "BZ", label: "Belize", dialCode: "+501" },
+  { value: "BJ", label: "Benin", dialCode: "+229" },
+  { value: "BT", label: "Bhutan", dialCode: "+975" },
+  { value: "BO", label: "Bolivia", dialCode: "+591" },
+  { value: "BA", label: "Bosnia and Herzegovina", dialCode: "+387" },
+  { value: "BW", label: "Botswana", dialCode: "+267" },
+  { value: "BR", label: "Brazil", dialCode: "+55" },
+  { value: "BN", label: "Brunei", dialCode: "+673" },
+  { value: "BG", label: "Bulgaria", dialCode: "+359" },
+  { value: "BF", label: "Burkina Faso", dialCode: "+226" },
+  { value: "BI", label: "Burundi", dialCode: "+257" },
+  { value: "KH", label: "Cambodia", dialCode: "+855" },
+  { value: "CM", label: "Cameroon", dialCode: "+237" },
+  { value: "CA", label: "Canada", dialCode: "+1" },
+  { value: "CV", label: "Cape Verde", dialCode: "+238" },
+  { value: "CF", label: "Central African Republic", dialCode: "+236" },
+  { value: "TD", label: "Chad", dialCode: "+235" },
+  { value: "CL", label: "Chile", dialCode: "+56" },
+  { value: "CN", label: "China", dialCode: "+86" },
+  { value: "CO", label: "Colombia", dialCode: "+57" },
+  { value: "KM", label: "Comoros", dialCode: "+269" },
+  { value: "CG", label: "Congo", dialCode: "+242" },
+  { value: "CD", label: "Democratic Republic of Congo", dialCode: "+243" },
+  { value: "CR", label: "Costa Rica", dialCode: "+506" },
+  { value: "HR", label: "Croatia", dialCode: "+385" },
+  { value: "CU", label: "Cuba", dialCode: "+53" },
+  { value: "CY", label: "Cyprus", dialCode: "+357" },
+  { value: "CZ", label: "Czechia", dialCode: "+420" },
+  { value: "DK", label: "Denmark", dialCode: "+45" },
+  { value: "DJ", label: "Djibouti", dialCode: "+253" },
+  { value: "DM", label: "Dominica", dialCode: "+1" },
+  { value: "DO", label: "Dominican Republic", dialCode: "+1" },
+  { value: "EC", label: "Ecuador", dialCode: "+593" },
+  { value: "EG", label: "Egypt", dialCode: "+20" },
+  { value: "SV", label: "El Salvador", dialCode: "+503" },
+  { value: "GQ", label: "Equatorial Guinea", dialCode: "+240" },
+  { value: "ER", label: "Eritrea", dialCode: "+291" },
+  { value: "EE", label: "Estonia", dialCode: "+372" },
+  { value: "ET", label: "Ethiopia", dialCode: "+251" },
+  { value: "FJ", label: "Fiji", dialCode: "+679" },
+  { value: "FI", label: "Finland", dialCode: "+358" },
+  { value: "FR", label: "France", dialCode: "+33" },
+  { value: "GA", label: "Gabon", dialCode: "+241" },
+  { value: "GM", label: "Gambia", dialCode: "+220" },
+  { value: "GE", label: "Georgia", dialCode: "+995" },
+  { value: "DE", label: "Germany", dialCode: "+49" },
+  { value: "GH", label: "Ghana", dialCode: "+233" },
+  { value: "GR", label: "Greece", dialCode: "+30" },
+  { value: "GD", label: "Grenada", dialCode: "+1" },
+  { value: "GT", label: "Guatemala", dialCode: "+502" },
+  { value: "GN", label: "Guinea", dialCode: "+224" },
+  { value: "GW", label: "Guinea-Bissau", dialCode: "+245" },
+  { value: "GY", label: "Guyana", dialCode: "+592" },
+  { value: "HT", label: "Haiti", dialCode: "+509" },
+  { value: "HN", label: "Honduras", dialCode: "+504" },
+  { value: "HK", label: "Hong Kong", dialCode: "+852" },
+  { value: "HU", label: "Hungary", dialCode: "+36" },
+  { value: "IS", label: "Iceland", dialCode: "+354" },
+  { value: "IN", label: "India", dialCode: "+91" },
+  { value: "ID", label: "Indonesia", dialCode: "+62" },
+  { value: "IR", label: "Iran", dialCode: "+98" },
+  { value: "IQ", label: "Iraq", dialCode: "+964" },
+  { value: "IE", label: "Ireland", dialCode: "+353" },
+  { value: "IL", label: "Israel", dialCode: "+972" },
+  { value: "IT", label: "Italy", dialCode: "+39" },
+  { value: "JM", label: "Jamaica", dialCode: "+1" },
+  { value: "JP", label: "Japan", dialCode: "+81" },
+  { value: "JO", label: "Jordan", dialCode: "+962" },
+  { value: "KZ", label: "Kazakhstan", dialCode: "+7" },
+  { value: "KE", label: "Kenya", dialCode: "+254" },
+  { value: "KI", label: "Kiribati", dialCode: "+686" },
+  { value: "KP", label: "North Korea", dialCode: "+850" },
+  { value: "KR", label: "South Korea", dialCode: "+82" },
+  { value: "KW", label: "Kuwait", dialCode: "+965" },
+  { value: "KG", label: "Kyrgyzstan", dialCode: "+996" },
+  { value: "LA", label: "Laos", dialCode: "+856" },
+  { value: "LV", label: "Latvia", dialCode: "+371" },
+  { value: "LB", label: "Lebanon", dialCode: "+961" },
+  { value: "LS", label: "Lesotho", dialCode: "+266" },
+  { value: "LR", label: "Liberia", dialCode: "+231" },
+  { value: "LY", label: "Libya", dialCode: "+218" },
+  { value: "LI", label: "Liechtenstein", dialCode: "+423" },
+  { value: "LT", label: "Lithuania", dialCode: "+370" },
+  { value: "LU", label: "Luxembourg", dialCode: "+352" },
+  { value: "MO", label: "Macau", dialCode: "+853" },
+  { value: "MK", label: "North Macedonia", dialCode: "+389" },
+  { value: "MG", label: "Madagascar", dialCode: "+261" },
+  { value: "MW", label: "Malawi", dialCode: "+265" },
+  { value: "MY", label: "Malaysia", dialCode: "+60" },
+  { value: "MV", label: "Maldives", dialCode: "+960" },
+  { value: "ML", label: "Mali", dialCode: "+223" },
+  { value: "MT", label: "Malta", dialCode: "+356" },
+  { value: "MH", label: "Marshall Islands", dialCode: "+692" },
+  { value: "MR", label: "Mauritania", dialCode: "+222" },
+  { value: "MU", label: "Mauritius", dialCode: "+230" },
+  { value: "MX", label: "Mexico", dialCode: "+52" },
+  { value: "FM", label: "Micronesia", dialCode: "+691" },
+  { value: "MD", label: "Moldova", dialCode: "+373" },
+  { value: "MC", label: "Monaco", dialCode: "+377" },
+  { value: "MN", label: "Mongolia", dialCode: "+976" },
+  { value: "ME", label: "Montenegro", dialCode: "+382" },
+  { value: "MA", label: "Morocco", dialCode: "+212" },
+  { value: "MZ", label: "Mozambique", dialCode: "+258" },
+  { value: "MM", label: "Myanmar", dialCode: "+95" },
+  { value: "NA", label: "Namibia", dialCode: "+264" },
+  { value: "NR", label: "Nauru", dialCode: "+674" },
+  { value: "NP", label: "Nepal", dialCode: "+977" },
+  { value: "NL", label: "Netherlands", dialCode: "+31" },
+  { value: "NZ", label: "New Zealand", dialCode: "+64" },
+  { value: "NI", label: "Nicaragua", dialCode: "+505" },
+  { value: "NE", label: "Niger", dialCode: "+227" },
+  { value: "NG", label: "Nigeria", dialCode: "+234" },
+  { value: "NU", label: "Niue", dialCode: "+683" },
+  { value: "NO", label: "Norway", dialCode: "+47" },
+  { value: "OM", label: "Oman", dialCode: "+968" },
+  { value: "PK", label: "Pakistan", dialCode: "+92" },
+  { value: "PW", label: "Palau", dialCode: "+680" },
+  { value: "PS", label: "Palestine", dialCode: "+970" },
+  { value: "PA", label: "Panama", dialCode: "+507" },
+  { value: "PG", label: "Papua New Guinea", dialCode: "+675" },
+  { value: "PY", label: "Paraguay", dialCode: "+595" },
+  { value: "PE", label: "Peru", dialCode: "+51" },
+  { value: "PH", label: "Philippines", dialCode: "+63" },
+  { value: "PL", label: "Poland", dialCode: "+48" },
+  { value: "PT", label: "Portugal", dialCode: "+351" },
+  { value: "QA", label: "Qatar", dialCode: "+974" },
+  { value: "RE", label: "Réunion", dialCode: "+262" },
+  { value: "RO", label: "Romania", dialCode: "+40" },
+  { value: "RU", label: "Russia", dialCode: "+7" },
+  { value: "RW", label: "Rwanda", dialCode: "+250" },
+  { value: "KN", label: "Saint Kitts and Nevis", dialCode: "+1" },
+  { value: "LC", label: "Saint Lucia", dialCode: "+1" },
+  { value: "VC", label: "Saint Vincent and the Grenadines", dialCode: "+1" },
+  { value: "WS", label: "Samoa", dialCode: "+685" },
+  { value: "SM", label: "San Marino", dialCode: "+378" },
+  { value: "ST", label: "São Tomé and Príncipe", dialCode: "+239" },
+  { value: "SA", label: "Saudi Arabia", dialCode: "+966" },
+  { value: "SN", label: "Senegal", dialCode: "+221" },
+  { value: "RS", label: "Serbia", dialCode: "+381" },
+  { value: "SC", label: "Seychelles", dialCode: "+248" },
+  { value: "SL", label: "Sierra Leone", dialCode: "+232" },
+  { value: "SG", label: "Singapore", dialCode: "+65" },
+  { value: "SK", label: "Slovakia", dialCode: "+421" },
+  { value: "SI", label: "Slovenia", dialCode: "+386" },
+  { value: "SB", label: "Solomon Islands", dialCode: "+677" },
+  { value: "SO", label: "Somalia", dialCode: "+252" },
+  { value: "ZA", label: "South Africa", dialCode: "+27" },
+  { value: "SS", label: "South Sudan", dialCode: "+211" },
+  { value: "ES", label: "Spain", dialCode: "+34" },
+  { value: "LK", label: "Sri Lanka", dialCode: "+94" },
+  { value: "SD", label: "Sudan", dialCode: "+249" },
+  { value: "SR", label: "Suriname", dialCode: "+597" },
+  { value: "SE", label: "Sweden", dialCode: "+46" },
+  { value: "CH", label: "Switzerland", dialCode: "+41" },
+  { value: "SY", label: "Syria", dialCode: "+963" },
+  { value: "TW", label: "Taiwan", dialCode: "+886" },
+  { value: "TJ", label: "Tajikistan", dialCode: "+992" },
+  { value: "TZ", label: "Tanzania", dialCode: "+255" },
+  { value: "TH", label: "Thailand", dialCode: "+66" },
+  { value: "TL", label: "Timor-Leste", dialCode: "+670" },
+  { value: "TG", label: "Togo", dialCode: "+228" },
+  { value: "TO", label: "Tonga", dialCode: "+676" },
+  { value: "TT", label: "Trinidad and Tobago", dialCode: "+1" },
+  { value: "TN", label: "Tunisia", dialCode: "+216" },
+  { value: "TR", label: "Turkey", dialCode: "+90" },
+  { value: "TM", label: "Turkmenistan", dialCode: "+993" },
+  { value: "TV", label: "Tuvalu", dialCode: "+688" },
+  { value: "UG", label: "Uganda", dialCode: "+256" },
+  { value: "UA", label: "Ukraine", dialCode: "+380" },
+  { value: "AE", label: "United Arab Emirates", dialCode: "+971" },
+  { value: "GB", label: "United Kingdom", dialCode: "+44" },
+  { value: "US", label: "United States", dialCode: "+1" },
+  { value: "UY", label: "Uruguay", dialCode: "+598" },
+  { value: "UZ", label: "Uzbekistan", dialCode: "+998" },
+  { value: "VU", label: "Vanuatu", dialCode: "+678" },
+  { value: "VE", label: "Venezuela", dialCode: "+58" },
+  { value: "VN", label: "Vietnam", dialCode: "+84" },
+  { value: "YE", label: "Yemen", dialCode: "+967" },
+  { value: "ZM", label: "Zambia", dialCode: "+260" },
+  { value: "ZW", label: "Zimbabwe", dialCode: "+263" },
+];
+
 const INITIAL_FORM: AdminAccessFormData = {
   fullName: "",
   organizationalEmail: "",
   jobTitle: "",
+  phoneCountry: "IN",
   phoneNumber: "",
   organizationName: "",
   organizationWebsite: "",
@@ -138,6 +340,11 @@ const AdminAccessRequestModal = ({
   const currentStepTitle = useMemo(
     () => STEPS.find((item) => item.step === currentStep)?.title ?? "",
     [currentStep],
+  );
+
+  const selectedDialCode = useMemo(
+    () => PHONE_DIAL_CODE_OPTIONS.find((option) => option.value === form.phoneCountry)?.dialCode ?? "+",
+    [form.phoneCountry],
   );
 
   const setField = <K extends keyof AdminAccessFormData>(
@@ -292,20 +499,18 @@ const AdminAccessRequestModal = ({
                     <div key={item.step} className="flex items-center gap-3 min-w-0">
                       <div className="flex items-center gap-2 min-w-0">
                         <div
-                          className={`h-8 w-8 rounded-full border flex items-center justify-center ${
-                            isDone
-                              ? "border-emerald-500 bg-emerald-500 text-white"
-                              : isActive
-                                ? "border-accent bg-accent/10 text-accent"
-                                : "border-slate-300 bg-white text-slate-400"
-                          }`}
+                          className={`h-8 w-8 rounded-full border flex items-center justify-center ${isDone
+                            ? "border-emerald-500 bg-emerald-500 text-white"
+                            : isActive
+                              ? "border-accent bg-accent/10 text-accent"
+                              : "border-slate-300 bg-white text-slate-400"
+                            }`}
                         >
                           <item.icon className="h-4 w-4" />
                         </div>
                         <span
-                          className={`text-xs sm:text-sm ${
-                            isActive ? "text-foreground font-medium" : "text-slate-500"
-                          }`}
+                          className={`text-xs sm:text-sm ${isActive ? "text-foreground font-medium" : "text-slate-500"
+                            }`}
                         >
                           {item.title}
                         </span>
@@ -361,12 +566,28 @@ const AdminAccessRequestModal = ({
 
                   <div className="space-y-1.5">
                     <Label htmlFor="phoneNumber">Phone Number (optional)</Label>
-                    <Input
-                      id="phoneNumber"
-                      value={form.phoneNumber}
-                      onChange={(e) => setField("phoneNumber", e.target.value)}
-                      placeholder="+91 98765 43210"
-                    />
+                    <div className="flex gap-2">
+                      <Select value={form.phoneCountry} onValueChange={(value) => setField("phoneCountry", value)}>
+                        <SelectTrigger className="w-[160px]">
+                          <SelectValue placeholder="Country" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {PHONE_DIAL_CODE_OPTIONS.map((option) => (
+                            <SelectItem value={option.value} key={option.value}>
+                              {option.label} ({option.dialCode})
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <Input
+                        id="phoneNumber"
+                        type="tel"
+                        autoComplete="tel-national"
+                        value={form.phoneNumber}
+                        onChange={(e) => setField("phoneNumber", e.target.value)}
+                        placeholder={`${selectedDialCode} 98765 43210`}
+                      />
+                    </div>
                   </div>
                 </div>
               ) : null}
