@@ -12,10 +12,12 @@ import {
   CertificateTemplateMeta,
   GalleryCategory,
 } from "@/components/certificates/types";
-import templatesData from "@/data/certificateTemplates.json";
+import { getTemplates } from "@/services/apiService";
 
 const categories: Array<"All" | GalleryCategory> = ["All", "Academic", "Corporate", "Internship", "Event", "Compliance", "Training"];
-const officialTemplates = templatesData as CertificateTemplateMeta[];
+
+// start empty; we'll fetch from backend
+const officialTemplatesInit: CertificateTemplateMeta[] = [];
 
 const emptyDraft: CertificateDraft = {
   recipientName: "Alex Morgan",
@@ -46,7 +48,8 @@ const normalizeDraft = (draft: Partial<CertificateDraft>, fallbackTitle: string)
 const Templates = () => {
   const [searchParams] = useSearchParams();
   const [selectedCategory, setSelectedCategory] = useState<"All" | GalleryCategory>("All");
-  const [selectedTemplateId, setSelectedTemplateId] = useState<string>(officialTemplates[0]?.id ?? "");
+  const [templates, setTemplates] = useState<CertificateTemplateMeta[]>(officialTemplatesInit);
+  const [selectedTemplateId, setSelectedTemplateId] = useState<string>("");
   const [selectedTemplate, setSelectedTemplate] = useState<CertificateTemplateMeta | null>(null);
   const [modalMode, setModalMode] = useState<"preview" | "edit">("preview");
   const [draftByTemplate, setDraftByTemplate] = useState<Record<string, CertificateDraft>>({});
@@ -72,7 +75,7 @@ const Templates = () => {
         if (raw) {
           const parsed = JSON.parse(raw) as Record<string, Partial<CertificateDraft>>;
           const normalized = Object.entries(parsed).reduce((acc, [templateId, draft]) => {
-            const fallbackTitle = officialTemplates.find((template) => template.id === templateId)?.title ?? emptyDraft.certificateTitle;
+            const fallbackTitle = templates.find((template) => template.id === templateId)?.title ?? emptyDraft.certificateTitle;
             acc[templateId] = normalizeDraft(draft, fallbackTitle);
             return acc;
           }, {} as Record<string, CertificateDraft>);
@@ -81,10 +84,24 @@ const Templates = () => {
       } catch {
         setDraftByTemplate({});
       }
+
+      // fetch templates from backend
+      try {
+        const t = await getTemplates();
+        setTemplates(t as CertificateTemplateMeta[]);
+        if (!selectedTemplateId && t?.length) {
+          setSelectedTemplateId(t[0].id);
+        }
+      } catch (err) {
+        // keep existing behavior; show empty state
+        console.error("Failed to load templates", err);
+      }
+
       setLoading(false);
     };
 
     load();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => {
@@ -96,7 +113,7 @@ const Templates = () => {
       return;
     }
 
-    const target = officialTemplates.find((template) => template.id === templateId);
+    const target = templates.find((template) => template.id === templateId);
     if (!target) {
       return;
     }
@@ -104,14 +121,14 @@ const Templates = () => {
     setSelectedTemplateId(target.id);
     setSelectedTemplate(target);
     setModalMode(mode === "edit" ? "edit" : "preview");
-  }, [searchParams]);
+  }, [searchParams, templates]);
 
   const filteredTemplates = useMemo(() => {
     if (selectedCategory === "All") {
-      return officialTemplates;
+      return templates;
     }
-    return officialTemplates.filter((template) => template.category === selectedCategory);
-  }, [selectedCategory]);
+    return templates.filter((template) => template.category === selectedCategory);
+  }, [selectedCategory, templates]);
 
   // Reset to page 1 when category changes
   useEffect(() => {

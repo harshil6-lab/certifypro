@@ -12,7 +12,7 @@ import {
   CertificateTemplateMeta,
   GalleryCategory,
 } from "@/components/certificates/types";
-import templatesData from "@/data/certificateTemplates.json";
+import { getTemplates } from "@/services/apiService";
 
 const categoryOrder: GalleryCategory[] = [
   "Academic",
@@ -23,7 +23,7 @@ const categoryOrder: GalleryCategory[] = [
   "Training",
 ];
 
-const templates = templatesData as CertificateTemplateMeta[];
+const templatesInit: CertificateTemplateMeta[] = [];
 
 const emptyDraft: CertificateDraft = {
   recipientName: "Alex Morgan",
@@ -48,6 +48,9 @@ const normalizeDraft = (draft: Partial<CertificateDraft>, fallbackTitle: string)
 });
 
 export function CertificateGallerySection() {
+  const [templates, setTemplates] = useState<CertificateTemplateMeta[]>(templatesInit);
+  const [loading, setLoading] = useState<boolean>(true);
+  const [error, setError] = useState<string | null>(null);
   const navigate = useNavigate();
   const [activeCategory, setActiveCategory] = useState<GalleryCategory>("Academic");
   const [selectedTemplate, setSelectedTemplate] = useState<CertificateTemplateMeta | null>(null);
@@ -58,6 +61,25 @@ export function CertificateGallerySection() {
       acc[category] = templates.filter((template) => template.category === category);
       return acc;
     }, {} as Record<GalleryCategory, CertificateTemplateMeta[]>);
+  }, [templates]);
+
+  useEffect(() => {
+    let mounted = true;
+    setLoading(true);
+    getTemplates()
+      .then((data) => {
+        if (!mounted) return;
+        setTemplates(data as CertificateTemplateMeta[]);
+      })
+      .catch((err) => {
+        if (!mounted) return;
+        setError(String(err));
+      })
+      .finally(() => mounted && setLoading(false));
+
+    return () => {
+      mounted = false;
+    };
   }, []);
 
   useEffect(() => {
@@ -75,7 +97,7 @@ export function CertificateGallerySection() {
     } catch {
       setDraftByTemplate({});
     }
-  }, []);
+  }, [templates]);
 
   const currentDraft = selectedTemplate
     ? draftByTemplate[selectedTemplate.id] ?? normalizeDraft({}, selectedTemplate.title)
@@ -151,43 +173,53 @@ export function CertificateGallerySection() {
         {categoryOrder.map((category) => (
           <TabsContent key={category} value={category} className="mt-0 animate-in fade-in duration-300">
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-5">
-              {templatesByCategory[category].map((template) => {
-                const draft = draftByTemplate[template.id] ?? {
-                  ...normalizeDraft({}, template.title),
-                };
+              {loading ? (
+                <div className="col-span-full h-48 rounded-lg border border-dashed border-border flex items-center justify-center text-muted-foreground text-sm">
+                  Loading...
+                </div>
+              ) : error ? (
+                <div className="col-span-full h-48 flex items-center justify-center text-red-500">{error}</div>
+              ) : (
+                <>
+                  {templatesByCategory[category].map((template) => {
+                    const draft = draftByTemplate[template.id] ?? {
+                      ...normalizeDraft({}, template.title),
+                    };
 
-                return (
-                  <article
-                    key={template.id}
-                    className="group relative overflow-hidden rounded-xl border border-slate-200 bg-slate-50/60 transition-all duration-300 hover:-translate-y-0.5 hover:shadow-md"
-                  >
-                    <div className="relative aspect-[1.414/1] overflow-hidden bg-white p-2">
-                      <CertificateTemplate
-                        styleType={template.styleType}
-                        draft={draft}
-                        organizationName={template.category === "Corporate" ? "CertifyPro Corporate" : "CertifyPro Institution"}
-                        previewScale="sm"
-                        className="h-full"
-                      />
+                    return (
+                      <article
+                        key={template.id}
+                        className="group relative overflow-hidden rounded-xl border border-slate-200 bg-slate-50/60 transition-all duration-300 hover:-translate-y-0.5 hover:shadow-md"
+                      >
+                        <div className="relative aspect-[1.414/1] overflow-hidden bg-white p-2">
+                          <CertificateTemplate
+                            styleType={template.styleType}
+                            draft={draft}
+                            organizationName={template.category === "Corporate" ? "CertifyPro Corporate" : "CertifyPro Institution"}
+                            previewScale="sm"
+                            className="h-full"
+                          />
 
-                      <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-slate-900/25 via-slate-900/10 to-transparent opacity-0 backdrop-blur-[1px] transition-opacity duration-300 group-hover:opacity-100" />
-                      <div className="absolute inset-x-3 bottom-3 z-10 flex items-center gap-2 opacity-100 translate-y-0 sm:opacity-0 sm:translate-y-1 transition-all duration-300 sm:group-hover:opacity-100 sm:group-hover:translate-y-0 pointer-events-auto">
-                        <Button size="sm" className="h-8 text-xs gap-1.5" onClick={() => setSelectedTemplate(template)}>
-                          <Eye className="h-3.5 w-3.5" /> Preview
-                        </Button>
-                        <Button size="sm" variant="outline" className="h-8 text-xs gap-1.5 bg-white/90" onClick={() => openTemplateForEdit(template)}>
-                          <Pencil className="h-3.5 w-3.5" /> Edit
-                        </Button>
-                      </div>
-                    </div>
+                          <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-slate-900/25 via-slate-900/10 to-transparent opacity-0 backdrop-blur-[1px] transition-opacity duration-300 group-hover:opacity-100" />
+                          <div className="absolute inset-x-3 bottom-3 z-10 flex items-center gap-2 opacity-100 translate-y-0 sm:opacity-0 sm:translate-y-1 transition-all duration-300 sm:group-hover:opacity-100 sm:group-hover:translate-y-0 pointer-events-auto">
+                            <Button size="sm" className="h-8 text-xs gap-1.5" onClick={() => setSelectedTemplate(template)}>
+                              <Eye className="h-3.5 w-3.5" /> Preview
+                            </Button>
+                            <Button size="sm" variant="outline" className="h-8 text-xs gap-1.5 bg-white/90" onClick={() => openTemplateForEdit(template)}>
+                              <Pencil className="h-3.5 w-3.5" /> Edit
+                            </Button>
+                          </div>
+                        </div>
 
-                    <div className="space-y-1.5 p-4">
-                      <p className="text-sm font-semibold tracking-tight text-foreground line-clamp-1">{template.title}</p>
-                      <p className="text-xs text-slate-500">Editable: Recipient, Title, Description, Issuer, Logo</p>
-                    </div>
-                  </article>
-                );
-              })}
+                        <div className="space-y-1.5 p-4">
+                          <p className="text-sm font-semibold tracking-tight text-foreground line-clamp-1">{template.title}</p>
+                          <p className="text-xs text-slate-500">Editable: Recipient, Title, Description, Issuer, Logo</p>
+                        </div>
+                      </article>
+                    );
+                  })}
+                </>
+              )}
             </div>
           </TabsContent>
         ))}
