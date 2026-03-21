@@ -10,6 +10,7 @@ from .core.config import get_settings
 from .api import auth_routes, user_routes, templates_routes, dashboard_routes, students_routes, certificates_routes, verify_routes
 from .middleware.auth_middleware import AuthMiddleware
 from .services.templates_service import seed_default_templates
+from .services.template_gallery_seed import seed_gallery_templates
 
 settings = get_settings()
 
@@ -45,14 +46,25 @@ app.include_router(certificates_routes.router, prefix="/certificates", tags=["ce
 app.include_router(verify_routes.router, prefix="", tags=["verify"])
 
 
-# Startup event: seed default templates if table is empty
+# Startup event: seed templates on app initialization
 @app.on_event("startup")
 async def startup_event():
-    """Run initialization tasks on FastAPI startup."""
+    """Run initialization tasks on FastAPI startup.
+    
+    Tasks:
+    1. Seed basic default templates (5 templates)
+    2. Seed official gallery templates (60 templates)
+    """
     print("\n🚀 CertifyPro Backend Startup")
-    print("=" * 50)
+    print("=" * 60)
+    
+    # Seed basic templates first
     seed_default_templates()
-    print("=" * 50)
+    
+    # Then seed official gallery templates
+    seed_gallery_templates()
+    
+    print("=" * 60)
 
 
 if __name__ == "__main__":
