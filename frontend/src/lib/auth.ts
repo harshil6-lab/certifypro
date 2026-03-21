@@ -228,3 +228,140 @@ export async function sendPasswordResetEmail(email: string): Promise<AuthResult>
 }
 
 export { AUTH_KEY, isSupabaseConfigured };
+
+/* ============================================================ */
+/* PROFILE & FIRST LOGIN CHECK */
+/* ============================================================ */
+
+export type UserProfile = {
+  id: string;
+  email: string;
+  role: "staff" | "admin" | "super_admin";
+  organization?: string;
+  first_login_required: boolean;
+};
+
+/**
+ * Fetch current user's profile with role and organization.
+ * Used to determine if user needs to complete profile setup.
+ */
+export async function getCurrentUserProfile(): Promise<UserProfile | null> {
+  if (!isSupabaseConfigured || !supabase) {
+    console.warn("Supabase not configured");
+    return null;
+  }
+
+  try {
+    const { data: sessionData } = await supabase.auth.getSession();
+    if (!sessionData.session?.user?.id) {
+      console.warn("No authenticated user");
+      return null;
+    }
+
+    // Get the user's auth token for protected routes
+    const token = sessionData.session.access_token;
+    if (!token) {
+      console.warn("No access token available");
+      return null;
+    }
+
+    const response = await fetch(`${window.location.origin}/api/user/profile`, {
+      method: "GET",
+      headers: {
+        "Authorization": `Bearer ${token}`,
+        "Content-Type": "application/json",
+      },
+    });
+
+    if (!response.ok) {
+      if (response.status === 401) {
+        console.warn("User not authenticated");
+        return null;
+      }
+      if (response.status === 404) {
+        console.warn("User profile not found");
+        return null;
+      }
+      throw new Error(`HTTP ${response.status}`);
+    }
+
+    const data = await response.json();
+    return data.profile || null;
+  } catch (error) {
+    console.error("Error fetching user profile:", error);
+    return null;
+  }
+}
+
+/**
+ * Check if user needs to complete first login setup.
+ * Returns URL to redirect to, or null if no redirect needed.
+ */
+export async function checkFirstLoginRequired(): Promise<string | null> {
+  try {
+    const profile = await getCurrentUserProfile();
+    
+    if (!profile) {
+      console.warn("Profile not found, redirecting to complete-profile");
+      return "/complete-profile";
+    }
+
+    if (profile.first_login_required) {
+      console.info("First login setup required, redirecting");
+      return "/complete-profile";
+    }
+
+    return null;
+  } catch (error) {
+    console.error("Error checking first login status:", error);
+    return null;
+  }
+}
+
+/**
+ * Mark first login as complete and redirect user to dashboard.
+ */
+export async function markFirstLoginComplete(): Promise<AuthResult> {
+  if (!isSupabaseConfigured || !supabase) {
+    return {
+      success: false,
+      error: "Authentication is not configured.",
+    };
+  }
+
+  try {
+    const { data: sessionData } = await supabase.auth.getSession();
+    const token = sessionData.session?.access_token;
+
+    if (!token) {
+      return {
+        success: false,
+        error: "Not authenticated",
+      };
+    }
+
+    const response = await fetch(`${window.location.origin}/api/user/profile/complete-first-login`, {
+      method: "POST",
+      headers: {
+        "Authorization": `Bearer ${token}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({}),
+    });
+
+    if (!response.ok) {
+      throw new Error(`HTTP ${response.status}`);
+    }
+
+    const data = await response.json();
+    return {
+      success: true,
+      ...data,
+    };
+  } catch (error) {
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : "Failed to complete first login",
+    };
+  }
+}

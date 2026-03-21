@@ -228,6 +228,73 @@ async function processRequest(requestId: string) {
         });
 
         notes.push("User successfully invited via Supabase Auth");
+
+        /* CREATE PROFILE ENTRY */
+        console.log("  📝 Creating user profile...");
+
+        try {
+          const { error: profileError } = await admin
+            .from("profiles")
+            .insert({
+              id: approvedUserId,
+              email: row.email,
+              organization: row.organization,
+              role: "admin",
+              first_login_required: true,
+            });
+
+          if (profileError) {
+            throw new Error(`Profile creation failed: ${profileError.message}`);
+          }
+
+          console.log("✅ User profile created successfully", {
+            userId: approvedUserId,
+            organization: row.organization,
+            role: "admin",
+          });
+
+          notes.push("User profile created successfully");
+        } catch (profileErr) {
+          const profileErrMsg =
+            profileErr instanceof Error ? profileErr.message : String(profileErr);
+          console.error("❌ Profile creation failed:", profileErrMsg);
+          notes.push(`Profile creation failed: ${profileErrMsg}`);
+        }
+
+        /* CREATE APP_USERS ENTRY */
+        console.log("  📝 Creating app_users entry...");
+
+        try {
+          const { error: appUserError } = await admin
+            .from("app_users")
+            .insert({
+              auth_uid: approvedUserId,
+              email: row.email,
+              role: "admin",
+              full_name: row.full_name ?? "Organization Admin",
+              metadata: {
+                source: "access_request",
+                request_id: row.id
+              }
+            });
+
+          if (appUserError) {
+            throw new Error(`App users creation failed: ${appUserError.message}`);
+          }
+
+          console.log("✅ App_users entry created successfully", {
+            userId: approvedUserId,
+            email: row.email,
+            role: "admin",
+          });
+
+          notes.push("App_users entry created successfully");
+        } catch (appUserErr) {
+          const appUserErrMsg =
+            appUserErr instanceof Error ? appUserErr.message : String(appUserErr);
+          console.error("❌ App_users creation failed:", appUserErrMsg);
+          notes.push(`App_users creation failed: ${appUserErrMsg}`);
+        }
       } else {
         throw new Error("User created but no ID returned");
       }
