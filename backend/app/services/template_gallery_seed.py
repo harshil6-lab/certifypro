@@ -1,10 +1,9 @@
-"""Template gallery seeding system for CertifyPro.
+"""Enhanced template gallery seeding system for CertifyPro.
 
-This module generates and seeds 60 official certificate templates (10 per category)
-into the templates table on first startup. Implements duplicate protection and
-efficient bulk insert.
+Generates 60 official certificate templates (10 per category, 6 categories)
+with unique design variants, proper category filtering, and duplicate protection.
 
-Categories (10 templates each):
+Categories (exactly 10 templates each):
 - Academic
 - Corporate
 - Internship
@@ -12,50 +11,67 @@ Categories (10 templates each):
 - Compliance
 - Training
 
-Each template is marked as is_official=true for read-only display on landing page.
-Dashboard users can create workspace-editable copies (is_official=false) as needed.
+Design Styles (unique per template):
+1. Classic (navy background)
+2. Modern (slate background)
+3. Minimal (white background)
+4. Bordered (gray background)
+5. Gradient (indigo background)
+6. Signature Heavy (amber background)
+7. Left Aligned (teal background)
+8. Centered (cyan background)
+9. Gold Accent (yellow background)
+10. Dark Theme (black background)
+
+Each template includes unique preview images and properly formatted slugs.
+Templates marked as is_official=true for landing page read-only display.
 """
 
 from typing import List, Dict, Any
-from ._supabase_helpers import select_where, insert_table
+from ._supabase_helpers import select_table, insert_table
 
 
-# Color mapping for placeholder images
-CATEGORY_COLORS = {
-    "academic": "0066cc",          # blue
-    "corporate": "333333",         # dark gray
-    "internship": "ff9900",        # orange
-    "event": "9933cc",             # purple
-    "compliance": "009900",        # green
-    "training": "00cccc",          # teal
-}
+# Style definitions with colors and descriptions
+DESIGN_STYLES = [
+    {"name": "classic", "color": "000080", "display": "Classic"},         # navy
+    {"name": "modern", "color": "708090", "display": "Modern"},           # slate
+    {"name": "minimal", "color": "ffffff", "display": "Minimal"},         # white
+    {"name": "bordered", "color": "808080", "display": "Bordered"},       # gray
+    {"name": "gradient", "color": "4B0082", "display": "Gradient"},       # indigo
+    {"name": "signature-heavy", "color": "FFBF00", "display": "Signature Heavy"},  # amber
+    {"name": "left-aligned", "color": "008080", "display": "Left Aligned"},  # teal
+    {"name": "centered", "color": "00FFFF", "display": "Centered"},       # cyan
+    {"name": "gold-accent", "color": "FFFF00", "display": "Gold Accent"}, # yellow
+    {"name": "dark-theme", "color": "000000", "display": "Dark Theme"},   # black
+]
 
-# Template categories and display names
+# Categories with proper capitalization (MUST match database filtering)
 CATEGORIES = [
-    "academic",
-    "corporate",
-    "internship",
-    "event",
-    "compliance",
-    "training",
+    "Academic",
+    "Corporate",
+    "Internship",
+    "Event",
+    "Compliance",
+    "Training",
 ]
 
 
 def generate_template_batch() -> List[Dict[str, Any]]:
     """Generate complete batch of 60 official CertifyPro templates.
     
-    Creates 10 templates per category with:
-    - Unique slug validation
+    Creates 10 unique templates per category with:
+    - Design style variants
+    - Unique slugs
+    - Distinct preview images
     - Consistent metadata
     - Official status marking
-    - Placeholder images
-    - Editable field specifications
     
     Returns:
         List of 60 template dictionaries ready for database insertion
     """
     templates = []
     
+    # Standard editable fields for all certificates
     editable_fields = {
         "name": True,
         "course": True,
@@ -65,30 +81,43 @@ def generate_template_batch() -> List[Dict[str, Any]]:
         "issuer_signature": True,
     }
     
+    # Generate templates for each category
     for category in CATEGORIES:
-        color = CATEGORY_COLORS.get(category, "0066cc")
-        category_display = category.title()
+        category_lower = category.lower()
         
-        for i in range(1, 11):  # 10 templates per category
-            title = f"{category_display} Certificate {i}"
-            slug = f"{category}-certificate-{i}"
+        # Generate 10 templates per category (one for each design style)
+        for style_def in DESIGN_STYLES:
+            style_name = style_def["name"]
+            style_display = style_def["display"]
+            color = style_def["color"]
             
-            # Build placeholder image URL
-            image_url = f"https://dummyimage.com/600x400/{color}/ffffff?text={title.replace(' ', '+')}"
+            # Create unique slug: {category-lowercase}-{style}
+            slug = f"{category_lower}-{style_name}"
             
+            # Create descriptive title
+            title = f"{category} {style_display}"
+            
+            # Build unique preview image URL
+            image_url = (
+                f"https://dummyimage.com/600x400/{color}/ffffff"
+                f"?text={category}+{style_display.replace(' ', '+')}"
+            )
+            
+            # Create category-specific description
             description = (
-                f"Professional {category_display.lower()} certificate template {i}. "
-                f"Suitable for recognition, achievement, and credential validation. "
-                f"Includes QR code verification and digital signatures."
+                f"{title} certificate template. "
+                f"Professional design with {style_name} styling. "
+                f"Suitable for recognizing {category_lower} achievements and credentials. "
+                f"Includes QR code verification, digital signatures, and customizable fields."
             )
             
             template = {
                 "title": title,
                 "slug": slug,
-                "category": category,
+                "category": category,  # Use proper capitalization
                 "description": description,
                 "image_url": image_url,
-                "style_type": "certifypro-official",
+                "style_type": style_name,  # Store style for filtering/customization
                 "is_official": True,
                 "editable_fields": editable_fields,
             }
@@ -98,72 +127,117 @@ def generate_template_batch() -> List[Dict[str, Any]]:
     return templates
 
 
-def seed_gallery_templates() -> bool:
-    """Seed 60 official templates if gallery is not yet populated.
-    
-    Flow:
-    1. Check count of official templates (is_official=true)
-    2. If count >= 60, exit safely (already seeded)
-    3. Generate batch of 60 templates
-    4. Check each slug for existence (duplicate protection)
-    5. Filter out any duplicates
-    6. Bulk insert remaining templates
-    7. Log results clearly
+def get_existing_slugs() -> set:
+    """Fetch all existing template slugs from database.
     
     Returns:
-        True if seeding succeeded or already populated, False on error
+        Set of existing slugs for duplicate detection
     """
     try:
-        print("\n📚 Checking gallery templates...")
-        print("=" * 60)
-        
-        # Check existing official templates
-        existing_templates, err = select_where(
-            "templates",
-            {"is_official": True},
-            "id,slug"
-        )
-        
+        existing_templates, err = select_table("templates", "slug")
         if err:
-            print(f"⚠️  Warning: Failed to check existing templates: {err}")
-            return False
+            print(f"⚠️  Warning: Failed to fetch existing slugs: {err}")
+            return set()
         
-        existing_count = len(existing_templates) if existing_templates else 0
+        slugs = set()
+        if existing_templates:
+            slugs = {t.get("slug") for t in existing_templates if t.get("slug")}
         
-        if existing_count >= 60:
-            print(f"✓ Gallery already populated ({existing_count} official templates)")
-            print("=" * 60)
-            return True
+        return slugs
+    except Exception as exc:
+        print(f"⚠️  Warning: Error fetching existing slugs: {exc}")
+        return set()
+
+
+def count_category_templates(category: str, existing_slugs: set) -> int:
+    """Count how many templates exist for a given category.
+    
+    Args:
+        category: Category name (e.g., "Academic")
+        existing_slugs: Set of existing slugs in database
+    
+    Returns:
+        Count of existing templates for this category
+    """
+    category_lower = category.lower()
+    count = sum(
+        1 for slug in existing_slugs
+        if slug.startswith(f"{category_lower}-")
+    )
+    return count
+
+
+def seed_gallery_templates() -> bool:
+    """Seed 60 official templates (10 per category) with duplicate protection.
+    
+    Flow:
+    1. Fetch existing template slugs (duplicate protection)
+    2. Generate batch of 60 template definitions
+    3. Filter out duplicates by slug
+    4. For each category: check existing count
+    5. Only insert templates that don't already exist
+    6. Bulk insert all new templates
+    7. Log progress per category
+    
+    Returns:
+        True if seeding succeeded or already complete, False on error
+    """
+    try:
+        print("\n📚 Gallery Template Seeding")
+        print("=" * 70)
+        
+        # Fetch existing slugs for duplicate protection
+        existing_slugs = get_existing_slugs()
+        print(f"📋 Found {len(existing_slugs)} existing templates")
         
         # Generate complete template batch
-        templates_to_insert = generate_template_batch()
-        print(f"📋 Generated {len(templates_to_insert)} template definitions")
+        all_templates = generate_template_batch()
+        print(f"🔧 Generated {len(all_templates)} template definitions (10 per category)")
         
-        # Get existing slugs for duplicate check
-        existing_slugs = set()
-        if existing_templates:
-            existing_slugs = {t.get("slug") for t in existing_templates if t.get("slug")}
+        # Track new templates to insert
+        new_templates = []
         
-        # Filter out duplicates
-        new_templates = [
-            t for t in templates_to_insert
-            if t.get("slug") not in existing_slugs
-        ]
+        # Check each category and log status
+        print("\n📊 Category Status:")
+        print("-" * 70)
         
+        for category in CATEGORIES:
+            existing_count = count_category_templates(category, existing_slugs)
+            
+            if existing_count >= 10:
+                print(f"✓ {category:15s} - Already complete ({existing_count}/10)")
+                continue
+            
+            # Find templates for this category that need inserting
+            category_templates = [
+                t for t in all_templates
+                if t.get("category") == category and t.get("slug") not in existing_slugs
+            ]
+            
+            if category_templates:
+                new_templates.extend(category_templates)
+                final_count = existing_count + len(category_templates)
+                print(f"🔄 {category:15s} - Inserting {len(category_templates)} templates "
+                      f"({existing_count}/10 → {final_count}/10)")
+            else:
+                print(f"✓ {category:15s} - Already complete ({existing_count}/10)")
+        
+        print("-" * 70)
+        
+        # If all categories are complete, exit
         if not new_templates:
-            print(f"✓ All templates already exist (duplicate check returned 0 new)")
-            print("=" * 60)
+            total_count = len(existing_slugs)
+            print(f"\n✅ Gallery already fully populated ({total_count} templates)")
+            print("=" * 70)
             return True
         
-        print(f"🔍 Found {len(new_templates)} new templates to insert")
-        print(f"   (Skipped {len(templates_to_insert) - len(new_templates)} duplicates)")
-        
         # Bulk insert all new templates
+        print(f"\n💾 Bulk inserting {len(new_templates)} new templates...")
         inserted_data, err = insert_table("templates", new_templates)
         
         if err:
             print(f"❌ Failed to insert templates: {err}")
-            print("=" * 60)
+            print("=" * 70)
             return False
         
         # Count successfully inserted
@@ -173,21 +247,31 @@ def seed_gallery_templates() -> bool:
         elif inserted_data:
             inserted_count = 1
         
-        print(f"✅ Successfully inserted {inserted_count} templates")
-        print(f"   Total official templates now: {existing_count + inserted_count}")
+        # Final summary
+        print(f"\n✅ Successfully inserted {inserted_count} templates")
+        print(f"📊 Gallery Status After Seeding:")
+        print("-" * 70)
         
-        # Summary by category
-        print("\n📊 Template inventory by category:")
+        # Recalculate counts after insertion
+        new_existing_slugs = existing_slugs.copy()
+        if isinstance(inserted_data, list):
+            for item in inserted_data:
+                if isinstance(item, dict) and "slug" in item:
+                    new_existing_slugs.add(item["slug"])
+        
         for category in CATEGORIES:
-            category_count = sum(
-                1 for t in new_templates if t.get("category") == category
-            )
-            print(f"   • {category.title()}: {category_count}")
+            final_count = count_category_templates(category, new_existing_slugs)
+            status = "✓" if final_count == 10 else "⚠️"
+            print(f"{status} {category:15s} - {final_count}/10 templates")
         
-        print("=" * 60)
+        print("-" * 70)
+        total_final = len(new_existing_slugs)
+        print(f"\n🎉 Total official templates: {total_final}")
+        print("=" * 70)
+        
         return True
         
     except Exception as exc:
         print(f"❌ Unexpected error during gallery seeding: {exc}")
-        print("=" * 60)
+        print("=" * 70)
         return False
