@@ -195,7 +195,7 @@ const Templates = () => {
           <h1 className="text-3xl font-heading font-bold text-foreground">Template Library & Workspace</h1>
           <p className="text-muted-foreground mt-1">Browse official locked templates and manage custom uploaded layouts in separate workspaces.</p>
         </div>
-        <Badge variant="secondary" className="text-xs">Mock API Mode • Backend-ready</Badge>
+        <Badge variant="secondary" className="text-xs">Connected to backend</Badge>
       </div>
 
       <div className="grid grid-cols-1 xl:grid-cols-5 gap-6">

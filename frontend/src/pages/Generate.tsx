@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   CheckCircle2,
   FileText,
@@ -14,6 +14,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Badge } from "@/components/ui/badge";
+import { getTemplates, getStudents, generateCertificate } from "@/services/apiService";
 
 const steps = [
   { id: 1, title: "Select Template", icon: FileText },
@@ -26,27 +28,64 @@ const Generate = () => {
   const [currentStep, setCurrentStep] = useState(1);
   const [generating, setGenerating] = useState(false);
   const [progress, setProgress] = useState(0);
+  
+  // State for data loading
+  const [templates, setTemplates] = useState<any[]>([]);
+  const [students, setStudents] = useState<any[]>([]);
+  const [loadingData, setLoadingData] = useState(true);
+  const [selectedTemplate, setSelectedTemplate] = useState("");
+  const [selectedStudent, setSelectedStudent] = useState("");
 
-  const handleGenerate = () => {
+  // Load templates and students on mount
+  useEffect(() => {
+    const loadData = async () => {
+      setLoadingData(true);
+      try {
+        const [templateData, studentData] = await Promise.all([
+          getTemplates().catch(() => []),
+          getStudents().catch(() => []),
+        ]);
+        setTemplates(Array.isArray(templateData) ? templateData : []);
+        setStudents(Array.isArray(studentData) ? studentData : []);
+      } catch (err) {
+        console.error("Error loading data:", err);
+      } finally {
+        setLoadingData(false);
+      }
+    };
+
+    loadData();
+  }, []);
+
+  const handleGenerate = async () => {
+    if (!selectedTemplate || !selectedStudent) {
+      alert("Please select both template and student");
+      return;
+    }
+
     setGenerating(true);
     setProgress(0);
-    const interval = setInterval(() => {
-      setProgress((p) => {
-        if (p >= 100) {
-          clearInterval(interval);
-          setGenerating(false);
-          return 100;
-        }
-        return p + 2;
-      });
-    }, 80);
+
+    try {
+      const result = await generateCertificate(selectedTemplate, selectedStudent);
+      setProgress(100);
+      console.log("Certificate generated:", result);
+    } catch (err) {
+      console.error("Error generating certificate:", err);
+      alert("Failed to generate certificate: " + (err instanceof Error ? err.message : "Unknown error"));
+    } finally {
+      setGenerating(false);
+    }
   };
 
   return (
     <div className="p-8 max-w-[1200px] mx-auto space-y-6 animate-fade-in">
-      <div>
-        <h1 className="text-3xl font-heading font-bold text-foreground">Generate Certificates</h1>
-        <p className="text-muted-foreground mt-1">Follow the wizard to batch‑generate certificates</p>
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-3xl font-heading font-bold text-foreground">Generate Certificates</h1>
+          <p className="text-muted-foreground mt-1">Follow the wizard to generate certificates</p>
+        </div>
+        <Badge variant="secondary" className="text-xs">Connected to backend</Badge>
       </div>
 
       {/* Step Indicator */}
@@ -84,25 +123,39 @@ const Generate = () => {
               <div>
                 <h3 className="text-2xl font-heading font-bold text-foreground">Select Certificate Template</h3>
                 <p className="text-base text-muted-foreground mt-2">
-                  Choose the design you want to use for this batch of certificates.
+                  Choose the design you want to use for this certificate.
                 </p>
               </div>
 
               <div className="space-y-3">
                 <label className="text-sm font-medium text-foreground px-1">Available Templates</label>
-                <Select>
-                  <SelectTrigger className="w-full h-12 text-base px-4 border-input/60 bg-background/50 focus:ring-2 focus:ring-accent/20">
-                    <SelectValue placeholder="Click to choose a template..." />
-                  </SelectTrigger>
-                  <SelectContent className="max-h-[300px]">
-                    <SelectItem value="bsc" className="py-3 text-base">B.Sc. Computer Science – 2024</SelectItem>
-                    <SelectItem value="mba" className="py-3 text-base">M.B.A. – 2024</SelectItem>
-                    <SelectItem value="phd" className="py-3 text-base">Ph.D. Research – 2024</SelectItem>
-                    <SelectItem value="workshop" className="py-3 text-base">Workshop Completion</SelectItem>
-                  </SelectContent>
-                </Select>
+                {loadingData ? (
+                  <div className="flex items-center gap-2 p-3 text-sm text-muted-foreground">
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                    Loading templates...
+                  </div>
+                ) : (
+                  <Select value={selectedTemplate} onValueChange={setSelectedTemplate}>
+                    <SelectTrigger className="w-full h-12 text-base px-4 border-input/60 bg-background/50 focus:ring-2 focus:ring-accent/20">
+                      <SelectValue placeholder="Click to choose a template..." />
+                    </SelectTrigger>
+                    <SelectContent className="max-h-[300px]">
+                      {templates.length > 0 ? (
+                        templates.map((template: any) => (
+                          <SelectItem key={template.id} value={template.id} className="py-3 text-base">
+                            {template.title || `Template ${template.id.slice(0, 8)}`}
+                          </SelectItem>
+                        ))
+                      ) : (
+                        <SelectItem value="none" disabled>
+                          No templates available
+                        </SelectItem>
+                      )}
+                    </SelectContent>
+                  </Select>
+                )}
                 <p className="text-sm text-muted-foreground flex items-center gap-1.5 px-1">
-                  <FileText className="w-4 h-4" /> Selected template will be applied to all students in the batch.
+                  <FileText className="w-4 h-4" /> Selected template will be applied to the certificate.
                 </p>
               </div>
 
@@ -117,27 +170,42 @@ const Generate = () => {
           {currentStep === 2 && (
             <div className="space-y-6 max-w-2xl">
               <div>
-                <h3 className="text-2xl font-heading font-bold text-foreground">Choose Student Batch</h3>
+                <h3 className="text-2xl font-heading font-bold text-foreground">Choose Student</h3>
                 <p className="text-base text-muted-foreground mt-2">
-                  Select the group of students who will receive these certificates.
+                  Select the student who will receive this certificate.
                 </p>
               </div>
 
               <div className="space-y-3">
-                <label className="text-sm font-medium text-foreground px-1">Imported Batches</label>
-                <Select>
-                  <SelectTrigger className="w-full h-12 text-base px-4 border-input/60 bg-background/50 focus:ring-2 focus:ring-accent/20">
-                    <SelectValue placeholder="Select a student batch..." />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="batch1" className="py-3 text-base">Batch 2024-A – 250 students</SelectItem>
-                    <SelectItem value="batch2" className="py-3 text-base">Batch 2024-B – 180 students</SelectItem>
-                    <SelectItem value="batch3" className="py-3 text-base">Workshop Mar 2024 – 45 students</SelectItem>
-                  </SelectContent>
-                </Select>
+                <label className="text-sm font-medium text-foreground px-1">Available Students</label>
+                {loadingData ? (
+                  <div className="flex items-center gap-2 p-3 text-sm text-muted-foreground">
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                    Loading students...
+                  </div>
+                ) : (
+                  <Select value={selectedStudent} onValueChange={setSelectedStudent}>
+                    <SelectTrigger className="w-full h-12 text-base px-4 border-input/60 bg-background/50 focus:ring-2 focus:ring-accent/20">
+                      <SelectValue placeholder="Select a student..." />
+                    </SelectTrigger>
+                    <SelectContent className="max-h-[300px]">
+                      {students.length > 0 ? (
+                        students.map((student: any) => (
+                          <SelectItem key={student.id} value={student.id} className="py-3 text-base">
+                            {student.full_name || student.email || `Student ${student.id.slice(0, 8)}`}
+                          </SelectItem>
+                        ))
+                      ) : (
+                        <SelectItem value="none" disabled>
+                          No students available
+                        </SelectItem>
+                      )}
+                    </SelectContent>
+                  </Select>
+                )}
                 <div className="flex items-center gap-2 px-1 text-sm text-muted-foreground bg-muted/30 p-3 rounded-lg border border-border/50">
                   <Users className="w-4 h-4 text-accent" />
-                  <span>Students in this batch will be matched with the template automatically.</span>
+                  <span>The selected student will receive a certificate with the chosen template.</span>
                 </div>
               </div>
             </div>
@@ -198,7 +266,7 @@ const Generate = () => {
             <div className="space-y-8 max-w-2xl mx-auto py-4">
               <div className="text-center space-y-2">
                 <h3 className="text-2xl font-heading font-bold text-foreground">Review & Generate</h3>
-                <p className="text-base text-muted-foreground">You are about to generate secure certificates for 250 students.</p>
+                <p className="text-base text-muted-foreground">Ready to generate certificate for the selected student.</p>
               </div>
 
               {!generating && progress === 0 && (
@@ -208,16 +276,26 @@ const Generate = () => {
                   </div>
 
                   <div className="space-y-1">
-                    <p className="text-xl font-medium text-foreground">Ready to process <strong>Batch 2024-A</strong></p>
-                    <p className="text-base text-muted-foreground">Estimated time: 2 minutes</p>
+                    <p className="text-xl font-medium text-foreground">Ready to process</p>
+                    <p className="text-base text-muted-foreground">Estimated time: 5 seconds</p>
                   </div>
 
                   <div className="flex flex-col sm:flex-row gap-4 justify-center px-6">
-                    <Button variant="outline" size="lg" className="gap-2 h-12 text-base border-foreground/20 hover:bg-background shadow-sm">
-                      <Eye className="w-5 h-5" /> Preview First Certificate
+                    <Button
+                      variant="outline"
+                      size="lg"
+                      className="gap-2 h-12 text-base border-foreground/20 hover:bg-background shadow-sm"
+                      onClick={() => setCurrentStep(3)}
+                    >
+                      <ArrowLeft className="w-5 h-5" /> Back
                     </Button>
-                    <Button onClick={handleGenerate} size="lg" className="gold-gradient text-accent-foreground font-bold h-12 text-base px-8 shadow-md hover:shadow-lg hover:brightness-110 transition-all">
-                      <Printer className="w-5 h-5" /> Start Generation
+                    <Button
+                      onClick={handleGenerate}
+                      disabled={!selectedTemplate || !selectedStudent}
+                      size="lg"
+                      className="gold-gradient text-accent-foreground font-bold h-12 text-base px-8 shadow-md hover:shadow-lg hover:brightness-110 transition-all disabled:opacity-50"
+                    >
+                      <Printer className="w-5 h-5" /> Generate Certificate
                     </Button>
                   </div>
                 </div>
@@ -226,7 +304,7 @@ const Generate = () => {
                 <div className="space-y-6 p-6 border rounded-xl bg-card shadow-sm">
                   <div className="flex items-center justify-between">
                     <span className="text-base font-medium text-foreground">
-                      {generating ? "Generating Certificates..." : "Generation Complete!"}
+                      {generating ? "Generating Certificate..." : "Generation Complete!"}
                     </span>
                     <span className="font-mono text-lg font-bold text-accent">{progress}%</span>
                   </div>
@@ -234,18 +312,18 @@ const Generate = () => {
                   {generating && (
                     <div className="flex items-center gap-3 text-base text-muted-foreground bg-muted/30 p-3 rounded-lg">
                       <Loader2 className="w-5 h-5 animate-spin text-accent" />
-                      Processing certificate {Math.floor(progress * 2.5)} of 250...
+                      Processing certificate...
                     </div>
                   )}
                   {progress === 100 && (
                     <div className="flex flex-col gap-4">
                       <div className="flex items-center gap-3 text-base text-success font-medium bg-success/10 p-4 rounded-lg border border-success/20">
                         <CheckCircle2 className="w-6 h-6 text-success" />
-                        All 250 certificates generated successfully!
+                        Certificate generated successfully!
                       </div>
                       <div className="flex justify-center pt-2">
                         <Button className="gold-gradient text-accent-foreground font-bold shadow-md">
-                          View Certificates in Registry
+                          View Certificate in Registry
                         </Button>
                       </div>
                     </div>
