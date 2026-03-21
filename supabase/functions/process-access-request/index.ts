@@ -229,71 +229,59 @@ async function processRequest(requestId: string) {
 
         notes.push("User successfully invited via Supabase Auth");
 
-        /* CREATE PROFILE ENTRY */
-        console.log("  📝 Creating user profile...");
+        /* CREATE APP_USERS IDENTITY ENTRY */
+        console.log("  📝 Creating app_users identity profile...");
 
         try {
-          const { error: profileError } = await admin
-            .from("profiles")
-            .insert({
-              id: approvedUserId,
-              email: row.email,
-              organization: row.organization,
-              role: "admin",
-              first_login_required: true,
-            });
-
-          if (profileError) {
-            throw new Error(`Profile creation failed: ${profileError.message}`);
-          }
-
-          console.log("✅ User profile created successfully", {
-            userId: approvedUserId,
-            organization: row.organization,
-            role: "admin",
-          });
-
-          notes.push("User profile created successfully");
-        } catch (profileErr) {
-          const profileErrMsg =
-            profileErr instanceof Error ? profileErr.message : String(profileErr);
-          console.error("❌ Profile creation failed:", profileErrMsg);
-          notes.push(`Profile creation failed: ${profileErrMsg}`);
-        }
-
-        /* CREATE APP_USERS ENTRY */
-        console.log("  📝 Creating app_users entry...");
-
-        try {
-          const { error: appUserError } = await admin
+          // Check if app_users entry already exists (idempotency)
+          const { data: existingUser, error: checkError } = await admin
             .from("app_users")
-            .insert({
-              auth_uid: approvedUserId,
-              email: row.email,
-              role: "admin",
-              full_name: row.full_name ?? "Organization Admin",
-              metadata: {
-                source: "access_request",
-                request_id: row.id
-              }
-            });
+            .select("id")
+            .eq("auth_uid", approvedUserId)
+            .maybeSingle();
 
-          if (appUserError) {
-            throw new Error(`App users creation failed: ${appUserError.message}`);
+          if (checkError) {
+            throw new Error(`Existence check failed: ${checkError.message}`);
           }
 
-          console.log("✅ App_users entry created successfully", {
-            userId: approvedUserId,
-            email: row.email,
-            role: "admin",
-          });
+          if (existingUser) {
+            console.log("ℹ️ app_users entry already exists, skipping insert", {
+              userId: approvedUserId,
+            });
+            notes.push("app_users entry already exists (idempotent check)");
+          } else {
+            // Insert new app_users entry
+            const { error: appUserError } = await admin
+              .from("app_users")
+              .insert({
+                auth_uid: approvedUserId,
+                email: row.email,
+                role: "admin",
+                full_name: row.full_name ?? row.organization ?? "Institution Admin",
+                metadata: {
+                  source: "access_request",
+                  request_id: row.id
+                }
+              });
 
-          notes.push("App_users entry created successfully");
+            if (appUserError) {
+              throw new Error(`app_users insertion failed: ${appUserError.message}`);
+            }
+
+            console.log("✅ app_users profile created successfully", {
+              userId: approvedUserId,
+              email: row.email,
+              role: "admin",
+            });
+
+            notes.push("app_users identity profile created successfully");
+          }
         } catch (appUserErr) {
           const appUserErrMsg =
             appUserErr instanceof Error ? appUserErr.message : String(appUserErr);
-          console.error("❌ App_users creation failed:", appUserErrMsg);
-          notes.push(`App_users creation failed: ${appUserErrMsg}`);
+          console.error("❌ app_users creation failed:", appUserErrMsg);
+          notes.push(`app_users creation failed: ${appUserErrMsg}`);
+          // Continue execution - don't throw, allow email to be sent
         }
       } else {
         throw new Error("User created but no ID returned");

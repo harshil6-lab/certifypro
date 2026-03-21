@@ -37,7 +37,7 @@ def get_user_profile(user_id: Optional[str]) -> Optional[Dict[str, Any]]:
         
         # Query app_users table
         response = (
-           supabase.table("app_users")
+            supabase.table("app_users")
             .select("*")
             .eq("auth_uid", user_id)
             .maybeSingle()
@@ -56,12 +56,13 @@ def get_user_profile(user_id: Optional[str]) -> Optional[Dict[str, Any]]:
         
         # Extract and validate profile data
         profile_data = response.data
+        metadata = profile_data.get("metadata") or {}
         profile = {
             "id": profile_data.get("auth_uid"),
             "email": profile_data.get("email"),
+            "full_name": profile_data.get("full_name"),
             "role": profile_data.get("role", "staff"),
-            "organization": profile_data.get("organization"),
-            "first_login_required": profile_data.get("first_login_required", True),
+            "organization": metadata.get("organization"),
             "created_at": profile_data.get("created_at"),
         }
         
@@ -70,7 +71,7 @@ def get_user_profile(user_id: Optional[str]) -> Optional[Dict[str, Any]]:
             logger.error(f"[get_user_profile] Invalid profile data (missing required fields): {user_id}")
             return None
         
-        logger.debug(f"[get_user_profile] Successfully fetched profile for {user_id}")
+        logger.debug(f"[get_user_profile] Successfully fetched app_users profile for {user_id}")
         return profile
         
     except Exception as e:
@@ -80,7 +81,7 @@ def get_user_profile(user_id: Optional[str]) -> Optional[Dict[str, Any]]:
 
 def mark_first_login_complete(user_id: Optional[str]) -> bool:
     """
-    Mark first_login_required as false for a user.
+    Mark onboarding as complete for a user by updating metadata.
     
     Args:
         user_id: The user ID from Supabase Auth
@@ -99,12 +100,16 @@ def mark_first_login_complete(user_id: Optional[str]) -> bool:
         return False
     
     try:
-        logger.info(f"[mark_first_login_complete] Marking first login complete for user: {user_id}")
+        logger.info(f"[mark_first_login_complete] Marking onboarding complete for user: {user_id}")
         
-        # Update app_users table
-        response = supabase.table("app_users").update({
-            "first_login_required": False
-        }).eq("auth_uid", user_id).select().execute()
+        # Update app_users metadata to mark onboarding as complete
+        response = (
+            supabase.table("app_users")
+            .update({"metadata": {"onboarding_completed_at": "now()"}})
+            .eq("auth_uid", user_id)
+            .select()
+            .execute()
+        )
         
         # Check for errors in response
         if hasattr(response, "error") and response.error:
