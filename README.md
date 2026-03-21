@@ -1,3 +1,5 @@
+<img width="2000" height="684" alt="image" src="https://github.com/user-attachments/assets/b1d5b6f9-cf76-41e1-9092-87a6e2f6917c" />
+
 # CertifyPro — Certificate Automation & Verification Platform
 
 CertifyPro is a modern SaaS-style certificate automation and verification platform developed by **Team ElevateX**.  
