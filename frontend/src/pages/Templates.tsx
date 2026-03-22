@@ -55,7 +55,7 @@ const Templates = () => {
   const [draftByTemplate, setDraftByTemplate] = useState<Record<string, CertificateDraft>>({});
   const [loading, setLoading] = useState(true);
   const [currentPage, setCurrentPage] = useState(1);
-  const itemsPerPage = 12;
+  const itemsPerPage = 4;
 
   const [dragActive, setDragActive] = useState(false);
   const [uploadedTemplateName, setUploadedTemplateName] = useState("sample-certificate-layout.pdf");
@@ -234,24 +234,22 @@ const Templates = () => {
                 <div className="flex items-center gap-2">
                   <Button
                     variant="outline"
-                    size="icon"
-                    className="h-7 w-7"
+                    size="sm"
                     onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
                     disabled={currentPage === 1}
                   >
-                    <ChevronLeft className="h-4 w-4" />
+                    Previous
                   </Button>
                   <span className="font-medium text-foreground">
-                    Page {currentPage} / {Math.max(1, totalPages)}
+                    Page {currentPage}
                   </span>
                   <Button
                     variant="outline"
-                    size="icon"
-                    className="h-7 w-7"
+                    size="sm"
                     onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
                     disabled={currentPage === totalPages || totalPages === 0}
                   >
-                    <ChevronRight className="h-4 w-4" />
+                    Next
                   </Button>
                 </div>
               </div>
