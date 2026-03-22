@@ -14,7 +14,8 @@ import {
 } from "@/components/certificates/types";
 import { getTemplates } from "@/services/apiService";
 
-const categoryOrder: GalleryCategory[] = [
+const categoryOrder: ("All" | GalleryCategory)[] = [
+  "All",
   "Academic",
   "Corporate",
   "Internship",
@@ -52,35 +53,36 @@ export function CertificateGallerySection() {
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
   const navigate = useNavigate();
-  const [activeCategory, setActiveCategory] = useState<GalleryCategory>("Academic");
+  const [activeCategory, setActiveCategory] = useState<"All" | GalleryCategory>("All");
   const [selectedTemplate, setSelectedTemplate] = useState<CertificateTemplateMeta | null>(null);
   const [draftByTemplate, setDraftByTemplate] = useState<Record<string, CertificateDraft>>({});
 
-  const templatesByCategory = useMemo(() => {
-    return categoryOrder.reduce((acc, category) => {
-      acc[category] = templates.filter((template) => template.category === category);
-      return acc;
-    }, {} as Record<GalleryCategory, CertificateTemplateMeta[]>);
-  }, [templates]);
-
   useEffect(() => {
     let mounted = true;
-    setLoading(true);
-    getTemplates()
-      .then((data) => {
+    const fetchTemplates = async () => {
+      setLoading(true);
+      setError(null);
+      try {
+        const params = activeCategory === "All" ? { official: true } : { official: true, category: activeCategory };
+        const data = await getTemplates(params);
+
         if (!mounted) return;
-        setTemplates(data as CertificateTemplateMeta[]);
-      })
-      .catch((err) => {
+        setTemplates(Array.isArray(data) ? data : []);
+        console.log("Templates loaded:", (Array.isArray(data) ? data.length : 0));
+      } catch (err) {
         if (!mounted) return;
         setError(String(err));
-      })
-      .finally(() => mounted && setLoading(false));
+      } finally {
+        if (mounted) setLoading(false);
+      }
+    };
+
+    fetchTemplates();
 
     return () => {
       mounted = false;
     };
-  }, []);
+  }, [activeCategory]);
 
   useEffect(() => {
     try {
@@ -181,7 +183,7 @@ export function CertificateGallerySection() {
                 <div className="col-span-full h-48 flex items-center justify-center text-red-500">{error}</div>
               ) : (
                 <>
-                  {templatesByCategory[category].map((template) => {
+                  {templates.map((template) => {
                     const draft = draftByTemplate[template.id] ?? {
                       ...normalizeDraft({}, template.title),
                     };

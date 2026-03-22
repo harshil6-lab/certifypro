@@ -42,7 +42,7 @@ const Generate = () => {
       setLoadingData(true);
       try {
         const [templateData, studentData] = await Promise.all([
-          getTemplates().catch(() => []),
+          getTemplates({ official: true }).catch(() => []),
           getStudents().catch(() => []),
         ]);
         setTemplates(Array.isArray(templateData) ? templateData : []);

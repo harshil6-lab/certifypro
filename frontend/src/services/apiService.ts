@@ -25,14 +25,34 @@ async function getAuthHeaders(): Promise<HeadersInit> {
   return headers;
 }
 
-export async function getTemplates(): Promise<any[]> {
-  const url = `${API_BASE}/templates`;
-  const res = await fetch(url, { method: "GET" });
+export async function getTemplates(options?: { official?: boolean; category?: string }): Promise<any[]> {
+  const params = new URLSearchParams();
+  if (options?.official) {
+    params.set("official", "true");
+  }
+  if (options?.category) {
+    params.set("category", options.category);
+  }
+
+  const queryString = params.toString();
+  const url = `${API_BASE}/templates${queryString ? `?${queryString}` : ""}`;
+
+  console.log("Fetching templates from backend", url);
+
+  const res = await fetch(url, {
+    method: "GET",
+    cache: "no-store",
+  });
   if (!res.ok) {
     const txt = await res.text();
     throw new Error(`Failed to fetch templates: ${res.status} ${txt}`);
   }
-  return res.json();
+
+  const data = await res.json();
+  if (Array.isArray(data)) {
+    console.log("Templates loaded:", data.length);
+  }
+  return data;
 }
 
 export async function getStudents(): Promise<any[]> {

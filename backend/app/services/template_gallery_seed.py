@@ -33,16 +33,16 @@ from ._supabase_helpers import select_table, insert_table
 
 # Style definitions with colors and descriptions
 DESIGN_STYLES = [
-    {"name": "classic", "color": "000080", "display": "Classic"},         # navy
-    {"name": "modern", "color": "708090", "display": "Modern"},           # slate
-    {"name": "minimal", "color": "ffffff", "display": "Minimal"},         # white
-    {"name": "bordered", "color": "808080", "display": "Bordered"},       # gray
-    {"name": "gradient", "color": "4B0082", "display": "Gradient"},       # indigo
-    {"name": "signature-heavy", "color": "FFBF00", "display": "Signature Heavy"},  # amber
-    {"name": "left-aligned", "color": "008080", "display": "Left Aligned"},  # teal
-    {"name": "centered", "color": "00FFFF", "display": "Centered"},       # cyan
-    {"name": "gold-accent", "color": "FFFF00", "display": "Gold Accent"}, # yellow
-    {"name": "dark-theme", "color": "000000", "display": "Dark Theme"},   # black
+    {"name": "classic", "color": "1e3a8a", "display": "Classic"},         # blue-800
+    {"name": "modern", "color": "334155", "display": "Modern"},           # slate-700
+    {"name": "minimal", "color": "e5e7eb", "display": "Minimal"},         # gray-200
+    {"name": "bordered", "color": "6b7280", "display": "Bordered"},       # gray-500
+    {"name": "gradient", "color": "6366f1", "display": "Gradient"},       # indigo-500
+    {"name": "signature", "color": "f59e0b", "display": "Signature"},     # amber-500
+    {"name": "left", "color": "0d9488", "display": "Left"},               # teal-600
+    {"name": "center", "color": "06b6d4", "display": "Center"},           # cyan-500
+    {"name": "gold", "color": "fbbf24", "display": "Gold"},               # amber-400
+    {"name": "dark", "color": "111827", "display": "Dark"},               # gray-900
 ]
 
 # Categories with proper capitalization (MUST match database filtering)

@@ -55,7 +55,7 @@ const Templates = () => {
   const [draftByTemplate, setDraftByTemplate] = useState<Record<string, CertificateDraft>>({});
   const [loading, setLoading] = useState(true);
   const [currentPage, setCurrentPage] = useState(1);
-  const itemsPerPage = 6;
+  const itemsPerPage = 4;
 
   const [dragActive, setDragActive] = useState(false);
   const [uploadedTemplateName, setUploadedTemplateName] = useState("sample-certificate-layout.pdf");
@@ -68,8 +68,7 @@ const Templates = () => {
   const [qrY, setQrY] = useState(76);
 
   useEffect(() => {
-    const load = async () => {
-      setLoading(true);
+    const loadDrafts = async () => {
       try {
         const raw = localStorage.getItem("certifypro-official-template-drafts");
         if (raw) {
@@ -84,25 +83,32 @@ const Templates = () => {
       } catch {
         setDraftByTemplate({});
       }
+    };
 
-      // fetch templates from backend
+    loadDrafts();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  useEffect(() => {
+    const loadTemplates = async () => {
+      setLoading(true);
       try {
-        const t = await getTemplates();
+        const params = selectedCategory === "All" ? { official: true } : { official: true, category: selectedCategory };
+        const t = await getTemplates(params);
         setTemplates(t as CertificateTemplateMeta[]);
+        console.log("Templates loaded:", t?.length);
         if (!selectedTemplateId && t?.length) {
           setSelectedTemplateId(t[0].id);
         }
       } catch (err) {
-        // keep existing behavior; show empty state
         console.error("Failed to load templates", err);
+      } finally {
+        setLoading(false);
       }
-
-      setLoading(false);
     };
 
-    load();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+    loadTemplates();
+  }, [selectedCategory]);
 
   useEffect(() => {
     const source = searchParams.get("source");
@@ -123,20 +129,13 @@ const Templates = () => {
     setModalMode(mode === "edit" ? "edit" : "preview");
   }, [searchParams, templates]);
 
-  const filteredTemplates = useMemo(() => {
-    if (selectedCategory === "All") {
-      return templates;
-    }
-    return templates.filter((template) => template.category === selectedCategory);
-  }, [selectedCategory, templates]);
-
   // Reset to page 1 when category changes
   useEffect(() => {
     setCurrentPage(1);
-  }, [selectedCategory]);
+  }, [selectedCategory, templates]);
 
-  const totalPages = Math.ceil(filteredTemplates.length / itemsPerPage);
-  const paginatedTemplates = filteredTemplates.slice(
+  const totalPages = Math.ceil(templates.length / itemsPerPage);
+  const paginatedTemplates = templates.slice(
     (currentPage - 1) * itemsPerPage,
     currentPage * itemsPerPage
   );
@@ -231,28 +230,26 @@ const Templates = () => {
               </div>
 
               <div className="flex items-center justify-between text-xs text-muted-foreground border-b border-border pb-3">
-                <p>Showing {paginatedTemplates.length} of {filteredTemplates.length} templates</p>
+                <p>Showing {paginatedTemplates.length} of {templates.length} templates</p>
                 <div className="flex items-center gap-2">
                   <Button
                     variant="outline"
-                    size="icon"
-                    className="h-7 w-7"
+                    size="sm"
                     onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
                     disabled={currentPage === 1}
                   >
-                    <ChevronLeft className="h-4 w-4" />
+                    Previous
                   </Button>
                   <span className="font-medium text-foreground">
-                    Page {currentPage} / {Math.max(1, totalPages)}
+                    Page {currentPage}
                   </span>
                   <Button
                     variant="outline"
-                    size="icon"
-                    className="h-7 w-7"
+                    size="sm"
                     onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
                     disabled={currentPage === totalPages || totalPages === 0}
                   >
-                    <ChevronRight className="h-4 w-4" />
+                    Next
                   </Button>
                 </div>
               </div>
