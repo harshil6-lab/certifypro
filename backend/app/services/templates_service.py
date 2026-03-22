@@ -1,12 +1,31 @@
 from typing import Any, Dict, List
-from ._supabase_helpers import select_table, insert_table, delete_table
+from ._supabase_helpers import insert_table, delete_table
+from ..core.supabase_client import supabase
 
 
-def list_templates() -> List[Dict[str, Any]]:
-    data, err = select_table("templates")
-    if err:
-        raise RuntimeError(err)
-    return data or []
+def list_templates(official: bool | None = None, category: str | None = None) -> List[Dict[str, Any]]:
+    try:
+        query = supabase.table("templates").select("*")
+
+        if official is not None:
+            query = query.eq("is_official", official)
+
+        if category:
+            query = query.eq("category", category)
+
+        response = query.execute()
+
+        if hasattr(response, "error") and response.error:
+            raise RuntimeError(response.error)
+
+        data = getattr(response, "data", None)
+        if isinstance(data, list):
+            print("Templates fetched:", len(data))
+            return data
+        return []
+
+    except Exception as exc:
+        raise RuntimeError(exc)
 
 
 def create_template(payload: Dict[str, Any]) -> Dict[str, Any]:

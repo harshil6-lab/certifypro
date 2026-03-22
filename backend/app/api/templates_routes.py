@@ -6,14 +6,15 @@ router = APIRouter()
 
 
 @router.get("/")
-async def get_templates():
-    """List all templates from templates table.
-    
-    Returns:
-        Array of template objects sorted by created_at (newest first)
+async def get_templates(official: bool | None = None, category: str | None = None):
+    """List templates from templates table with optional filtering.
+
+    Query params:
+      - official=true  : return only is_official templates
+      - category=Academic|Corporate|Internship|Event|Compliance|Training : category filter
     """
     try:
-        data = list_templates()
+        data = list_templates(official=official, category=category)
         # Return as plain array for frontend compatibility
         return data if isinstance(data, list) else []
     except Exception as exc:

@@ -68,8 +68,7 @@ const Templates = () => {
   const [qrY, setQrY] = useState(76);
 
   useEffect(() => {
-    const load = async () => {
-      setLoading(true);
+    const loadDrafts = async () => {
       try {
         const raw = localStorage.getItem("certifypro-official-template-drafts");
         if (raw) {
@@ -84,25 +83,32 @@ const Templates = () => {
       } catch {
         setDraftByTemplate({});
       }
+    };
 
-      // fetch templates from backend
+    loadDrafts();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  useEffect(() => {
+    const loadTemplates = async () => {
+      setLoading(true);
       try {
-        const t = await getTemplates();
+        const params = selectedCategory === "All" ? { official: true } : { official: true, category: selectedCategory };
+        const t = await getTemplates(params);
         setTemplates(t as CertificateTemplateMeta[]);
+        console.log("Templates loaded:", t?.length);
         if (!selectedTemplateId && t?.length) {
           setSelectedTemplateId(t[0].id);
         }
       } catch (err) {
-        // keep existing behavior; show empty state
         console.error("Failed to load templates", err);
+      } finally {
+        setLoading(false);
       }
-
-      setLoading(false);
     };
 
-    load();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+    loadTemplates();
+  }, [selectedCategory]);
 
   useEffect(() => {
     const source = searchParams.get("source");
