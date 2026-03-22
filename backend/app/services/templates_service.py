@@ -2,6 +2,15 @@ from typing import Any, Dict, List
 from ._supabase_helpers import insert_table, delete_table
 from ..core.supabase_client import supabase
 
+VALID_CATEGORIES = [
+    "Academic",
+    "Corporate",
+    "Internship",
+    "Event",
+    "Compliance",
+    "Training",
+]
+
 
 def list_templates(official: bool | None = None, category: str | None = None) -> List[Dict[str, Any]]:
     try:
@@ -11,7 +20,12 @@ def list_templates(official: bool | None = None, category: str | None = None) ->
             query = query.eq("is_official", official)
 
         if category:
-            query = query.eq("category", category)
+            normalized_category = category.strip().title()
+            if normalized_category not in VALID_CATEGORIES:
+                print("Templates filtered: unknown category", category)
+                return []
+            # Use case-insensitive matching to tolerate data variations
+            query = query.ilike("category", normalized_category)
 
         response = query.execute()
 

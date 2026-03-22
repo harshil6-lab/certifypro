@@ -55,7 +55,7 @@ const Templates = () => {
   const [draftByTemplate, setDraftByTemplate] = useState<Record<string, CertificateDraft>>({});
   const [loading, setLoading] = useState(true);
   const [currentPage, setCurrentPage] = useState(1);
-  const itemsPerPage = 6;
+  const itemsPerPage = 12;
 
   const [dragActive, setDragActive] = useState(false);
   const [uploadedTemplateName, setUploadedTemplateName] = useState("sample-certificate-layout.pdf");
@@ -129,20 +129,13 @@ const Templates = () => {
     setModalMode(mode === "edit" ? "edit" : "preview");
   }, [searchParams, templates]);
 
-  const filteredTemplates = useMemo(() => {
-    if (selectedCategory === "All") {
-      return templates;
-    }
-    return templates.filter((template) => template.category === selectedCategory);
-  }, [selectedCategory, templates]);
-
   // Reset to page 1 when category changes
   useEffect(() => {
     setCurrentPage(1);
-  }, [selectedCategory]);
+  }, [selectedCategory, templates]);
 
-  const totalPages = Math.ceil(filteredTemplates.length / itemsPerPage);
-  const paginatedTemplates = filteredTemplates.slice(
+  const totalPages = Math.ceil(templates.length / itemsPerPage);
+  const paginatedTemplates = templates.slice(
     (currentPage - 1) * itemsPerPage,
     currentPage * itemsPerPage
   );
@@ -237,7 +230,7 @@ const Templates = () => {
               </div>
 
               <div className="flex items-center justify-between text-xs text-muted-foreground border-b border-border pb-3">
-                <p>Showing {paginatedTemplates.length} of {filteredTemplates.length} templates</p>
+                <p>Showing {paginatedTemplates.length} of {templates.length} templates</p>
                 <div className="flex items-center gap-2">
                   <Button
                     variant="outline"

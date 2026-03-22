@@ -17,6 +17,7 @@ import Contact from "./pages/Contact";
 import Login from "./pages/Login";
 import Dashboard from "./pages/Dashboard";
 import Templates from "./pages/Templates";
+import DashboardTemplates from "./pages/DashboardTemplates";
 import ImportStudents from "./pages/ImportStudents";
 import Generate from "./pages/Generate";
 import Registry from "./pages/Registry";
@@ -128,6 +129,7 @@ const App = () => {
               )}
             >
               <Route path="/dashboard" element={<Dashboard />} />
+              <Route path="/dashboard/templates" element={<DashboardTemplates />} />
               <Route path="/templates" element={<Templates />} />
               <Route path="/import" element={<ImportStudents />} />
               <Route path="/generate" element={<Generate />} />
