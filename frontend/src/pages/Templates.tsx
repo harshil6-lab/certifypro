@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState, type DragEvent } from "react";
+import { supabase } from "@/lib/supabaseClient";
 import { Upload, QrCode, Info, Move, Loader2, Sparkles, WandSparkles, Eye, Pencil, ChevronLeft, ChevronRight, LayoutGrid } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -55,12 +56,14 @@ const Templates = () => {
   const [draftByTemplate, setDraftByTemplate] = useState<Record<string, CertificateDraft>>({});
   const [loading, setLoading] = useState(true);
   const [currentPage, setCurrentPage] = useState(1);
-  const itemsPerPage = 4;
+  const templatesPerPage = 4;
 
   const [dragActive, setDragActive] = useState(false);
   const [uploadedTemplateName, setUploadedTemplateName] = useState("sample-certificate-layout.pdf");
   const [showPlaceholder, setShowPlaceholder] = useState(true);
   const [showQrPlaceholder, setShowQrPlaceholder] = useState(true);
+  const [showCertificateId, setShowCertificateId] = useState(true);
+  const [layoutSaveStatus, setLayoutSaveStatus] = useState("Ready");
   const [placeholderField, setPlaceholderField] = useState("STUDENT_NAME");
   const [placeholderX, setPlaceholderX] = useState(40);
   const [placeholderY, setPlaceholderY] = useState(36);
@@ -132,13 +135,28 @@ const Templates = () => {
   // Reset to page 1 when category changes
   useEffect(() => {
     setCurrentPage(1);
-  }, [selectedCategory, templates]);
+  }, [selectedCategory]);
 
-  const totalPages = Math.ceil(templates.length / itemsPerPage);
-  const paginatedTemplates = templates.slice(
-    (currentPage - 1) * itemsPerPage,
-    currentPage * itemsPerPage
-  );
+  const filteredTemplates =
+    selectedCategory === "All"
+      ? templates
+      : templates.filter(
+          template => template.category === selectedCategory
+        );
+
+  const indexOfLastTemplate =
+    currentPage * templatesPerPage;
+
+  const indexOfFirstTemplate =
+    indexOfLastTemplate - templatesPerPage;
+
+  const paginatedTemplates =
+    filteredTemplates.slice(
+      indexOfFirstTemplate,
+      indexOfLastTemplate
+    );
+
+  const totalPages = Math.ceil(filteredTemplates.length / templatesPerPage);
 
   const currentDraft = selectedTemplate
     ? draftByTemplate[selectedTemplate.id] ?? normalizeDraft({}, selectedTemplate.title)
@@ -172,18 +190,147 @@ const Templates = () => {
     localStorage.setItem("certifypro-official-template-drafts", JSON.stringify(next));
   };
 
+  const saveLayout = async () => {
+    if (!selectedTemplate) {
+      alert("Select a template before saving layout");
+      return;
+    }
+
+    const layout_config = {
+      student_name: {
+        x: placeholderX,
+        y: placeholderY,
+        visible: showPlaceholder,
+      },
+      qr_code: {
+        x: qrX,
+        y: qrY,
+        visible: showQrPlaceholder,
+      },
+      certificate_id: {
+        visible: showCertificateId,
+      },
+    };
+
+    try {
+      const response = await fetch(`/api/templates/layout/${selectedTemplate.id}`, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(layout_config),
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(`Save layout failed (${response.status}): ${errorText}`);
+      }
+
+      const result = await response.json();
+      setLayoutSaveStatus("Layout saved successfully");
+      console.log("Saved layout", result);
+    } catch (error) {
+      console.error("Error saving layout", error);
+      setLayoutSaveStatus(`Save failed: ${error instanceof Error ? error.message : String(error)}`);
+    }
+  };
+
   const openOfficialTemplate = (template: CertificateTemplateMeta, mode: "preview" | "edit") => {
     setSelectedTemplate(template);
     setSelectedTemplateId(template.id);
     setModalMode(mode);
+
+    // If template has saved layout, apply to preview controls
+    try {
+      const cfg = (template as any).layout_config;
+      if (cfg) {
+        if (cfg.student_name) {
+          setPlaceholderX(cfg.student_name.x ?? placeholderX);
+          setPlaceholderY(cfg.student_name.y ?? placeholderY);
+          setShowPlaceholder(cfg.student_name.visible ?? showPlaceholder);
+        }
+        if (cfg.qr_code) {
+          setQrX(cfg.qr_code.x ?? qrX);
+          setQrY(cfg.qr_code.y ?? qrY);
+          setShowQrPlaceholder(cfg.qr_code.visible ?? showQrPlaceholder);
+        }
+        if (cfg.certificate_id) {
+          setShowCertificateId(cfg.certificate_id.visible ?? showCertificateId);
+        }
+      }
+    } catch (err) {
+      // ignore
+    }
   };
 
-  const handleDrop = (event: DragEvent<HTMLDivElement>) => {
+  const uploadTemplate = async (file: File) => {
+    try {
+      const formData = new FormData();
+      formData.append("file", file);
+      // include current user id when available
+      try {
+        if (supabase) {
+          const sessionRes: any = await supabase.auth.getSession();
+          const userId = sessionRes?.data?.session?.user?.id ?? sessionRes?.data?.user?.id ?? null;
+          if (userId) formData.append("user_id", userId);
+        }
+      } catch (_) {
+        // ignore
+      }
+
+      const res = await fetch("/api/templates/upload", {
+        method: "POST",
+        body: formData,
+      });
+
+      if (!res.ok) {
+        const errText = await res.text();
+        throw new Error(`Upload failed: ${res.status} ${errText}`);
+      }
+
+      const data = await res.json();
+      const created = data?.template ?? data;
+      setUploadedTemplateName(file.name);
+      setLayoutSaveStatus("Template uploaded successfully");
+      // add to templates list and select for live preview
+      if (created) {
+        setTemplates((prev) => [created, ...prev]);
+        setSelectedTemplate(created as CertificateTemplateMeta);
+        setSelectedTemplateId((created as any).id);
+        // apply any saved layout
+        try {
+          const cfg = (created as any).layout_config;
+          if (cfg) {
+            if (cfg.student_name) {
+              setPlaceholderX(cfg.student_name.x ?? placeholderX);
+              setPlaceholderY(cfg.student_name.y ?? placeholderY);
+              setShowPlaceholder(cfg.student_name.visible ?? showPlaceholder);
+            }
+            if (cfg.qr_code) {
+              setQrX(cfg.qr_code.x ?? qrX);
+              setQrY(cfg.qr_code.y ?? qrY);
+              setShowQrPlaceholder(cfg.qr_code.visible ?? showQrPlaceholder);
+            }
+            if (cfg.certificate_id) {
+              setShowCertificateId(cfg.certificate_id.visible ?? showCertificateId);
+            }
+          }
+        } catch (err) {
+          // ignore
+        }
+      }
+    } catch (error) {
+      console.error("Template upload failed:", error);
+      setLayoutSaveStatus(`Upload error: ${error instanceof Error ? error.message : String(error)}`);
+    }
+  };
+
+  const handleDrop = async (event: DragEvent<HTMLDivElement>) => {
     event.preventDefault();
     setDragActive(false);
-    const droppedName = event.dataTransfer.files[0]?.name;
-    if (droppedName) {
-      setUploadedTemplateName(droppedName);
+    const file = event.dataTransfer.files[0];
+    if (file) {
+      await uploadTemplate(file);
     }
   };
 
@@ -230,28 +377,7 @@ const Templates = () => {
               </div>
 
               <div className="flex items-center justify-between text-xs text-muted-foreground border-b border-border pb-3">
-                <p>Showing {paginatedTemplates.length} of {templates.length} templates</p>
-                <div className="flex items-center gap-2">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
-                    disabled={currentPage === 1}
-                  >
-                    Previous
-                  </Button>
-                  <span className="font-medium text-foreground">
-                    Page {currentPage}
-                  </span>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
-                    disabled={currentPage === totalPages || totalPages === 0}
-                  >
-                    Next
-                  </Button>
-                </div>
+                <p>Showing {paginatedTemplates.length} of {filteredTemplates.length} templates</p>
               </div>
 
               {loading ? (
@@ -311,34 +437,24 @@ const Templates = () => {
               )}
 
               {/* Pagination Footer */}
-              <div className="flex items-center justify-center pt-2 gap-4">
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="gap-2"
-                  onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+              <div className="flex justify-center gap-4 mt-6">
+                <button
                   disabled={currentPage === 1}
+                  onClick={() => setCurrentPage(prev => prev - 1)}
+                  className="px-4 py-2 text-sm border border-border rounded-md hover:bg-accent/10 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  <ChevronLeft className="w-4 h-4" /> Previous
-                </Button>
-                <div className="flex gap-1.5">
-                  {Array.from({ length: totalPages }).map((_, i) => (
-                    <button
-                      key={i}
-                      className={`w-2 h-2 rounded-full transition-all ${currentPage === i + 1 ? "bg-accent w-4" : "bg-muted-foreground/30 hover:bg-muted-foreground/50"}`}
-                      onClick={() => setCurrentPage(i + 1)}
-                    />
-                  ))}
-                </div>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="gap-2"
-                  onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
-                  disabled={currentPage === totalPages || totalPages === 0}
+                  Previous
+                </button>
+                <span className="px-4 py-2 text-sm font-medium">
+                  Page {currentPage}
+                </span>
+                <button
+                  disabled={indexOfLastTemplate >= filteredTemplates.length}
+                  onClick={() => setCurrentPage(prev => prev + 1)}
+                  className="px-4 py-2 text-sm border border-border rounded-md hover:bg-accent/10 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  Next <ChevronRight className="w-4 h-4" />
-                </Button>
+                  Next
+                </button>
               </div>
             </CardContent>
           </Card>
@@ -366,7 +482,18 @@ const Templates = () => {
               >
                 <Upload className="w-8 h-8 mx-auto text-muted-foreground mb-2" />
                 <p className="text-sm font-medium text-foreground">Drag & drop template file</p>
-                <p className="text-xs text-muted-foreground mt-1">PDF, PNG, DOCX • UI simulation only</p>
+                <p className="text-xs text-muted-foreground mt-1">PDF, PNG, DOCX</p>
+                <input
+                  type="file"
+                  accept=".pdf,image/*,.docx"
+                  className="mt-3"
+                  onChange={async (event) => {
+                    const file = event.target.files?.[0];
+                    if (file) {
+                      await uploadTemplate(file);
+                    }
+                  }}
+                />
               </div>
 
               <div className="rounded-md bg-muted/50 border border-border px-3 py-2 text-xs text-muted-foreground">
@@ -382,6 +509,11 @@ const Templates = () => {
                 <div className="flex items-center justify-between rounded-md border border-border bg-muted/30 px-3 py-2">
                   <label className="text-xs text-muted-foreground">QR placeholder visibility</label>
                   <input type="checkbox" checked={showQrPlaceholder} onChange={(event) => setShowQrPlaceholder(event.target.checked)} />
+                </div>
+
+                <div className="flex items-center justify-between rounded-md border border-border bg-muted/30 px-3 py-2">
+                  <label className="text-xs text-muted-foreground">Certificate ID visibility</label>
+                  <input type="checkbox" checked={showCertificateId} onChange={(event) => setShowCertificateId(event.target.checked)} />
                 </div>
 
                 <div>
@@ -412,13 +544,23 @@ const Templates = () => {
 
               <div className="aspect-[1.414/1] bg-muted/40 rounded-lg border border-dashed border-border relative overflow-hidden seal-pattern">
                 <div className="absolute inset-0 p-4 sm:p-6 flex flex-col justify-between">
-                  <div className="text-center space-y-1">
-                    <p className="text-[11px] uppercase tracking-wider text-muted-foreground">Live Preview (Mock Rendering)</p>
-                    <p className="font-heading text-base font-bold text-foreground">{selectedTemplate?.title ?? "No Template Selected"}</p>
-                  </div>
+                    <div className="text-center space-y-1">
+                      <p className="text-[11px] uppercase tracking-wider text-muted-foreground">Live Preview</p>
+                      <p className="font-heading text-base font-bold text-foreground">{selectedTemplate?.title ?? "No Template Selected"}</p>
+                    </div>
+
+                    {/* Render real template image when available (gallery uses image_url, custom uploads use file_url) */}
+                    {selectedTemplate && (selectedTemplate.file_url || (selectedTemplate as any).image_url) && (
+                      <img
+                        src={(selectedTemplate as any).file_url || (selectedTemplate as any).image_url}
+                        className="absolute inset-0 w-full h-full object-cover rounded-xl opacity-100"
+                        alt="template preview"
+                        style={{ zIndex: 0 }}
+                      />
+                    )}
 
                   {showPlaceholder && (
-                    <div className="absolute" style={{ left: `${placeholderX}%`, top: `${placeholderY}%`, transform: "translate(-50%, -50%)" }}>
+                    <div className="absolute" style={{ left: `${placeholderX}%`, top: `${placeholderY}%`, transform: "translate(-50%, -50%)", zIndex: 10 }}>
                       <span className="text-[10px] px-2 py-1 rounded bg-primary text-primary-foreground shadow">
                         {`{{${placeholderField || "FIELD"}}}`}
                       </span>
@@ -428,12 +570,19 @@ const Templates = () => {
                   {showQrPlaceholder && (
                     <div
                       className="absolute w-14 h-14 rounded-md border-2 border-dashed border-accent bg-accent/10 flex items-center justify-center"
-                      style={{ left: `${qrX}%`, top: `${qrY}%`, transform: "translate(-50%, -50%)" }}
+                      style={{ left: `${qrX}%`, top: `${qrY}%`, transform: "translate(-50%, -50%)", zIndex: 10 }}
                     >
                       <QrCode className="w-7 h-7 text-accent" />
                       <span className="absolute -top-2 -right-2 w-5 h-5 rounded-full bg-accent flex items-center justify-center">
                         <Move className="w-3 h-3 text-accent-foreground" />
                       </span>
+                    </div>
+                  )}
+
+                  {/* Certificate ID placeholder */}
+                  {showCertificateId && (
+                    <div className="absolute" style={{ left: `10%`, bottom: `8%`, transform: "translate(0, 0)", zIndex: 10 }}>
+                      <span className="text-[10px] px-2 py-1 rounded bg-muted text-muted-foreground shadow">ID: 123456</span>
                     </div>
                   )}
 
@@ -444,10 +593,11 @@ const Templates = () => {
                 </div>
               </div>
 
-              <div className="flex gap-2">
-                <Button className="flex-1 gold-gradient text-accent-foreground gap-2">
+              <div className="flex flex-col gap-2">
+                <Button className="flex-1 gold-gradient text-accent-foreground gap-2" onClick={saveLayout}>
                   <WandSparkles className="w-4 h-4" /> Save Layout
                 </Button>
+                <p className="text-xs text-muted-foreground">{layoutSaveStatus}</p>
               </div>
             </CardContent>
           </Card>

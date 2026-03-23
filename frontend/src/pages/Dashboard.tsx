@@ -17,13 +17,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { ProfileOnboardingModal } from "@/components/ProfileOnboardingModal";
 import { useAdminOnboarding, type OnboardingProfile } from "@/hooks/useAdminOnboarding";
-
-const stats = [
-  { label: "Certificates Issued", value: "0", icon: Award, change: "+0 this month" },
-  { label: "Pending Tasks", value: "0", icon: Clock, change: "0 urgent" },
-  { label: "Recent Verifications", value: "0", icon: CheckCircle2, change: "Last 7 days" },
-  { label: "Active Templates", value: "0", icon: FileText, change: "0 drafts" },
-];
+import { getAuthHeaders } from "@/services/apiService";
 
 const workflowSteps = [
   { step: 1, title: "Upload Template", desc: "Design your certificate template", icon: Upload, link: "/templates", done: true },
@@ -32,22 +26,56 @@ const workflowSteps = [
   { step: 4, title: "Verify & Distribute", desc: "Public verification portal", icon: Search, link: "/registry", done: false },
 ];
 
-const recentActivity = [
-  { action: "Certificate batch generated", count: "250 certificates", time: "2 hours ago", type: "generate" },
-  { action: "Template updated", count: "B.Sc. Computer Science", time: "5 hours ago", type: "template" },
-  { action: "Student data imported", count: "180 records", time: "1 day ago", type: "import" },
-  { action: "Verification request", count: "CERT-2024-0892", time: "1 day ago", type: "verify" },
-];
-
 const Dashboard = () => {
   const { isCompleted, isLoading, profile, completeOnboarding, skipOnboarding } = useAdminOnboarding();
   const [showOnboarding, setShowOnboarding] = useState(false);
+  const [stats, setStats] = useState({
+    certificates: 0,
+    templates: 0,
+    students: 0,
+    admins: 0
+  });
+  const [recentActivity, setRecentActivity] = useState([]);
 
   useEffect(() => {
     if (!isLoading && !isCompleted) {
       setShowOnboarding(true);
     }
   }, [isLoading, isCompleted]);
+
+  useEffect(() => {
+    // Fetch dashboard stats
+    const fetchStats = async () => {
+      try {
+        const headers = await getAuthHeaders();
+        const res = await fetch("/dashboard/stats", { headers });
+        if (res.ok) {
+          const data = await res.json();
+          setStats(data);
+        }
+      } catch (err) {
+        console.error("Failed to fetch stats:", err);
+      }
+    };
+    fetchStats();
+  }, []);
+
+  useEffect(() => {
+    // Fetch recent activity
+    const fetchActivity = async () => {
+      try {
+        const headers = await getAuthHeaders();
+        const res = await fetch("/dashboard/activity", { headers });
+        if (res.ok) {
+          const data = await res.json();
+          setRecentActivity(data.items || []);
+        }
+      } catch (err) {
+        console.error("Failed to fetch activity:", err);
+      }
+    };
+    fetchActivity();
+  }, []);
 
   const handleOnboardingComplete = (data: Omit<OnboardingProfile, "completedAt">) => {
     completeOnboarding(data);
@@ -58,6 +86,13 @@ const Dashboard = () => {
     skipOnboarding();
     setShowOnboarding(false);
   };
+
+  const statsData = [
+    { label: "Certificates Issued", value: stats.certificates.toString(), icon: Award, change: "+0 this month" },
+    { label: "Active Templates", value: stats.templates.toString(), icon: FileText, change: "0 drafts" },
+    { label: "Total Students", value: stats.students.toString(), icon: Users, change: "0 pending" },
+    { label: "System Admins", value: stats.admins.toString(), icon: CheckCircle2, change: "Active" },
+  ];
 
   return (
     <>
@@ -87,7 +122,7 @@ const Dashboard = () => {
 
         {/* Stats */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5">
-          {stats.map((stat) => (
+          {statsData.map((stat) => (
             <Card key={stat.label} className="card-shadow hover:shadow-lg transition-all duration-300 hover:-translate-y-1 hover:border-accent/40 cursor-default bg-card/60 backdrop-blur-sm">
               <CardContent className="p-6">
                 <div className="flex items-start justify-between">
@@ -159,18 +194,39 @@ const Dashboard = () => {
           </CardHeader>
           <CardContent>
             <div className="space-y-3">
-              {recentActivity.map((item, i) => (
-                <div key={i} className="flex items-center justify-between py-3 border-b last:border-0 rounded-lg px-2 transition-colors hover:bg-accent/5 cursor-default">
-                  <div className="flex items-center gap-3">
-                    <div className="w-2 h-2 rounded-full bg-accent" />
-                    <div>
-                      <p className="text-sm font-medium text-foreground">{item.action}</p>
-                      <p className="text-xs text-muted-foreground">{item.count}</p>
+              {recentActivity.length > 0 ? (
+                recentActivity.map((item, i) => {
+                  // Parse activity based on action type
+                  let activityText = "";
+                  if (item.action === "template_created") {
+                    activityText = `Template created → ${item.meta?.template || "Unknown template"}`;
+                  } else if (item.action === "students_imported") {
+                    activityText = `Students imported → ${item.meta?.count || 0} students`;
+                  } else if (item.action === "certificate_generated") {
+                    activityText = `Certificates generated → ${item.meta?.count || 0} certificates`;
+                  } else {
+                    activityText = item.action || "Activity";
+                  }
+
+                  return (
+                    <div key={i} className="flex items-center justify-between py-3 border-b last:border-0 rounded-lg px-2 transition-colors hover:bg-accent/5 cursor-default">
+                      <div className="flex items-center gap-3">
+                        <div className="w-2 h-2 rounded-full bg-accent" />
+                        <div>
+                          <p className="text-sm font-medium text-foreground">{activityText}</p>
+                        </div>
+                      </div>
+                      <span className="text-xs text-muted-foreground">
+                        {item.created_at ? new Date(item.created_at).toLocaleString() : "Recently"}
+                      </span>
                     </div>
-                  </div>
-                  <span className="text-xs text-muted-foreground">{item.time}</span>
+                  );
+                })
+              ) : (
+                <div className="text-center py-8 text-muted-foreground">
+                  <p>No recent activity</p>
                 </div>
-              ))}
+              )}
             </div>
           </CardContent>
         </Card>
