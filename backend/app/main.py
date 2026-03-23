@@ -22,8 +22,10 @@ origins = [
     "http://localhost:5173",  # frontend dev server
     "http://127.0.0.1:5173",
     "http://localhost:8080",
+    "http://localhost:8081",
     "http://127.0.0.1:8080",
-    "http://192.168.56.1:8080"  # alternative frontend dev server port
+    "http://192.168.56.1:8080"  ,
+    "http://192.168.56.1:8081"# alternative frontend dev server port
 ]
 
 app.add_middleware(
@@ -39,7 +41,7 @@ app.add_middleware(AuthMiddleware, supabase_client=None)
 # Include routers
 app.include_router(auth_routes.router, prefix="/auth", tags=["auth"])
 app.include_router(user_routes.router, prefix="/user", tags=["user"])
-app.include_router(templates_routes.router, prefix="/templates", tags=["templates"])
+app.include_router(templates_routes.router)
 app.include_router(dashboard_routes.router, prefix="/dashboard", tags=["dashboard"])
 app.include_router(students_routes.router, prefix="/students", tags=["students"])
 app.include_router(certificates_routes.router, prefix="/certificates", tags=["certificates"])

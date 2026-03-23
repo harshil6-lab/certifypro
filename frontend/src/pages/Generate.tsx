@@ -41,10 +41,10 @@ const Generate = () => {
     const loadData = async () => {
       setLoadingData(true);
       try {
-        const [templateData, studentData] = await Promise.all([
-          getTemplates({ official: true }).catch(() => []),
-          getStudents().catch(() => []),
-        ]);
+        const templateResponse = await fetch("/api/templates");
+        const templateData = templateResponse.ok ? await templateResponse.json() : [];
+        const studentData = await getStudents().catch(() => []);
+
         setTemplates(Array.isArray(templateData) ? templateData : []);
         setStudents(Array.isArray(studentData) ? studentData : []);
       } catch (err) {

@@ -14,7 +14,7 @@ async function getAuthToken(): Promise<string | null> {
 /**
  * Create Authorization header with JWT token
  */
-async function getAuthHeaders(): Promise<HeadersInit> {
+export async function getAuthHeaders(): Promise<HeadersInit> {
   const token = await getAuthToken();
   const headers: HeadersInit = {
     "Content-Type": "application/json",
@@ -35,7 +35,8 @@ export async function getTemplates(options?: { official?: boolean; category?: st
   }
 
   const queryString = params.toString();
-  const url = `${API_BASE}/templates${queryString ? `?${queryString}` : ""}`;
+  // Note: backend routes for templates are mounted at /api/templates
+  const url = `${API_BASE}/api/templates${queryString ? `?${queryString}` : ""}`;
 
   console.log("Fetching templates from backend", url);
 
