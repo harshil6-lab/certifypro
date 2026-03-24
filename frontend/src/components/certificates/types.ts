@@ -21,6 +21,10 @@ export interface CertificateTemplateMeta {
   image?: string;
   styleType: CertificateStyleType;
   editableFields: string[];
+  file_url?: string;
+  image_url?: string;
+  preview_url?: string;
+  layout_config?: any;
 }
 
 export interface CertificateDraft {

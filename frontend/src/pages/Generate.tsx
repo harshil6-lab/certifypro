@@ -41,7 +41,7 @@ const Generate = () => {
     const loadData = async () => {
       setLoadingData(true);
       try {
-        const templateResponse = await fetch("/api/templates");
+        const templateResponse = await fetch("http://127.0.0.1:8000/api/templates");
         const templateData = templateResponse.ok ? await templateResponse.json() : [];
         const studentData = await getStudents().catch(() => []);
 

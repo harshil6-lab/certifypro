@@ -1,85 +1,62 @@
 from fastapi import UploadFile, HTTPException
 from app.core.supabase_client import supabase
 import os
-
-
-def _ensure_bucket_exists(bucket_name: str = "certificate-templates"):
-    """Ensure Supabase bucket exists and is public."""
-    try:
-        # Newer supabase client API
-        bucket_response = supabase.storage.list_buckets()
-    except Exception:
-        try:
-            bucket_response = supabase.storage.get_buckets()
-        except Exception as exc:
-            raise HTTPException(status_code=500, detail=f"Failed to list storage buckets: {exc}")
-
-    bucket_list = []
-    if hasattr(bucket_response, "data"):
-        bucket_list = bucket_response.data or []
-    elif isinstance(bucket_response, dict):
-        bucket_list = bucket_response.get("data") or []
-
-    if not any(b.get("name") == bucket_name for b in bucket_list if isinstance(b, dict)):
-        try:
-            # Create bucket as public if missing
-            supabase.storage.create_bucket(bucket_name, public=True)
-        except Exception as exc:
-            raise HTTPException(status_code=500, detail=f"Failed to create storage bucket '{bucket_name}': {exc}")
+from uuid import uuid4
 
 
 async def upload_template_file(file: UploadFile, filename: str, user_id: str | None = None):
+    """Upload template file to Supabase storage for session-only preview.
+    
+    Returns public URL only - does NOT save to database.
+    Uploaded templates are session-only and disappear on page refresh.
+    
+    NOTE: The 'certificate-templates' bucket must exist and be set to PUBLIC
+    in the Supabase dashboard. The bucket is not created dynamically because
+    the Supabase Python SDK does not support the public=True parameter.
+    """
     bucket_name = "certificate-templates"
-    _ensure_bucket_exists(bucket_name)
-
-    # namespace by user when provided
+    
+    # Generate unique filename to avoid conflicts
+    file_ext = filename.split(".")[-1] if "." in filename else "pdf"
+    unique_filename = f"{uuid4()}.{file_ext}"
+    
+    # Namespace by user when provided
     if user_id:
-        path = f"templates/{user_id}/{filename}"
+        path = f"templates/{user_id}/{unique_filename}"
     else:
-        path = f"templates/{filename}"
+        path = f"templates/{unique_filename}"
 
     try:
         file_bytes = await file.read()
+        
+        # Upload to Supabase storage
         result = supabase.storage.from_(bucket_name).upload(path, file_bytes)
 
         # Check for upload error
         if hasattr(result, "error") and result.error:
-            raise HTTPException(status_code=500, detail=f"Failed to upload file: {result.error}")
+            raise HTTPException(status_code=500, detail=f"Failed to upload file to storage: {result.error}")
         if isinstance(result, dict) and result.get("error"):
-            raise HTTPException(status_code=500, detail=f"Failed to upload file: {result['error']}")
+            raise HTTPException(status_code=500, detail=f"Failed to upload file to storage: {result['error']}")
 
-        # Build public URL for storage object. Supabase public object URL pattern:
-        # {SUPABASE_URL}/storage/v1/object/public/{bucket}/{path}
-        public_url = None
-        try:
-            supabase_url = os.getenv("SUPABASE_URL")
-            if supabase_url:
-                public_url = f"{supabase_url.rstrip('/')}/storage/v1/object/public/{bucket_name}/{path}"
-        except Exception:
-            public_url = None
+        # Build public URL for the uploaded file
+        # Supabase public URL format: {SUPABASE_URL}/storage/v1/object/public/{bucket}/{path}
+        supabase_url = os.getenv("SUPABASE_URL", "").rstrip("/")
+        if not supabase_url:
+            raise HTTPException(status_code=500, detail="SUPABASE_URL environment variable not configured")
+        
+        public_url = f"{supabase_url}/storage/v1/object/public/{bucket_name}/{path}"
 
-        # insert template row
-        insert_payload = {
-            "name": filename,
+        # Return file URL only - no database save
+        # Uploaded templates are session-only workspace previews
+        return {
             "file_url": public_url,
-            "created_by": user_id,
-            "category": "custom",
-            "is_custom": True,
+            "message": "Template uploaded successfully"
         }
-
-        resp = supabase.table("templates").insert(insert_payload).execute()
-        if hasattr(resp, "error") and resp.error:
-            raise HTTPException(status_code=500, detail=f"Failed to create template row: {resp.error}")
-
-        data = getattr(resp, "data", None)
-        # Return inserted row or data wrapper
-        if isinstance(data, list) and data:
-            return data[0]
-        return data
+        
     except HTTPException:
         raise
     except Exception as exc:
-        raise HTTPException(status_code=500, detail=str(exc))
+        raise HTTPException(status_code=500, detail=f"Template upload failed: {str(exc)}")
 
 
 async def save_template_layout(template_id: str, layout: dict):
