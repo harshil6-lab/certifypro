@@ -115,6 +115,18 @@ def _extract_user_id(user: Any) -> Optional[str]:
     return getattr(user, "id", None)
 
 
+def _extract_user_email(user: Any) -> Optional[str]:
+    """Safely pull the email from various shapes returned by get_current_user."""
+    if user is None:
+        return None
+    if isinstance(user, dict):
+        return user.get("email")
+    inner = getattr(user, "user", None)
+    if inner is not None:
+        return getattr(inner, "email", None)
+    return getattr(user, "email", None)
+
+
 @router.post("/save")
 async def save_students(payload: _SavePayload, request: Request):
     """Persist student rows into the students table with per-row validation.
@@ -132,6 +144,20 @@ async def save_students(payload: _SavePayload, request: Request):
     token = auth_header.split(" ", 1)[1] if auth_header.lower().startswith("bearer ") else None
     user = get_current_user(token) if token else None
     user_id = _extract_user_id(user)
+    user_email = _extract_user_email(user)
+
+    # Ensure the app_users record exists before inserting any students so that
+    # foreign-key constraints on created_by are satisfied.
+    if user_id:
+        try:
+            existing = supabase.table("app_users").select("id").eq("id", user_id).execute()
+            if not (existing.data if hasattr(existing, "data") else []):
+                supabase.table("app_users").insert(
+                    {"id": user_id, "email": user_email}
+                ).execute()
+        except Exception:
+            # Non-fatal: proceed even if the upsert fails (e.g. table doesn't exist yet)
+            pass
 
     accepted: list[dict] = []
     rejected: list[dict] = []
