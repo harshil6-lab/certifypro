@@ -1,5 +1,6 @@
 from fastapi import APIRouter, HTTPException, UploadFile, File, Depends
 from typing import Any
+from pydantic import BaseModel
 from ..services.templates_service import list_templates, create_template, remove_template
 from ..services.template_service import upload_template_file, save_template_layout
 from app.services.auth_service import get_current_user
@@ -68,6 +69,22 @@ async def save_layout(template_id: str, layout: dict):
     """Save template placeholder layout settings to templates table."""
     try:
         return await save_template_layout(template_id, layout)
+    except HTTPException:
+        raise
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=str(exc))
+
+
+class SaveLayoutPayload(BaseModel):
+    template_id: str
+    layout_config: dict
+
+
+@router.post("/save-layout")
+async def post_save_layout(payload: SaveLayoutPayload):
+    """Save layout_config JSON to the templates table for a given template_id."""
+    try:
+        return await save_template_layout(payload.template_id, payload.layout_config)
     except HTTPException:
         raise
     except Exception as exc:
