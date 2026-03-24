@@ -6,13 +6,16 @@ POST /api/import-students/save      — persist validated student rows into the 
 
 from __future__ import annotations
 
+import io
+
 import pandas as pd
-from fastapi import APIRouter, File, HTTPException, UploadFile
+from fastapi import APIRouter, File, HTTPException, Request, UploadFile
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel
-from typing import List
+from typing import Any, List, Optional
 
-from app.services.students_service import insert_students_bulk
+from app.core.supabase_client import supabase
+from app.services.auth_service import get_current_user
 
 router = APIRouter(prefix="/api/import-students", tags=["Import Students"])
 
@@ -59,30 +62,34 @@ async def validate_student_excel(file: UploadFile = File(...)):
             },
         )
 
-    # --- Missing student_name value check ---
-    missing_rows = df[df["student_name"].isnull() | (df["student_name"].astype(str).str.strip() == "")]
+    # --- Build valid rows (validate each cell) ---
+    valid_rows = []
+    error_rows = []
+    for idx, row in df.iterrows():
+        name = str(row.get("student_name", "") or "").strip()
+        email = str(row.get("email", "") or "").strip().lower()
+        cert_id = str(row.get("certificate_id", "") or "").strip()
+        row_num = int(idx) + 2  # 1-based + header
 
-    if not missing_rows.empty:
-        return JSONResponse(
-            status_code=422,
-            content={
-                "status": "error",
-                "message": "Missing student_name column values",
-                "affected_rows": (missing_rows.index + 2).tolist(),  # +2: 1-based + header row
-            },
-        )
+        missing = []
+        if not name:
+            missing.append("student_name")
+        if not email:
+            missing.append("email")
+        if not cert_id:
+            missing.append("certificate_id")
 
-    # --- Build valid rows ---
-    valid_rows = df[["student_name", "email", "certificate_id"]].copy()
-    valid_rows["student_name"] = valid_rows["student_name"].astype(str).str.strip()
-    valid_rows["email"] = valid_rows["email"].astype(str).str.strip().str.lower()
-    valid_rows["certificate_id"] = valid_rows["certificate_id"].astype(str).str.strip()
+        if missing:
+            error_rows.append({"row": row_num, "missing": missing})
+        else:
+            valid_rows.append({"student_name": name, "email": email, "certificate_id": cert_id})
 
     return {
-        "status": "ok",
-        "message": f"All {len(valid_rows)} row(s) are valid.",
-        "valid_rows": valid_rows.to_dict(orient="records"),
-        "total": len(valid_rows),
+        "status": "ok" if not error_rows else "partial",
+        "message": f"{len(valid_rows)} valid row(s), {len(error_rows)} rejected.",
+        "valid_rows": valid_rows,
+        "rejected_rows": error_rows,
+        "total": len(df),
     }
 
 
@@ -96,30 +103,74 @@ class _SavePayload(BaseModel):
     rows: List[_StudentRow]
 
 
-@router.post("/save")
-async def save_students(payload: _SavePayload):
-    """Persist validated student rows into the students table.
+def _extract_user_id(user: Any) -> Optional[str]:
+    """Safely pull the UUID from various shapes returned by get_current_user."""
+    if user is None:
+        return None
+    if isinstance(user, dict):
+        return user.get("id")
+    inner = getattr(user, "user", None)
+    if inner is not None:
+        return getattr(inner, "id", None)
+    return getattr(user, "id", None)
 
-    Accepts the same row shape returned by /validate so the frontend can
-    pass rows directly without transformation.
+
+@router.post("/save")
+async def save_students(payload: _SavePayload, request: Request):
+    """Persist student rows into the students table with per-row validation.
+
+    Each row is individually validated for email, student_name, and
+    certificate_id. Rows that pass are inserted into the students table;
+    rows that fail are collected and returned in ``rejected_rows`` so the
+    frontend can highlight them without blocking valid rows.
     """
     if not payload.rows:
         raise HTTPException(status_code=400, detail="No rows provided.")
 
-    students = [
-        {
-            "full_name": row.student_name,
-            "email": row.email,
-            "external_id": row.certificate_id,
+    # Resolve caller's user id from Bearer token (optional — saves without it)
+    auth_header = request.headers.get("Authorization", "")
+    token = auth_header.split(" ", 1)[1] if auth_header.lower().startswith("bearer ") else None
+    user = get_current_user(token) if token else None
+    user_id = _extract_user_id(user)
+
+    accepted: list[dict] = []
+    rejected: list[dict] = []
+
+    for i, row in enumerate(payload.rows, start=1):
+        name = row.student_name.strip()
+        email = row.email.strip().lower()
+        cert_id = row.certificate_id.strip()
+
+        missing = []
+        if not name:
+            missing.append("student_name")
+        if not email:
+            missing.append("email")
+        if not cert_id:
+            missing.append("certificate_id")
+
+        if missing:
+            rejected.append({"row": i, "student_name": row.student_name, "missing": missing})
+            continue
+
+        record: dict = {
+            "full_name": name,
+            "email": email,
+            "external_id": cert_id,
             "metadata": {},
         }
-        for row in payload.rows
-    ]
+        if user_id:
+            record["created_by"] = user_id
 
-    try:
-        result = insert_students_bulk(students)
-        saved_count = len(result) if isinstance(result, list) else len(students)
-    except Exception as exc:
-        raise HTTPException(status_code=500, detail=str(exc))
+        try:
+            supabase.table("students").insert(record).execute()
+            accepted.append(record)
+        except Exception as exc:
+            rejected.append({"row": i, "student_name": row.student_name, "error": str(exc)})
 
-    return {"saved": saved_count, "message": f"{saved_count} student(s) saved successfully."}
+    return {
+        "saved": len(accepted),
+        "rejected": len(rejected),
+        "rejected_rows": rejected,
+        "message": f"{len(accepted)} student(s) saved, {len(rejected)} rejected.",
+    }

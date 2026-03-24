@@ -1,5 +1,6 @@
 import { useRef, useState, type DragEvent } from "react";
 import { Upload, FileSpreadsheet, AlertCircle, CheckCircle2, XCircle, Loader2, FileDown, Database } from "lucide-react";
+import { supabase } from "@/lib/supabaseClient";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -38,6 +39,7 @@ const ImportStudents = () => {
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState("");
   const [saveSuccess, setSaveSuccess] = useState(0);
+  const [saveRejected, setSaveRejected] = useState<{ row: number; student_name?: string; missing?: string[]; error?: string }[]>([]);
 
   const parseFile = async (file: File) => {
     setExcelFile(file);
@@ -84,10 +86,15 @@ const ImportStudents = () => {
     setSaving(true);
     setSaveError("");
     setSaveSuccess(0);
+    setSaveRejected([]);
     try {
+      const { data: sessionData } = await supabase.auth.getSession();
+      const token = sessionData.session?.access_token;
+      const headers: Record<string, string> = { "Content-Type": "application/json" };
+      if (token) headers["Authorization"] = `Bearer ${token}`;
       const res = await fetch(`${API_BASE}/api/import-students/save`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers,
         body: JSON.stringify({ rows: validRows }),
       });
       if (!res.ok) {
@@ -96,6 +103,7 @@ const ImportStudents = () => {
       }
       const data = await res.json();
       setSaveSuccess(data.saved ?? validRows.length);
+      if (data.rejected_rows?.length) setSaveRejected(data.rejected_rows);
     } catch (err) {
       setSaveError(err instanceof Error ? err.message : String(err));
     } finally {
@@ -259,6 +267,20 @@ const ImportStudents = () => {
                 <div className="flex items-center gap-2 text-sm text-green-600 bg-green-50/50 border border-green-200/50 rounded-lg p-3">
                   <CheckCircle2 className="w-4 h-4" />
                   {saveSuccess} student(s) saved to database successfully.
+                </div>
+              )}
+
+              {saveRejected.length > 0 && (
+                <div className="text-sm text-destructive bg-destructive/5 border border-destructive/20 rounded-lg p-3 space-y-1">
+                  <p className="font-semibold">{saveRejected.length} row(s) rejected during save:</p>
+                  <ul className="list-disc list-inside space-y-0.5">
+                    {saveRejected.map((r, i) => (
+                      <li key={i}>
+                        Row {r.row}{r.student_name ? ` (${r.student_name})` : ""} —{" "}
+                        {r.missing ? `missing: ${r.missing.join(", ")}` : r.error}
+                      </li>
+                    ))}
+                  </ul>
                 </div>
               )}
 
