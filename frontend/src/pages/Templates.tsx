@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState, type DragEvent } from "react";
 import { supabase } from "@/lib/supabaseClient";
-import { Upload, QrCode, Info, Move, Loader2, Sparkles, WandSparkles, Eye, Pencil, ChevronLeft, ChevronRight, LayoutGrid } from "lucide-react";
+import { Upload, QrCode, Move, Loader2, Sparkles, WandSparkles, Eye, Pencil, ChevronLeft, ChevronRight, LayoutGrid } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -60,19 +60,37 @@ const Templates = () => {
 
   const [dragActive, setDragActive] = useState(false);
   const [uploadedTemplateName, setUploadedTemplateName] = useState("sample-certificate-layout.pdf");
-  const [showPlaceholder, setShowPlaceholder] = useState(true);
-  const [showQrPlaceholder, setShowQrPlaceholder] = useState(true);
-  const [showCertificateId, setShowCertificateId] = useState(true);
   const [layoutSaveStatus, setLayoutSaveStatus] = useState("Ready");
-  const [placeholderField, setPlaceholderField] = useState("STUDENT_NAME");
-  const [placeholderX, setPlaceholderX] = useState(40);
-  const [placeholderY, setPlaceholderY] = useState(36);
-  const [qrX, setQrX] = useState(82);
-  const [qrY, setQrY] = useState(76);
-  
+
+  // Unified layout configuration state
+  const [layoutConfig, setLayoutConfig] = useState({
+    showStudentName: true,
+    showQR: true,
+    showID: true,
+    placeholderField: "STUDENT_NAME",
+    placeholderX: 40,
+    placeholderY: 36,
+    qrX: 82,
+    qrY: 76,
+    idX: 10,
+    idY: 88,
+  });
+
   // Workspace preview state
   const [workspaceTemplate, setWorkspaceTemplate] = useState<any>(null);
   const [isGallerySelected, setIsGallerySelected] = useState(false);
+
+  // Load saved layout config from localStorage on mount
+  useEffect(() => {
+    try {
+      const savedLayout = localStorage.getItem("certifypro_layout_config");
+      if (savedLayout) {
+        setLayoutConfig((prev) => ({ ...prev, ...JSON.parse(savedLayout) }));
+      }
+    } catch {
+      // ignore corrupt data
+    }
+  }, []);
 
   useEffect(() => {
     const loadDrafts = async () => {
@@ -194,49 +212,12 @@ const Templates = () => {
     localStorage.setItem("certifypro-official-template-drafts", JSON.stringify(next));
   };
 
-  const saveLayout = async () => {
-    if (!selectedTemplate) {
-      alert("Select a template before saving layout");
-      return;
+  const saveLayout = () => {
+    localStorage.setItem("certifypro_layout_config", JSON.stringify(layoutConfig));
+    if (workspaceTemplate?.id) {
+      localStorage.setItem("certifypro_selected_template", workspaceTemplate.id);
     }
-
-    const layout_config = {
-      student_name: {
-        x: placeholderX,
-        y: placeholderY,
-        visible: showPlaceholder,
-      },
-      qr_code: {
-        x: qrX,
-        y: qrY,
-        visible: showQrPlaceholder,
-      },
-      certificate_id: {
-        visible: showCertificateId,
-      },
-    };
-
-    try {
-      const response = await fetch(`http://127.0.0.1:8000/api/templates/layout/${selectedTemplate.id}`, {
-        method: "PUT",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(layout_config),
-      });
-
-      if (!response.ok) {
-        const errorText = await response.text();
-        throw new Error(`Save layout failed (${response.status}): ${errorText}`);
-      }
-
-      const result = await response.json();
-      setLayoutSaveStatus("Layout saved successfully");
-      console.log("Saved layout", result);
-    } catch (error) {
-      console.error("Error saving layout", error);
-      setLayoutSaveStatus(`Save failed: ${error instanceof Error ? error.message : String(error)}`);
-    }
+    setLayoutSaveStatus("Layout saved successfully");
   };
 
   const openOfficialTemplate = (template: CertificateTemplateMeta, mode: "preview" | "edit") => {
@@ -256,19 +237,22 @@ const Templates = () => {
     try {
       const cfg = (template as any).layout_config;
       if (cfg) {
-        if (cfg.student_name) {
-          setPlaceholderX(cfg.student_name.x ?? placeholderX);
-          setPlaceholderY(cfg.student_name.y ?? placeholderY);
-          setShowPlaceholder(cfg.student_name.visible ?? showPlaceholder);
-        }
-        if (cfg.qr_code) {
-          setQrX(cfg.qr_code.x ?? qrX);
-          setQrY(cfg.qr_code.y ?? qrY);
-          setShowQrPlaceholder(cfg.qr_code.visible ?? showQrPlaceholder);
-        }
-        if (cfg.certificate_id) {
-          setShowCertificateId(cfg.certificate_id.visible ?? showCertificateId);
-        }
+        setLayoutConfig((prev) => ({
+          ...prev,
+          ...(cfg.student_name && {
+            placeholderX: cfg.student_name.x ?? prev.placeholderX,
+            placeholderY: cfg.student_name.y ?? prev.placeholderY,
+            showStudentName: cfg.student_name.visible ?? prev.showStudentName,
+          }),
+          ...(cfg.qr_code && {
+            qrX: cfg.qr_code.x ?? prev.qrX,
+            qrY: cfg.qr_code.y ?? prev.qrY,
+            showQR: cfg.qr_code.visible ?? prev.showQR,
+          }),
+          ...(cfg.certificate_id && {
+            showID: cfg.certificate_id.visible ?? prev.showID,
+          }),
+        }));
       }
     } catch (err) {
       // ignore
@@ -278,8 +262,9 @@ const Templates = () => {
   const handleWorkspacePreview = (template: CertificateTemplateMeta) => {
     setWorkspaceTemplate({
       file_url: (template as any).file_url || (template as any).image_url,
+      title: template.title,
       id: template.id,
-      is_custom: false,
+      isGalleryTemplate: true,
     });
     setIsGallerySelected(true);
   };
@@ -502,50 +487,67 @@ const Templates = () => {
               <div className="rounded-md bg-muted/50 border border-border px-3 py-2 text-xs text-muted-foreground">
                 Active uploaded file: <span className="font-medium text-foreground">{uploadedTemplateName}</span>
               </div>
+                </>
+              )}
+
+              {isGallerySelected && workspaceTemplate && (
+                <div className="rounded-md bg-accent/10 border border-accent/20 px-3 py-2 text-xs text-accent-foreground">
+                  Gallery template selected: <span className="font-medium">{workspaceTemplate.title || "Official Template"}</span>
+                  <Button variant="ghost" size="sm" className="ml-2 h-5 text-[10px] px-1" onClick={() => { setIsGallerySelected(false); setWorkspaceTemplate(null); }}>Clear</Button>
+                </div>
+              )}
 
               <div className="space-y-3">
                 <div className="flex items-center justify-between rounded-md border border-border bg-muted/30 px-3 py-2">
                   <label className="text-xs text-muted-foreground">Student Name placeholder visibility</label>
-                  <input type="checkbox" checked={showPlaceholder} onChange={(event) => setShowPlaceholder(event.target.checked)} />
+                  <input type="checkbox" checked={layoutConfig.showStudentName} onChange={(event) => setLayoutConfig((prev) => ({ ...prev, showStudentName: event.target.checked }))} />
                 </div>
 
                 <div className="flex items-center justify-between rounded-md border border-border bg-muted/30 px-3 py-2">
                   <label className="text-xs text-muted-foreground">QR placeholder visibility</label>
-                  <input type="checkbox" checked={showQrPlaceholder} onChange={(event) => setShowQrPlaceholder(event.target.checked)} />
+                  <input type="checkbox" checked={layoutConfig.showQR} onChange={(event) => setLayoutConfig((prev) => ({ ...prev, showQR: event.target.checked }))} />
                 </div>
 
                 <div className="flex items-center justify-between rounded-md border border-border bg-muted/30 px-3 py-2">
                   <label className="text-xs text-muted-foreground">Certificate ID visibility</label>
-                  <input type="checkbox" checked={showCertificateId} onChange={(event) => setShowCertificateId(event.target.checked)} />
+                  <input type="checkbox" checked={layoutConfig.showID} onChange={(event) => setLayoutConfig((prev) => ({ ...prev, showID: event.target.checked }))} />
                 </div>
 
                 <div>
                   <label className="text-xs text-muted-foreground">Placeholder Label</label>
-                  <Input value={placeholderField} onChange={(event) => setPlaceholderField(event.target.value.toUpperCase())} />
+                  <Input value={layoutConfig.placeholderField} onChange={(event) => setLayoutConfig((prev) => ({ ...prev, placeholderField: event.target.value.toUpperCase() }))} />
                 </div>
 
                 <div>
-                  <label className="text-xs text-muted-foreground">Placeholder X Position ({placeholderX}%)</label>
-                  <input type="range" min={10} max={90} value={placeholderX} onChange={(event) => setPlaceholderX(Number(event.target.value))} className="w-full" />
+                  <label className="text-xs text-muted-foreground">Placeholder X Position ({layoutConfig.placeholderX}%)</label>
+                  <input type="range" min={10} max={90} value={layoutConfig.placeholderX} onChange={(event) => setLayoutConfig((prev) => ({ ...prev, placeholderX: Number(event.target.value) }))} className="w-full" />
                 </div>
 
                 <div>
-                  <label className="text-xs text-muted-foreground">Placeholder Y Position ({placeholderY}%)</label>
-                  <input type="range" min={12} max={86} value={placeholderY} onChange={(event) => setPlaceholderY(Number(event.target.value))} className="w-full" />
+                  <label className="text-xs text-muted-foreground">Placeholder Y Position ({layoutConfig.placeholderY}%)</label>
+                  <input type="range" min={12} max={86} value={layoutConfig.placeholderY} onChange={(event) => setLayoutConfig((prev) => ({ ...prev, placeholderY: Number(event.target.value) }))} className="w-full" />
                 </div>
 
                 <div>
-                  <label className="text-xs text-muted-foreground">QR X Position ({qrX}%)</label>
-                  <input type="range" min={10} max={90} value={qrX} onChange={(event) => setQrX(Number(event.target.value))} className="w-full" />
+                  <label className="text-xs text-muted-foreground">QR X Position ({layoutConfig.qrX}%)</label>
+                  <input type="range" min={10} max={90} value={layoutConfig.qrX} onChange={(event) => setLayoutConfig((prev) => ({ ...prev, qrX: Number(event.target.value) }))} className="w-full" />
                 </div>
 
                 <div>
-                  <label className="text-xs text-muted-foreground">QR Y Position ({qrY}%)</label>
-                  <input type="range" min={10} max={90} value={qrY} onChange={(event) => setQrY(Number(event.target.value))} className="w-full" />
+                  <label className="text-xs text-muted-foreground">QR Y Position ({layoutConfig.qrY}%)</label>
+                  <input type="range" min={10} max={90} value={layoutConfig.qrY} onChange={(event) => setLayoutConfig((prev) => ({ ...prev, qrY: Number(event.target.value) }))} className="w-full" />
+                </div>
+
+                <div>
+                  <label className="text-xs text-muted-foreground">ID X Position ({layoutConfig.idX}%)</label>
+                  <input type="range" min={5} max={90} value={layoutConfig.idX} onChange={(event) => setLayoutConfig((prev) => ({ ...prev, idX: Number(event.target.value) }))} className="w-full" />
+                </div>
+
+                <div>
+                  <label className="text-xs text-muted-foreground">ID Y Position ({layoutConfig.idY}%)</label>
+                  <input type="range" min={5} max={95} value={layoutConfig.idY} onChange={(event) => setLayoutConfig((prev) => ({ ...prev, idY: Number(event.target.value) }))} className="w-full" />
                 </div>
               </div>
-                </>
-              )}
 
               <div className="aspect-[1.414/1] bg-muted/40 rounded-lg border border-dashed border-border relative overflow-hidden seal-pattern">
                 <div className="absolute inset-0 p-4 sm:p-6 flex flex-col justify-between">
@@ -576,18 +578,18 @@ const Templates = () => {
                       )
                     ) : null}
 
-                  {showPlaceholder && (
-                    <div className="absolute" style={{ left: `${placeholderX}%`, top: `${placeholderY}%`, transform: "translate(-50%, -50%)", zIndex: 10 }}>
+                  {layoutConfig.showStudentName && (
+                    <div className="absolute" style={{ left: `${layoutConfig.placeholderX}%`, top: `${layoutConfig.placeholderY}%`, transform: "translate(-50%, -50%)", zIndex: 10 }}>
                       <span className="text-[10px] px-2 py-1 rounded bg-primary text-primary-foreground shadow">
-                        {`{{${placeholderField || "FIELD"}}}`}
+                        {`{{${layoutConfig.placeholderField || "FIELD"}}}`}
                       </span>
                     </div>
                   )}
 
-                  {showQrPlaceholder && (
+                  {layoutConfig.showQR && (
                     <div
                       className="absolute w-14 h-14 rounded-md border-2 border-dashed border-accent bg-accent/10 flex items-center justify-center"
-                      style={{ left: `${qrX}%`, top: `${qrY}%`, transform: "translate(-50%, -50%)", zIndex: 10 }}
+                      style={{ left: `${layoutConfig.qrX}%`, top: `${layoutConfig.qrY}%`, transform: "translate(-50%, -50%)", zIndex: 10 }}
                     >
                       <QrCode className="w-7 h-7 text-accent" />
                       <span className="absolute -top-2 -right-2 w-5 h-5 rounded-full bg-accent flex items-center justify-center">
@@ -597,8 +599,8 @@ const Templates = () => {
                   )}
 
                   {/* Certificate ID placeholder */}
-                  {showCertificateId && (
-                    <div className="absolute" style={{ left: `10%`, bottom: `8%`, transform: "translate(0, 0)", zIndex: 10 }}>
+                  {layoutConfig.showID && (
+                    <div className="absolute" style={{ left: `${layoutConfig.idX}%`, top: `${layoutConfig.idY}%`, transform: "translate(-50%, -50%)", zIndex: 10 }}>
                       <span className="text-[10px] px-2 py-1 rounded bg-muted text-muted-foreground shadow">ID: 123456</span>
                     </div>
                   )}
@@ -619,22 +621,7 @@ const Templates = () => {
             </CardContent>
           </Card>
 
-          <Card className="card-shadow">
-            <CardContent className="p-4">
-              <div className="flex items-start gap-3">
-                <Info className="w-4 h-4 text-accent mt-0.5 shrink-0" />
-                <div className="text-xs text-muted-foreground space-y-1">
-                  <p className="font-medium text-foreground">Implementation Notes</p>
-                  <ul className="space-y-1 list-disc list-inside">
-                    <li>Official templates are brand-locked with field-only editing in modal.</li>
-                    <li>Custom upload workspace supports placeholder visibility and position controls.</li>
-                    <li>Drag-drop and layout save are frontend-only UI simulation.</li>
-                    <li>Ready for future backend connection without routing changes.</li>
-                  </ul>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
+
         </div>
       </div>
 
