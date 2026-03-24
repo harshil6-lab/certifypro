@@ -69,6 +69,10 @@ const Templates = () => {
   const [placeholderY, setPlaceholderY] = useState(36);
   const [qrX, setQrX] = useState(82);
   const [qrY, setQrY] = useState(76);
+  
+  // Workspace preview state
+  const [workspaceTemplate, setWorkspaceTemplate] = useState<any>(null);
+  const [isGallerySelected, setIsGallerySelected] = useState(false);
 
   useEffect(() => {
     const loadDrafts = async () => {
@@ -213,7 +217,7 @@ const Templates = () => {
     };
 
     try {
-      const response = await fetch(`/api/templates/layout/${selectedTemplate.id}`, {
+      const response = await fetch(`http://127.0.0.1:8000/api/templates/layout/${selectedTemplate.id}`, {
         method: "PUT",
         headers: {
           "Content-Type": "application/json",
@@ -236,7 +240,15 @@ const Templates = () => {
   };
 
   const openOfficialTemplate = (template: CertificateTemplateMeta, mode: "preview" | "edit") => {
-    setSelectedTemplate(template);
+    setSelectedTemplate({
+      id: template.id,
+      file_url: (template as any).file_url,
+      image_url: (template as any).image_url,
+      title: template.title,
+      category: template.category,
+      styleType: template.styleType,
+      editableFields: template.editableFields,
+    } as CertificateTemplateMeta);
     setSelectedTemplateId(template.id);
     setModalMode(mode);
 
@@ -263,6 +275,15 @@ const Templates = () => {
     }
   };
 
+  const handleWorkspacePreview = (template: CertificateTemplateMeta) => {
+    setWorkspaceTemplate({
+      file_url: (template as any).file_url || (template as any).image_url,
+      id: template.id,
+      is_custom: false,
+    });
+    setIsGallerySelected(true);
+  };
+
   const uploadTemplate = async (file: File) => {
     try {
       const formData = new FormData();
@@ -278,7 +299,7 @@ const Templates = () => {
         // ignore
       }
 
-      const res = await fetch("/api/templates/upload", {
+      const res = await fetch("http://127.0.0.1:8000/api/templates/upload", {
         method: "POST",
         body: formData,
       });
@@ -289,36 +310,16 @@ const Templates = () => {
       }
 
       const data = await res.json();
-      const created = data?.template ?? data;
       setUploadedTemplateName(file.name);
-      setLayoutSaveStatus("Template uploaded successfully");
-      // add to templates list and select for live preview
-      if (created) {
-        setTemplates((prev) => [created, ...prev]);
-        setSelectedTemplate(created as CertificateTemplateMeta);
-        setSelectedTemplateId((created as any).id);
-        // apply any saved layout
-        try {
-          const cfg = (created as any).layout_config;
-          if (cfg) {
-            if (cfg.student_name) {
-              setPlaceholderX(cfg.student_name.x ?? placeholderX);
-              setPlaceholderY(cfg.student_name.y ?? placeholderY);
-              setShowPlaceholder(cfg.student_name.visible ?? showPlaceholder);
-            }
-            if (cfg.qr_code) {
-              setQrX(cfg.qr_code.x ?? qrX);
-              setQrY(cfg.qr_code.y ?? qrY);
-              setShowQrPlaceholder(cfg.qr_code.visible ?? showQrPlaceholder);
-            }
-            if (cfg.certificate_id) {
-              setShowCertificateId(cfg.certificate_id.visible ?? showCertificateId);
-            }
-          }
-        } catch (err) {
-          // ignore
-        }
-      }
+      setLayoutSaveStatus("Template uploaded successfully - Session preview only");
+      
+      // Set workspace preview for session-only custom template
+      // Does NOT save to database - disappears on page refresh
+      setWorkspaceTemplate({
+        file_url: data.file_url,
+        is_custom: true,
+      });
+      setIsGallerySelected(false);
     } catch (error) {
       console.error("Template upload failed:", error);
       setLayoutSaveStatus(`Upload error: ${error instanceof Error ? error.message : String(error)}`);
@@ -416,7 +417,7 @@ const Templates = () => {
                         </div>
 
                         <div className="flex items-center gap-2 mt-4">
-                          <Button variant="outline" size="sm" className="h-8 text-xs flex-1 gap-1.5 hover:bg-accent/10 hover:border-accent/50 transition-colors" onClick={() => openOfficialTemplate(template, "preview")}>
+                          <Button variant="outline" size="sm" className="h-8 text-xs flex-1 gap-1.5 hover:bg-accent/10 hover:border-accent/50 transition-colors" onClick={() => handleWorkspacePreview(template)}>
                             <Eye className="w-3.5 h-3.5" /> Preview
                           </Button>
                           <Button size="sm" className="h-8 text-xs flex-1 gap-1.5 gold-gradient text-accent-foreground hover:opacity-90 transition-opacity" onClick={() => openOfficialTemplate(template, "edit")}>
@@ -466,6 +467,8 @@ const Templates = () => {
               <CardTitle className="text-base font-heading">Template Upload & Live Preview</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
+              {!isGallerySelected && (
+                <>
               <div className="flex flex-wrap gap-2">
                 <Badge className="bg-primary/10 text-primary border border-primary/20">Custom Template</Badge>
                 <Badge variant="outline">Editable Layout</Badge>
@@ -541,23 +544,37 @@ const Templates = () => {
                   <input type="range" min={10} max={90} value={qrY} onChange={(event) => setQrY(Number(event.target.value))} className="w-full" />
                 </div>
               </div>
+                </>
+              )}
 
               <div className="aspect-[1.414/1] bg-muted/40 rounded-lg border border-dashed border-border relative overflow-hidden seal-pattern">
                 <div className="absolute inset-0 p-4 sm:p-6 flex flex-col justify-between">
                     <div className="text-center space-y-1">
                       <p className="text-[11px] uppercase tracking-wider text-muted-foreground">Live Preview</p>
-                      <p className="font-heading text-base font-bold text-foreground">{selectedTemplate?.title ?? "No Template Selected"}</p>
+                      <p className="font-heading text-base font-bold text-foreground">{workspaceTemplate?.title || uploadedTemplateName ? (uploadedTemplateName?.replace(/\.[^/.]+$/, "") || workspaceTemplate?.title) : "No Template Selected"}</p>
                     </div>
 
-                    {/* Render real template image when available (gallery uses image_url, custom uploads use file_url) */}
-                    {selectedTemplate && (selectedTemplate.file_url || (selectedTemplate as any).image_url) && (
-                      <img
-                        src={(selectedTemplate as any).file_url || (selectedTemplate as any).image_url}
-                        className="absolute inset-0 w-full h-full object-cover rounded-xl opacity-100"
-                        alt="template preview"
-                        style={{ zIndex: 0 }}
-                      />
-                    )}
+                    {/* Render real template image when available */}
+                    {workspaceTemplate && workspaceTemplate.file_url ? (
+                      workspaceTemplate.file_url.endsWith(".pdf") ? (
+                        <iframe
+                          src={workspaceTemplate.file_url}
+                          style={{
+                            width: "100%",
+                            height: "300px",
+                            borderRadius: "8px",
+                            zIndex: 0,
+                            border: "none"
+                          }}
+                        />
+                      ) : (
+                        <img
+                          src={workspaceTemplate.file_url}
+                          alt="template preview"
+                          style={{ width: "100%", borderRadius: "8px", zIndex: 0 }}
+                        />
+                      )
+                    ) : null}
 
                   {showPlaceholder && (
                     <div className="absolute" style={{ left: `${placeholderX}%`, top: `${placeholderY}%`, transform: "translate(-50%, -50%)", zIndex: 10 }}>

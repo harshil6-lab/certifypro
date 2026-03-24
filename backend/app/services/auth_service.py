@@ -37,7 +37,7 @@ def send_magic_link(email: str) -> dict:
             return {"success": False, "error": str(exc)}
 
 
-def get_current_user(token: str) -> Optional[dict]:
+def get_current_user(token: str = None) -> Optional[dict]:
     """Validate the given JWT `token` and return the Supabase user record.
 
     Treat a missing or invalid token as unauthenticated.

@@ -18,6 +18,9 @@ def list_templates(official: bool | None = None, category: str | None = None) ->
 
         if official is not None:
             query = query.eq("is_official", official)
+            # When fetching official templates, exclude custom ones
+            if official is True:
+                query = query.eq("is_custom", False)
 
         if category:
             normalized_category = category.strip().title()

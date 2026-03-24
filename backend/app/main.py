@@ -4,13 +4,18 @@ Initializes the app, enables CORS for the frontend origins, mounts
 API routers and registers the AuthMiddleware.
 """
 
+import os
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
 from .core.config import get_settings
 from .api import auth_routes, user_routes, templates_routes, dashboard_routes, students_routes, certificates_routes, verify_routes
 from .middleware.auth_middleware import AuthMiddleware
 from .services.templates_service import seed_default_templates
 from .services.template_gallery_seed import seed_gallery_templates
+from app.api.templates_routes import router as templates_router 
+
+  # Include templates router for /api/templates routes
 
 settings = get_settings()
 
@@ -27,10 +32,11 @@ origins = [
     "http://192.168.56.1:8080"  ,
     "http://192.168.56.1:8081"# alternative frontend dev server port
 ]
+from fastapi.middleware.cors import CORSMiddleware
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=origins,
+    allow_origins=["*"],  # temporary full access (safe for development)
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -47,8 +53,14 @@ app.include_router(students_routes.router, prefix="/students", tags=["students"]
 app.include_router(certificates_routes.router, prefix="/certificates", tags=["certificates"])
 app.include_router(verify_routes.router, prefix="", tags=["verify"])
 
+# Enable static file serving for uploaded templates
+uploads_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "uploads")
+if not os.path.exists(uploads_dir):
+    os.makedirs(uploads_dir, exist_ok=True)
 
-# Startup event: seed templates on app initialization
+app.mount("/uploads", StaticFiles(directory=uploads_dir), name="uploads")
+
+
 @app.on_event("startup")
 async def startup_event():
     """Run initialization tasks on FastAPI startup.
