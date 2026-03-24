@@ -15,7 +15,7 @@ import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
-import { getStudents } from "@/services/apiService";
+import { supabase } from "@/lib/supabaseClient";
 
 const steps = [
   { id: 1, title: "Select Template", icon: FileText },
@@ -37,24 +37,43 @@ const Generate = () => {
   const [generatedCerts, setGeneratedCerts] = useState<any[]>([]);
   const [generateError, setGenerateError] = useState("");
 
-  // Load students on mount; auto-select template from localStorage
+  // Seed template from localStorage immediately (synchronous fallback)
   useEffect(() => {
-    const loadData = async () => {
-      setLoadingData(true);
-      try {
-        const studentData = await getStudents().catch(() => []);
-        setStudents(Array.isArray(studentData) ? studentData : []);
-      } catch (err) {
-        console.error("Error loading data:", err);
-      } finally {
-        setLoadingData(false);
-      }
-    };
-
     const templateId = localStorage.getItem("certifypro_selected_template");
     if (templateId) setSelectedTemplate(templateId);
+  }, []);
 
-    loadData();
+  // Load workspace template from backend (authoritative source)
+  useEffect(() => {
+    const loadWorkspaceTemplate = async () => {
+      try {
+        let authHeader = "";
+        if (supabase) {
+          const { data } = await supabase.auth.getSession();
+          const token = data.session?.access_token;
+          if (token) authHeader = `Bearer ${token}`;
+        }
+        const res = await axios.get("http://127.0.0.1:8000/api/workspace-template", {
+          headers: authHeader ? { Authorization: authHeader } : {},
+        });
+        if (res.data.template) {
+          setSelectedTemplate(res.data.template);
+        }
+      } catch {
+        // API unavailable — localStorage value already applied above
+      }
+    };
+    loadWorkspaceTemplate();
+  }, []);
+
+  // Load students on mount from dedicated ready-endpoint
+  useEffect(() => {
+    setLoadingData(true);
+    axios
+      .get("http://127.0.0.1:8000/api/students-ready")
+      .then((res) => setStudents(Array.isArray(res.data) ? res.data : []))
+      .catch(() => setStudents([]))
+      .finally(() => setLoadingData(false));
   }, []);
 
   const handleGenerate = async () => {

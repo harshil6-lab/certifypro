@@ -1,9 +1,8 @@
-import { useEffect, useRef, useState, type DragEvent } from "react";
-import { Upload, FileSpreadsheet, AlertCircle, CheckCircle2, XCircle, Download, Loader2, WandSparkles, FileDown } from "lucide-react";
+import { useRef, useState, type DragEvent } from "react";
+import { Upload, FileSpreadsheet, AlertCircle, CheckCircle2, XCircle, Loader2, FileDown, Database } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import {
   Table,
   TableBody,
@@ -24,12 +23,6 @@ interface PreviewRow {
   error: string;
 }
 
-interface GeneratedCert {
-  id: string;
-  url: string;
-  student_name: string;
-}
-
 const ImportStudents = () => {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -41,40 +34,18 @@ const ImportStudents = () => {
   const [rows, setRows] = useState<PreviewRow[]>([]);
   const [summary, setSummary] = useState({ valid: 0, errors: 0, duplicates: 0, total: 0 });
 
-  // Template selection
-  const [templates, setTemplates] = useState<any[]>([]);
-  const [selectedTemplateId, setSelectedTemplateId] = useState("");
-  const [loadingTemplates, setLoadingTemplates] = useState(true);
-
-  // Generation state
-  const [generating, setGenerating] = useState(false);
-  const [generateError, setGenerateError] = useState("");
-  const [generatedCerts, setGeneratedCerts] = useState<GeneratedCert[]>([]);
-
-  // Load templates on mount
-  useEffect(() => {
-    const load = async () => {
-      setLoadingTemplates(true);
-      try {
-        const res = await fetch(`${API_BASE}/api/templates?official=true`);
-        const data = res.ok ? await res.json() : [];
-        setTemplates(Array.isArray(data) ? data : []);
-      } catch {
-        setTemplates([]);
-      } finally {
-        setLoadingTemplates(false);
-      }
-    };
-    load();
-  }, []);
+  // Save state
+  const [saving, setSaving] = useState(false);
+  const [saveError, setSaveError] = useState("");
+  const [saveSuccess, setSaveSuccess] = useState(0);
 
   const parseFile = async (file: File) => {
     setExcelFile(file);
     setRows([]);
     setSummary({ valid: 0, errors: 0, duplicates: 0, total: 0 });
     setParseError("");
-    setGeneratedCerts([]);
-    setGenerateError("");
+    setSaveError("");
+    setSaveSuccess(0);
     setParsing(true);
 
     try {
@@ -107,32 +78,28 @@ const ImportStudents = () => {
     if (file) await parseFile(file);
   };
 
-  const generateCertificates = async () => {
-    if (!excelFile || !selectedTemplateId) return;
-    setGenerating(true);
-    setGenerateError("");
-    setGeneratedCerts([]);
-
+  const saveStudents = async () => {
+    const validRows = rows.filter((r) => r.status === "valid");
+    if (!validRows.length) return;
+    setSaving(true);
+    setSaveError("");
+    setSaveSuccess(0);
     try {
-      const savedLayout = localStorage.getItem("certifypro_layout_config");
-      const layoutConfig = savedLayout ?? "{}";
-
-      const form = new FormData();
-      form.append("excel_file", excelFile);
-      form.append("layout_config", layoutConfig);
-      form.append("template_id", selectedTemplateId);
-
-      const res = await fetch(`${API_BASE}/api/generate/certificates`, { method: "POST", body: form });
+      const res = await fetch(`${API_BASE}/api/import-students/save`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ rows: validRows }),
+      });
       if (!res.ok) {
         const txt = await res.text();
-        throw new Error(`Generation failed: ${res.status} ${txt}`);
+        throw new Error(`Save failed: ${res.status} ${txt}`);
       }
       const data = await res.json();
-      setGeneratedCerts(data.certificates ?? []);
+      setSaveSuccess(data.saved ?? validRows.length);
     } catch (err) {
-      setGenerateError(err instanceof Error ? err.message : String(err));
+      setSaveError(err instanceof Error ? err.message : String(err));
     } finally {
-      setGenerating(false);
+      setSaving(false);
     }
   };
 
@@ -147,8 +114,6 @@ const ImportStudents = () => {
     a.click();
     URL.revokeObjectURL(url);
   };
-
-  const canGenerate = summary.valid > 0 && !!selectedTemplateId && !generating;
 
   return (
     <div className="p-8 max-w-[1200px] mx-auto space-y-6 animate-fade-in">
@@ -276,81 +241,35 @@ const ImportStudents = () => {
             </CardContent>
           </Card>
 
-          {/* Template Selector + Generate */}
+          {/* Save to Database */}
           <Card className="card-shadow">
             <CardHeader className="pb-3">
               <CardTitle className="text-base font-heading flex items-center gap-2">
-                <WandSparkles className="w-4 h-4 text-accent" /> Generate Certificates
+                <Database className="w-4 h-4 text-accent" /> Save to Database
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
-              <div className="space-y-2">
-                <label className="text-sm font-medium text-foreground">Select Certificate Template</label>
-                {loadingTemplates ? (
-                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                    <Loader2 className="w-4 h-4 animate-spin" /> Loading templates…
-                  </div>
-                ) : (
-                  <Select value={selectedTemplateId} onValueChange={setSelectedTemplateId}>
-                    <SelectTrigger className="w-full">
-                      <SelectValue placeholder="Choose a template…" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {templates.map((t: any) => (
-                        <SelectItem key={t.id} value={t.id}>
-                          {t.title} {t.category ? `— ${t.category}` : ""}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                )}
-                <p className="text-xs text-muted-foreground">Layout positions (name / QR / ID) are read from the Template Workspace settings.</p>
-              </div>
-
-              {!selectedTemplateId && (
-                <p className="text-xs text-amber-600">Select a template to enable generation.</p>
-              )}
               {summary.valid === 0 && (
                 <p className="text-xs text-destructive">No valid rows found. Fix errors in your Excel file and re-upload.</p>
               )}
 
-              {generateError && <p className="text-sm text-destructive">{generateError}</p>}
+              {saveError && <p className="text-sm text-destructive">{saveError}</p>}
+
+              {saveSuccess > 0 && (
+                <div className="flex items-center gap-2 text-sm text-green-600 bg-green-50/50 border border-green-200/50 rounded-lg p-3">
+                  <CheckCircle2 className="w-4 h-4" />
+                  {saveSuccess} student(s) saved to database successfully.
+                </div>
+              )}
 
               <Button
                 className="w-full gold-gradient text-accent-foreground gap-2 font-semibold"
-                onClick={generateCertificates}
-                disabled={!canGenerate}
+                onClick={saveStudents}
+                disabled={summary.valid === 0 || saving}
               >
-                {generating ? <Loader2 className="w-4 h-4 animate-spin" /> : <WandSparkles className="w-4 h-4" />}
-                {generating ? `Generating ${summary.valid} certificate(s)…` : `Generate ${summary.valid} Certificate(s)`}
+                {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Database className="w-4 h-4" />}
+                {saving ? `Saving ${summary.valid} student(s)…` : `Save ${summary.valid} Valid Student(s)`}
               </Button>
-
-              {generatedCerts.length > 0 && (
-                <div className="space-y-2 pt-2 border-t border-border">
-                  <p className="text-sm font-semibold text-foreground flex items-center gap-1.5">
-                    <CheckCircle2 className="w-4 h-4 text-green-500" />
-                    {generatedCerts.length} certificate(s) generated successfully
-                  </p>
-                  <div className="max-h-60 overflow-y-auto space-y-1.5 pr-1">
-                    {generatedCerts.map((cert) => (
-                      <div key={cert.id} className="flex items-center justify-between rounded-lg border border-border px-3 py-2 text-sm bg-muted/30">
-                        <span className="text-foreground font-medium truncate mr-3">
-                          {cert.student_name}
-                          <span className="ml-2 font-mono text-xs text-muted-foreground">#{cert.id}</span>
-                        </span>
-                        <a
-                          href={cert.url}
-                          target="_blank"
-                          rel="noreferrer"
-                          className="flex items-center gap-1 text-accent underline text-xs shrink-0 hover:opacity-80"
-                        >
-                          <Download className="w-3.5 h-3.5" /> Download
-                        </a>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
             </CardContent>
           </Card>
         </>

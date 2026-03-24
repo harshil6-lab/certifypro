@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState, type DragEvent } from "react";
 import { supabase } from "@/lib/supabaseClient";
-import { Upload, QrCode, Move, Loader2, Sparkles, WandSparkles, Eye, Pencil, ChevronLeft, ChevronRight, LayoutGrid } from "lucide-react";
+import { Upload, Loader2, Sparkles, WandSparkles, Eye, Pencil, ChevronLeft, ChevronRight, LayoutGrid } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -14,6 +14,7 @@ import {
   GalleryCategory,
 } from "@/components/certificates/types";
 import { getTemplates } from "@/services/apiService";
+import { LayoutPreview } from "@/components/LayoutPreview";
 
 const categories: Array<"All" | GalleryCategory> = ["All", "Academic", "Corporate", "Internship", "Event", "Compliance", "Training"];
 
@@ -300,8 +301,9 @@ const Templates = () => {
       
       // Set workspace preview for session-only custom template
       // Does NOT save to database - disappears on page refresh
+      // Use preview_url (PNG) when available (PDF uploads), otherwise file_url
       setWorkspaceTemplate({
-        file_url: data.file_url,
+        file_url: data.preview_url ?? data.file_url,
         is_custom: true,
       });
       setIsGallerySelected(false);
@@ -549,68 +551,11 @@ const Templates = () => {
                 </div>
               </div>
 
-              <div className="aspect-[1.414/1] bg-muted/40 rounded-lg border border-dashed border-border relative overflow-hidden seal-pattern">
-                <div className="absolute inset-0 p-4 sm:p-6 flex flex-col justify-between">
-                    <div className="text-center space-y-1">
-                      <p className="text-[11px] uppercase tracking-wider text-muted-foreground">Live Preview</p>
-                      <p className="font-heading text-base font-bold text-foreground">{workspaceTemplate?.title || uploadedTemplateName ? (uploadedTemplateName?.replace(/\.[^/.]+$/, "") || workspaceTemplate?.title) : "No Template Selected"}</p>
-                    </div>
-
-                    {/* Render real template image when available */}
-                    {workspaceTemplate && workspaceTemplate.file_url ? (
-                      workspaceTemplate.file_url.endsWith(".pdf") ? (
-                        <iframe
-                          src={workspaceTemplate.file_url}
-                          style={{
-                            width: "100%",
-                            height: "300px",
-                            borderRadius: "8px",
-                            zIndex: 0,
-                            border: "none"
-                          }}
-                        />
-                      ) : (
-                        <img
-                          src={workspaceTemplate.file_url}
-                          alt="template preview"
-                          style={{ width: "100%", borderRadius: "8px", zIndex: 0 }}
-                        />
-                      )
-                    ) : null}
-
-                  {layoutConfig.showStudentName && (
-                    <div className="absolute" style={{ left: `${layoutConfig.placeholderX}%`, top: `${layoutConfig.placeholderY}%`, transform: "translate(-50%, -50%)", zIndex: 10 }}>
-                      <span className="text-[10px] px-2 py-1 rounded bg-primary text-primary-foreground shadow">
-                        {`{{${layoutConfig.placeholderField || "FIELD"}}}`}
-                      </span>
-                    </div>
-                  )}
-
-                  {layoutConfig.showQR && (
-                    <div
-                      className="absolute w-14 h-14 rounded-md border-2 border-dashed border-accent bg-accent/10 flex items-center justify-center"
-                      style={{ left: `${layoutConfig.qrX}%`, top: `${layoutConfig.qrY}%`, transform: "translate(-50%, -50%)", zIndex: 10 }}
-                    >
-                      <QrCode className="w-7 h-7 text-accent" />
-                      <span className="absolute -top-2 -right-2 w-5 h-5 rounded-full bg-accent flex items-center justify-center">
-                        <Move className="w-3 h-3 text-accent-foreground" />
-                      </span>
-                    </div>
-                  )}
-
-                  {/* Certificate ID placeholder */}
-                  {layoutConfig.showID && (
-                    <div className="absolute" style={{ left: `${layoutConfig.idX}%`, top: `${layoutConfig.idY}%`, transform: "translate(-50%, -50%)", zIndex: 10 }}>
-                      <span className="text-[10px] px-2 py-1 rounded bg-muted text-muted-foreground shadow">ID: 123456</span>
-                    </div>
-                  )}
-
-                  <div className="flex justify-between items-end text-[10px] text-muted-foreground">
-                    <span>Date: {"{{DATE}}"}</span>
-                    <span>Signature: Registrar</span>
-                  </div>
-                </div>
-              </div>
+              <LayoutPreview
+                templateUrl={workspaceTemplate?.file_url ?? null}
+                templateTitle={workspaceTemplate?.title}
+                layoutConfig={layoutConfig}
+              />
 
               <div className="flex flex-col gap-2">
                 <Button className="flex-1 gold-gradient text-accent-foreground gap-2" onClick={saveLayout}>
