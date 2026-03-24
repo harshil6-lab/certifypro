@@ -10,6 +10,12 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from .core.config import get_settings
 from .api import auth_routes, user_routes, templates_routes, dashboard_routes, students_routes, certificates_routes, verify_routes
+from .api.generate_routes import router as generate_router
+from .api.import_students import router as import_students_router
+from .api.generate_certificates import router as generate_certificates_router
+from .api.verify import router as public_verify_router
+from .api.workspace_template import router as workspace_template_router
+from .api.students_ready import router as students_ready_router
 from .middleware.auth_middleware import AuthMiddleware
 from .services.templates_service import seed_default_templates
 from .services.template_gallery_seed import seed_gallery_templates
@@ -52,6 +58,12 @@ app.include_router(dashboard_routes.router, prefix="/dashboard", tags=["dashboar
 app.include_router(students_routes.router, prefix="/students", tags=["students"])
 app.include_router(certificates_routes.router, prefix="/certificates", tags=["certificates"])
 app.include_router(verify_routes.router, prefix="", tags=["verify"])
+app.include_router(generate_router)
+app.include_router(import_students_router)
+app.include_router(generate_certificates_router)
+app.include_router(public_verify_router)
+app.include_router(workspace_template_router)
+app.include_router(students_ready_router)
 
 # Enable static file serving for uploaded templates
 uploads_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "uploads")

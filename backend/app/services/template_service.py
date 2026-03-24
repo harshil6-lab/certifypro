@@ -1,7 +1,14 @@
 from fastapi import UploadFile, HTTPException
 from app.core.supabase_client import supabase
 import os
+import tempfile
 from uuid import uuid4
+
+try:
+    from pdf2image import convert_from_path
+    _PDF2IMAGE_AVAILABLE = True
+except ImportError:
+    _PDF2IMAGE_AVAILABLE = False
 
 
 async def upload_template_file(file: UploadFile, filename: str, user_id: str | None = None):
@@ -46,10 +53,54 @@ async def upload_template_file(file: UploadFile, filename: str, user_id: str | N
         
         public_url = f"{supabase_url}/storage/v1/object/public/{bucket_name}/{path}"
 
+        # --- PDF preview conversion ---
+        # If file is a PDF, convert first page to PNG and upload as preview
+        preview_url = public_url  # default: preview == original file
+        is_pdf = file_ext.lower() == "pdf"
+
+        if is_pdf:
+            if not _PDF2IMAGE_AVAILABLE:
+                raise HTTPException(
+                    status_code=500,
+                    detail="pdf2image is not installed. Run: pip install pdf2image (requires poppler on PATH)"
+                )
+            # Write PDF bytes to a temp file so convert_from_path can read it
+            with tempfile.NamedTemporaryFile(suffix=".pdf", delete=False) as tmp_pdf:
+                tmp_pdf.write(file_bytes)
+                tmp_pdf_path = tmp_pdf.name
+
+            try:
+                images = convert_from_path(tmp_pdf_path)
+                preview_path = tmp_pdf_path.replace(".pdf", ".png")
+                images[0].save(preview_path, "PNG")
+
+                # Upload the PNG preview to Supabase storage
+                preview_storage_path = path.replace(f".{file_ext}", ".png")
+                with open(preview_path, "rb") as png_file:
+                    png_bytes = png_file.read()
+
+                preview_result = supabase.storage.from_(bucket_name).upload(
+                    preview_storage_path, png_bytes, {"content-type": "image/png"}
+                )
+                if hasattr(preview_result, "error") and preview_result.error:
+                    raise HTTPException(
+                        status_code=500,
+                        detail=f"Failed to upload PDF preview: {preview_result.error}"
+                    )
+
+                preview_url = f"{supabase_url}/storage/v1/object/public/{bucket_name}/{preview_storage_path}"
+            finally:
+                # Clean up temp files
+                if os.path.exists(tmp_pdf_path):
+                    os.remove(tmp_pdf_path)
+                if os.path.exists(preview_path):
+                    os.remove(preview_path)
+
         # Return file URL only - no database save
         # Uploaded templates are session-only workspace previews
         return {
             "file_url": public_url,
+            "preview_url": preview_url,
             "message": "Template uploaded successfully"
         }
         
