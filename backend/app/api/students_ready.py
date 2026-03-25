@@ -36,7 +36,7 @@ async def get_students_ready():
 
 @router.get("/my-certificates")
 async def get_my_certificates(request: Request):
-    """Return the latest generated certificate per student for the authenticated user."""
+    """Return all generated certificates for the authenticated user."""
     auth_header = request.headers.get("Authorization", "")
     token = auth_header.split(" ", 1)[1] if auth_header.lower().startswith("bearer ") else None
     user = get_current_user(token) if token else None
@@ -58,34 +58,37 @@ async def get_my_certificates(request: Request):
             return {"certificates": []}
 
         student_ids = [student["id"] for student in students if student.get("id")]
-        generated_resp = (
-            supabase.table("generated_certificates")
-            .select("id, student_id, template_id, file_url, verification_url, created_at")
-            .in_("student_id", student_ids)
-            .order("created_at", desc=True)
-            .execute()
-        )
-        generated_rows = (
-            generated_resp.data if hasattr(generated_resp, "data") and generated_resp.data else []
-        )
+        try:
+            generated_resp = (
+                supabase.table("generated_certificates")
+                .select("*")
+                .in_("student_id", student_ids)
+                .order("created_at", desc=True)
+                .execute()
+            )
+            generated_rows = (
+                generated_resp.data if hasattr(generated_resp, "data") and generated_resp.data else []
+            )
+        except Exception as exc:
+            # Keep the Registry page working when the live DB schema lags behind code.
+            print(f"[my-certificates] Falling back to empty generated certificate list: {exc}")
+            generated_rows = []
 
         students_by_id = {student["id"]: student for student in students if student.get("id")}
-        latest_by_student_id: dict[str, dict[str, Any]] = {}
-        for row in generated_rows:
-            student_id = row.get("student_id")
-            if student_id and student_id not in latest_by_student_id:
-                latest_by_student_id[student_id] = row
 
         certificates = []
-        for student_id, generated in latest_by_student_id.items():
+        for generated in generated_rows:
+            student_id = generated.get("student_id")
             student = students_by_id.get(student_id) or {}
+            certificate_id = generated.get("certificate_id") or student.get("external_id") or ""
+            student_name = generated.get("student_name") or student.get("full_name") or ""
             certificates.append(
                 {
                     "id": generated.get("id"),
                     "template_id": generated.get("template_id"),
-                    "full_name": student.get("full_name") or "",
+                    "full_name": student_name,
                     "email": student.get("email") or "",
-                    "external_id": student.get("external_id") or "",
+                    "external_id": certificate_id,
                     "created_at": generated.get("created_at"),
                     "status": "issued",
                     "download_url": generated.get("file_url"),

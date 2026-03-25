@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, type DragEvent } from "react";
+import { useEffect, useState, type DragEvent } from "react";
 import { supabase } from "@/lib/supabaseClient";
 import { Upload, Loader2, Sparkles, WandSparkles, Eye, Pencil, ChevronLeft, ChevronRight, LayoutGrid } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -13,7 +13,7 @@ import {
   CertificateTemplateMeta,
   GalleryCategory,
 } from "@/components/certificates/types";
-import { getTemplates } from "@/services/apiService";
+import { API_BASE, getTemplates } from "@/services/apiService";
 import { LayoutPreview } from "@/components/LayoutPreview";
 
 const categories: Array<"All" | GalleryCategory> = ["All", "Academic", "Corporate", "Internship", "Event", "Compliance", "Training"];
@@ -47,6 +47,13 @@ const normalizeDraft = (draft: Partial<CertificateDraft>, fallbackTitle: string)
   logoPreviewUrl: draft.logoPreviewUrl ?? "",
 });
 
+type WorkspaceTemplateState = {
+  id: string;
+  file_url: string | null;
+  title?: string;
+  is_custom?: boolean;
+};
+
 const Templates = () => {
   const [searchParams] = useSearchParams();
   const [selectedCategory, setSelectedCategory] = useState<"All" | GalleryCategory>("All");
@@ -78,7 +85,7 @@ const Templates = () => {
   });
 
   // Workspace preview state
-  const [workspaceTemplate, setWorkspaceTemplate] = useState<any>(null);
+  const [workspaceTemplate, setWorkspaceTemplate] = useState<WorkspaceTemplateState | null>(null);
   const [isGallerySelected, setIsGallerySelected] = useState(false);
 
   // Load saved layout config from localStorage on mount
@@ -113,6 +120,49 @@ const Templates = () => {
 
     loadDrafts();
     // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  useEffect(() => {
+    const loadWorkspaceTemplate = async () => {
+      try {
+        const { data } = await supabase.auth.getSession();
+        const token = data.session?.access_token;
+        if (!token) {
+          return;
+        }
+
+        const res = await fetch(`${API_BASE}/api/workspace-template`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        if (!res.ok) {
+          return;
+        }
+
+        const payload = await res.json();
+        if (!payload?.template_id) {
+          return;
+        }
+
+        setWorkspaceTemplate({
+          id: payload.template_id,
+          file_url: payload.file_url ?? payload.template_url ?? null,
+          title: payload.title ?? "Workspace Template",
+          is_custom: payload.is_official === false,
+        });
+        setSelectedTemplateId(payload.template_id);
+        setIsGallerySelected(payload.is_official === true);
+        if (payload.title && payload.is_official === false) {
+          setUploadedTemplateName(payload.title);
+        }
+        if (payload.layout_config) {
+          setLayoutConfig((prev) => ({ ...prev, ...payload.layout_config }));
+        }
+      } catch {
+        // Ignore workspace preload failures and fall back to localStorage state.
+      }
+    };
+
+    loadWorkspaceTemplate();
   }, []);
 
   useEffect(() => {
@@ -213,12 +263,46 @@ const Templates = () => {
     localStorage.setItem("certifypro-official-template-drafts", JSON.stringify(next));
   };
 
-  const saveLayout = () => {
-    localStorage.setItem("certifypro_layout_config", JSON.stringify(layoutConfig));
-    if (workspaceTemplate?.id) {
-      localStorage.setItem("certifypro_selected_template", workspaceTemplate.id);
+  const saveLayout = async () => {
+    if (!workspaceTemplate?.id) {
+      setLayoutSaveStatus("Select a gallery template preview or upload a custom certificate before saving.");
+      return;
     }
-    setLayoutSaveStatus("Layout saved successfully");
+
+    setLayoutSaveStatus("Saving layout...");
+
+    try {
+      const { data } = await supabase.auth.getSession();
+      const token = data.session?.access_token;
+      if (!token) {
+        setLayoutSaveStatus("You must be signed in to save the workspace layout.");
+        return;
+      }
+
+      const res = await fetch(`${API_BASE}/api/save-layout`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          template_id: workspaceTemplate.id,
+          layout_config: layoutConfig,
+          custom_template_url: workspaceTemplate.is_custom ? workspaceTemplate.file_url : null,
+        }),
+      });
+
+      if (!res.ok) {
+        const errText = await res.text();
+        throw new Error(errText || "Failed to save workspace layout.");
+      }
+
+      localStorage.setItem("certifypro_layout_config", JSON.stringify(layoutConfig));
+      localStorage.setItem("certifypro_selected_template", workspaceTemplate.id);
+      setLayoutSaveStatus("Layout saved successfully");
+    } catch (error) {
+      setLayoutSaveStatus(`Save error: ${error instanceof Error ? error.message : String(error)}`);
+    }
   };
 
   const openOfficialTemplate = (template: CertificateTemplateMeta, mode: "preview" | "edit") => {
@@ -265,7 +349,7 @@ const Templates = () => {
       file_url: (template as any).file_url || (template as any).image_url,
       title: template.title,
       id: template.id,
-      isGalleryTemplate: true,
+      is_custom: false,
     });
     setIsGallerySelected(true);
   };
@@ -274,12 +358,17 @@ const Templates = () => {
     try {
       const formData = new FormData();
       formData.append("file", file);
+      let authHeaders: HeadersInit | undefined;
       // include current user id when available
       try {
         if (supabase) {
           const sessionRes: any = await supabase.auth.getSession();
           const userId = sessionRes?.data?.session?.user?.id ?? sessionRes?.data?.user?.id ?? null;
+          const token = sessionRes?.data?.session?.access_token ?? null;
           if (userId) formData.append("user_id", userId);
+          if (token) {
+            authHeaders = { Authorization: `Bearer ${token}` };
+          }
         }
       } catch (_) {
         // ignore
@@ -287,6 +376,7 @@ const Templates = () => {
 
       const res = await fetch("http://127.0.0.1:8000/api/templates/upload", {
         method: "POST",
+        headers: authHeaders,
         body: formData,
       });
 
@@ -297,13 +387,12 @@ const Templates = () => {
 
       const data = await res.json();
       setUploadedTemplateName(file.name);
-      setLayoutSaveStatus("Template uploaded successfully - Session preview only");
-      
-      // Set workspace preview for session-only custom template
-      // Does NOT save to database - disappears on page refresh
-      // Use preview_url (PNG) when available (PDF uploads), otherwise file_url
+      setLayoutSaveStatus("Template uploaded successfully. Save Layout to make it the active workspace template.");
+
       setWorkspaceTemplate({
-        file_url: data.preview_url ?? data.file_url,
+        id: data.template_id ?? data.template?.id,
+        title: data.template?.title ?? file.name,
+        file_url: data.preview_url ?? data.template?.image_url ?? data.file_url,
         is_custom: true,
       });
       setIsGallerySelected(false);
@@ -496,6 +585,12 @@ const Templates = () => {
                 <div className="rounded-md bg-accent/10 border border-accent/20 px-3 py-2 text-xs text-accent-foreground">
                   Gallery template selected: <span className="font-medium">{workspaceTemplate.title || "Official Template"}</span>
                   <Button variant="ghost" size="sm" className="ml-2 h-5 text-[10px] px-1" onClick={() => { setIsGallerySelected(false); setWorkspaceTemplate(null); }}>Clear</Button>
+                </div>
+              )}
+
+              {!isGallerySelected && workspaceTemplate && (
+                <div className="rounded-md bg-primary/10 border border-primary/20 px-3 py-2 text-xs text-primary">
+                  Custom workspace template selected: <span className="font-medium">{workspaceTemplate.title || uploadedTemplateName}</span>
                 </div>
               )}
 

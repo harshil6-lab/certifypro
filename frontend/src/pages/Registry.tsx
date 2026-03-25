@@ -112,6 +112,22 @@ const Registry = () => {
         </div>
       </div>
 
+      {!loading && (
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+          <Card className="card-shadow border-l-4 border-l-accent hover:shadow-lg transition-all duration-300">
+            <CardContent className="p-4 flex items-center gap-3">
+              <div className="w-10 h-10 rounded-lg bg-accent/10 flex items-center justify-center">
+                <Download className="w-5 h-5 text-accent" />
+              </div>
+              <div>
+                <p className="text-2xl font-heading font-bold text-foreground">{certificates.length}</p>
+                <p className="text-xs text-muted-foreground">Generated Certificates</p>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      )}
+
       {/* Filters */}
       <Card className="card-shadow">
         <CardContent className="p-4">

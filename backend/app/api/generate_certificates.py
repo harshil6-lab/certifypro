@@ -41,7 +41,7 @@ GENERATED_DIR = os.path.join(_BACKEND_ROOT, "uploads", "generated")
 os.makedirs(GENERATED_DIR, exist_ok=True)
 
 API_BASE_URL = os.getenv("API_BASE_URL", "http://127.0.0.1:8000")
-QR_VERIFY_BASE = "https://certifypro.app/verify"
+QR_VERIFY_BASE = os.getenv("PUBLIC_VERIFY_BASE_URL", "http://localhost:8080/verify")
 
 # ---------------------------------------------------------------------------
 # Request / Response models
@@ -162,13 +162,18 @@ def _persist_generated_certificate(
 
 
 def _get_existing_generated_certificate(certificate_id: str) -> dict[str, Any] | None:
-    resp = (
-        supabase.table("generated_certificates")
-        .select("file_url")
-        .eq("certificate_id", certificate_id)
-        .limit(1)
-        .execute()
-    )
+    try:
+        resp = (
+            supabase.table("generated_certificates")
+            .select("file_url")
+            .eq("certificate_id", certificate_id)
+            .limit(1)
+            .execute()
+        )
+    except Exception as exc:
+        print(f"[generate_certificates] Skipping existing-certificate lookup: {exc}")
+        return None
+
     rows = resp.data if hasattr(resp, "data") and resp.data else []
     return rows[0] if rows else None
 
@@ -283,7 +288,7 @@ def post_generate_certificates(body: GenerateRequest) -> GenerateResponse:
     try:
         resp = (
             supabase.table("templates")
-            .select("id, file_url, image_url, layout_config")
+            .select("*")
             .eq("id", body.template_id)
             .single()
             .execute()
@@ -323,7 +328,7 @@ def post_generate_certificates(body: GenerateRequest) -> GenerateResponse:
         cert_id = student.external_id.strip()
         student_name = student.student_name.strip()
         email = student.email.strip()
-        qr_url = f"http://localhost:8000/verify/{cert_id}"
+        qr_url = f"{QR_VERIFY_BASE}/{cert_id}"
 
         existing = _get_existing_generated_certificate(cert_id)
         if existing:
@@ -464,7 +469,7 @@ def post_generate_all_ready(body: BulkGenerateRequest, request: Request) -> Gene
     try:
         template_resp = (
             supabase.table("templates")
-            .select("id, file_url, image_url, layout_config")
+            .select("*")
             .eq("id", body.template_id)
             .single()
             .execute()
@@ -500,7 +505,7 @@ def post_generate_all_ready(body: BulkGenerateRequest, request: Request) -> Gene
         email: str = (student.get("email") or "").strip()
         student_id: str | None = student.get("id")
         cert_id: str = (student.get("external_id") or "").strip()
-        qr_url = f"http://localhost:8000/verify/{cert_id}"
+        qr_url = f"{QR_VERIFY_BASE}/{cert_id}"
 
         existing = _get_existing_generated_certificate(cert_id)
         if existing:

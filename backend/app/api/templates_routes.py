@@ -1,4 +1,6 @@
 from fastapi import APIRouter, HTTPException, UploadFile, File, Depends
+import os
+from uuid import uuid4
 from typing import Any
 from pydantic import BaseModel
 from ..services.templates_service import list_templates, create_template, remove_template
@@ -56,8 +58,29 @@ async def upload_template(file: UploadFile = File(...), user=Depends(get_current
         except Exception:
             user_id = None
 
-        created = await upload_template_file(file, file.filename, user_id)
-        return created
+        uploaded = await upload_template_file(file, file.filename, user_id)
+
+        base_name, _ = os.path.splitext(file.filename or "Uploaded Template")
+        title = (base_name or "Uploaded Template").strip()
+        template = create_template(
+            {
+                "slug": f"uploaded-{uuid4().hex[:12]}",
+                "title": title,
+                "category": "Custom",
+                "description": f"Uploaded workspace template for {title}",
+                "image_url": uploaded.get("preview_url") or uploaded.get("file_url"),
+                "style_type": "custom",
+                "editable_fields": [],
+                "is_official": False,
+                "created_by": user_id,
+            }
+        )
+
+        return {
+            **uploaded,
+            "template_id": template.get("id"),
+            "template": template,
+        }
     except HTTPException:
         raise
     except Exception as exc:
