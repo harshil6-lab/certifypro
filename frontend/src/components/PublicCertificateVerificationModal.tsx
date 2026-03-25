@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import {
   Dialog,
   DialogContent,
@@ -33,6 +34,7 @@ interface VerificationResult {
   issuingInstitution: string;
   recipientName: string;
   issueDate: string;
+  email?: string;
   status: "verified" | "invalid" | "revoked";
 }
 
@@ -40,6 +42,7 @@ const PublicCertificateVerificationModal = ({
   open,
   onOpenChange,
 }: PublicCertificateVerificationModalProps) => {
+  const navigate = useNavigate();
   const [certId, setCertId] = useState("");
   const [state, setState] = useState<VerificationState>("idle");
   const [result, setResult] = useState<VerificationResult | null>(null);
@@ -59,21 +62,12 @@ const PublicCertificateVerificationModal = ({
     try {
         const data = await verifyCertificate(certId.trim());
 
-        // Expected shape: { valid: boolean, certificate: { ... } }
-        if (!data || !data.certificate) {
+        if (!data || !data.valid) {
           throw new Error("Certificate not found");
         }
 
-        const cert = data.certificate;
-        setResult({
-          certificateId: cert.id || cert.certificate_id || cert.qr_token || certId,
-          issuingInstitution: cert.data?.issuingInstitution || cert.data?.institution || "",
-          recipientName: cert.data?.recipientName || cert.data?.full_name || "",
-          issueDate: cert.issued_at || cert.data?.issued_at || "",
-          status: data.valid ? "verified" : "invalid",
-        });
-
-        setState("success");
+        handleOpenChange(false);
+        navigate(`/verify/${encodeURIComponent(data.external_id || certId.trim())}`);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Verification failed");
       setState("error");
@@ -100,57 +94,7 @@ const PublicCertificateVerificationModal = ({
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogContent className="sm:max-w-[480px]">
-        {/* Success State */}
-        {state === "success" && result ? (
-          <div className="flex flex-col items-center gap-4 py-6 text-center animate-fade-in">
-            <div className="relative">
-              <div className="absolute inset-0 w-16 h-16 bg-green-500/20 rounded-full blur-xl" />
-              <div className="relative w-16 h-16 rounded-full bg-gradient-to-br from-green-50 to-green-100 dark:from-green-900/20 dark:to-green-900/30 flex items-center justify-center ring-2 ring-green-200 dark:ring-green-800">
-                <CheckCircle2 className="w-8 h-8 text-green-600 dark:text-green-400" />
-              </div>
-            </div>
-            <DialogHeader className="items-center">
-              <DialogTitle className="text-2xl">Certificate Verified ✓</DialogTitle>
-              <DialogDescription>
-                This certificate has been authenticated and is valid.
-              </DialogDescription>
-            </DialogHeader>
-            <div className="w-full space-y-3 rounded-lg bg-slate-50 dark:bg-slate-900/20 p-4 text-left">
-              <div className="flex items-start justify-between">
-                <span className="text-sm text-muted-foreground">Certificate ID:</span>
-                <span className="font-medium text-foreground">{result.certificateId}</span>
-              </div>
-              <div className="flex items-start justify-between">
-                <span className="text-sm text-muted-foreground">Recipient:</span>
-                <span className="font-medium text-foreground">{result.recipientName}</span>
-              </div>
-              <div className="flex items-start justify-between">
-                <span className="text-sm text-muted-foreground">Institution:</span>
-                <span className="font-medium text-foreground text-right">{result.issuingInstitution}</span>
-              </div>
-              <div className="flex items-start justify-between">
-                <span className="text-sm text-muted-foreground">Issued:</span>
-                <span className="font-medium text-foreground">{result.issueDate}</span>
-              </div>
-            </div>
-            <div className="flex gap-3 w-full">
-              <Button
-                variant="outline"
-                className="flex-1"
-                onClick={handleReset}
-              >
-                Verify Another
-              </Button>
-              <Button
-                className="flex-1 gold-gradient text-accent-foreground hover:opacity-90"
-                onClick={() => handleOpenChange(false)}
-              >
-                Close
-              </Button>
-            </div>
-          </div>
-        ) : (
-          <>
+        <>
             {/* Header */}
             <DialogHeader>
               <DialogTitle className="flex items-center gap-2 text-xl">
@@ -213,7 +157,7 @@ const PublicCertificateVerificationModal = ({
                 <QrCode className="w-8 h-8 text-muted-foreground/40 mx-auto mb-2" />
                 <p className="text-sm text-muted-foreground font-medium">Scan QR Code</p>
                 <p className="text-xs text-muted-foreground/60 mt-1">
-                  Available on certificate document (coming soon)
+                  Scanning a certificate QR opens the dedicated verification details page
                 </p>
               </div>
 
@@ -221,7 +165,10 @@ const PublicCertificateVerificationModal = ({
               {error && state === "error" && (
                 <div className="rounded-lg bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 p-3 flex gap-3">
                   <AlertCircle className="w-5 h-5 text-red-600 dark:text-red-400 flex-shrink-0 mt-0.5" />
-                  <p className="text-sm text-red-700 dark:text-red-200">{error}</p>
+                  <div className="space-y-1">
+                    <p className="text-sm font-medium text-red-700 dark:text-red-200">Certificate not found in the CertifyPro database.</p>
+                    <p className="text-sm text-red-700 dark:text-red-200">{error}</p>
+                  </div>
                 </div>
               )}
 
@@ -254,8 +201,7 @@ const PublicCertificateVerificationModal = ({
                 </Button>
               </DialogFooter>
             </form>
-          </>
-        )}
+        </>
       </DialogContent>
     </Dialog>
   );

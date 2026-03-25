@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { Layers, QrCode, Library, Sparkles, ArrowRight, ShieldCheck, Quote, Upload, CheckCircle2, SearchCheck, BadgeCheck, Lock } from "lucide-react";
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
@@ -7,6 +8,7 @@ import { TrustedInstitutionsSection } from "@/components/landing/TrustedInstitut
 import { CertificateGallerySection } from "@/components/landing/CertificateGallerySection";
 import { PublicNavbar } from "@/components/landing/PublicNavbar";
 import { LandingFooter } from "@/components/landing/LandingFooter";
+import PublicCertificateVerificationModal from "@/components/PublicCertificateVerificationModal";
 import templateLibraryVisual from "@/assets/features/template-library.svg";
 import bulkGenerationVisual from "@/assets/features/bulk-generation.svg";
 import qrVerificationVisual from "@/assets/features/qr-verification.svg";
@@ -107,6 +109,8 @@ const faqs = [
 ];
 
 const Index = () => {
+  const [verificationModalOpen, setVerificationModalOpen] = useState(false);
+
   return (
     <div className="min-h-screen bg-slate-50">
       <PublicNavbar />
@@ -143,9 +147,13 @@ const Index = () => {
                     Request Access <ArrowRight className="w-4 h-4" />
                   </Button>
                 </Link>
-                <Link to="/verify">
-                  <Button variant="outline" className="bg-white shadow-sm ring-1 ring-slate-200 transition-all duration-200 ease-out hover:-translate-y-0.5 hover:shadow-md">Verify Certificate</Button>
-                </Link>
+                <Button
+                  variant="outline"
+                  className="bg-white shadow-sm ring-1 ring-slate-200 transition-all duration-200 ease-out hover:-translate-y-0.5 hover:shadow-md"
+                  onClick={() => setVerificationModalOpen(true)}
+                >
+                  Verify Certificate
+                </Button>
               </div>
 
               <div className="rounded-lg border border-slate-200 bg-white/80 px-4 py-3 text-sm text-slate-600 max-w-xl">
@@ -403,17 +411,25 @@ const Index = () => {
                   Request Access <ArrowRight className="w-4 h-4" />
                 </Button>
               </Link>
-              <Link to="/verify">
-                <Button size="lg" variant="outline" className="bg-background/50 backdrop-blur-sm border-border hover:bg-muted/50 transition-all duration-300 hover:scale-105">
-                  Verify Certificate
-                </Button>
-              </Link>
+              <Button
+                size="lg"
+                variant="outline"
+                className="bg-background/50 backdrop-blur-sm border-border hover:bg-muted/50 transition-all duration-300 hover:scale-105"
+                onClick={() => setVerificationModalOpen(true)}
+              >
+                Verify Certificate
+              </Button>
             </div>
           </div>
         </section>
 
         <LandingFooter />
       </main >
+
+      <PublicCertificateVerificationModal
+        open={verificationModalOpen}
+        onOpenChange={setVerificationModalOpen}
+      />
     </div >
   );
 };

@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { Search, QrCode, ShieldCheck, CheckCircle2, XCircle } from "lucide-react";
 import { verifyCertificate } from "@/services/apiService";
 import { Button } from "@/components/ui/button";
@@ -8,6 +9,7 @@ import { LandingFooter } from "@/components/landing/LandingFooter";
 import { Card, CardContent } from "@/components/ui/card";
 
 const Verify = () => {
+  const navigate = useNavigate();
   const [certId, setCertId] = useState("");
   const [result, setResult] = useState<"idle" | "verified" | "not-found">("idle");
   const [loading, setLoading] = useState(false);
@@ -21,7 +23,8 @@ const Verify = () => {
       .then((data) => {
         if (data && data.valid) {
           setResult("verified");
-          setDetails(data.certificate || null);
+          setDetails(data);
+          navigate(`/verify/${encodeURIComponent(data.external_id || certId.trim())}`);
         } else {
           setResult("not-found");
         }
@@ -79,8 +82,9 @@ const Verify = () => {
                     <CheckCircle2 className="w-4 h-4 text-success mt-1" />
                     <div>
                       <p className="text-sm text-success font-medium">Certificate is valid.</p>
-                      {details?.data && (
-                        <p className="text-xs text-muted-foreground mt-1">Recipient: {details.data.full_name || details.data.recipientName}</p>
+                      <p className="text-xs text-muted-foreground mt-1">Redirecting to full verification details...</p>
+                      {details && (
+                        <p className="text-xs text-muted-foreground mt-1">Recipient: {details.full_name}</p>
                       )}
                     </div>
                   </div>
@@ -88,7 +92,7 @@ const Verify = () => {
               {result === "not-found" ? (
                 <div className="flex items-center gap-2">
                   <XCircle className="w-4 h-4 text-destructive" />
-                  <p className="text-sm text-destructive font-medium">Certificate not found. (Frontend mock result)</p>
+                  <p className="text-sm text-destructive font-medium">Certificate not found in the registry.</p>
                 </div>
               ) : null}
             </div>
@@ -107,7 +111,7 @@ const Verify = () => {
         <div className="border-2 border-dashed border-border rounded-xl p-8 hover:border-accent/50 transition-all duration-300 cursor-pointer hover:bg-accent/5">
           <QrCode className="w-12 h-12 text-muted-foreground/40 mx-auto mb-3" />
           <p className="text-sm text-muted-foreground">Scan QR code from certificate</p>
-          <p className="text-xs text-muted-foreground/60 mt-1">Camera access required</p>
+          <p className="text-xs text-muted-foreground/60 mt-1">A scanned QR should open the dedicated verification details page</p>
         </div>
 
         <p className="text-xs text-muted-foreground">

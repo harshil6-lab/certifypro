@@ -7,6 +7,11 @@ from app.services.auth_service import get_current_user
 router = APIRouter(prefix="/api", tags=["Workspace"])
 
 
+def _is_missing_custom_template_url_column(exc: Exception) -> bool:
+    message = str(exc)
+    return "custom_template_url" in message and "schema cache" in message
+
+
 def _extract_user_id(user) -> str | None:
     """Safely extract the UUID from various shapes returned by get_current_user."""
     if user is None:
@@ -22,11 +27,7 @@ def _extract_user_id(user) -> str | None:
 
 @router.get("/workspace-template")
 async def get_workspace_template(request: Request):
-    """Return the most recently updated template created by the authenticated user.
-
-    Used by the Generate wizard to auto-load the workspace template without
-    relying on localStorage.
-    """
+    """Return the active workspace template for the authenticated user."""
     auth_header = request.headers.get("Authorization", "")
     token = None
     if auth_header.lower().startswith("bearer "):
@@ -39,18 +40,57 @@ async def get_workspace_template(request: Request):
         raise HTTPException(status_code=401, detail="Unauthorized")
 
     try:
-        resp = (
+        try:
+            workspace_template = (
+                supabase.table("workspace_templates")
+                .select("*")
+                .eq("user_id", user_id)
+                .eq("is_active", True)
+                .single()
+                .execute()
+            )
+            workspace_template_data = getattr(workspace_template, "data", None)
+        except Exception:
+            workspace_template_data = None
+
+        if not workspace_template_data:
+            return {
+                "template": None,
+                "template_id": None,
+                "template_url": None,
+                "file_url": None,
+                "layout_config": None,
+            }
+
+        template = (
             supabase.table("templates")
-            .select("id")
-            .eq("created_by", user_id)
-            .order("updated_at", desc=True)
-            .limit(1)
+            .select("*")
+            .eq("id", workspace_template_data["template_id"])
+            .single()
             .execute()
         )
-        data = getattr(resp, "data", None) or []
-        template_id = data[0]["id"] if data else None
-        return {"template": template_id}
+        template_data = getattr(template, "data", None)
+        if not template_data:
+            raise HTTPException(status_code=404, detail="Template not found.")
+
+        template_url = (
+            workspace_template_data.get("custom_template_url")
+            or template_data.get("file_url")
+            or template_data.get("image_url")
+        )
+
+        return {
+            "template": template_data.get("id"),
+            "template_id": template_data.get("id"),
+            "template_url": template_url,
+            "file_url": template_url,
+            "title": template_data.get("title"),
+            "is_official": template_data.get("is_official"),
+            "layout_config": workspace_template_data.get("layout_config"),
+        }
     except Exception as exc:
+        if isinstance(exc, HTTPException):
+            raise
         raise HTTPException(status_code=500, detail=str(exc))
 
 
@@ -61,6 +101,7 @@ async def get_workspace_template(request: Request):
 class _SaveLayoutPayload(BaseModel):
     template_id: str
     layout_config: Dict[str, Any]
+    custom_template_url: str | None = None
 
 
 @router.post("/save-layout")
@@ -83,15 +124,26 @@ async def save_layout(payload: _SaveLayoutPayload, request: Request):
         # Step 1: deactivate all previous active layouts for this user
         supabase.table("workspace_templates").update({"is_active": False}).eq("user_id", user_id).execute()
 
-        # Step 2: upsert the new active layout
-        supabase.table("workspace_templates").upsert(
-            {
-                "user_id": user_id,
-                "template_id": payload.template_id,
-                "layout_config": payload.layout_config,
-                "is_active": True,
-            }
-        ).execute()
+        base_payload = {
+            "user_id": user_id,
+            "template_id": payload.template_id,
+            "layout_config": payload.layout_config,
+            "is_active": True,
+        }
+
+        # Step 2: upsert the new active layout. Retry without custom_template_url
+        # when the live database schema has not been migrated yet.
+        try:
+            supabase.table("workspace_templates").upsert(
+                {
+                    **base_payload,
+                    "custom_template_url": payload.custom_template_url,
+                }
+            ).execute()
+        except Exception as exc:
+            if not _is_missing_custom_template_url_column(exc):
+                raise
+            supabase.table("workspace_templates").upsert(base_payload).execute()
 
         return {"message": "Layout saved successfully."}
     except Exception as exc:
