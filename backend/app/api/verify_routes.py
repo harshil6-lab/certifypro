@@ -5,7 +5,7 @@ from ..services.verify_service import verify_by_token
 router = APIRouter()
 
 
-@router.get("/verify/{qr_token}")
+@router.get("/verify/token/{qr_token}")
 async def verify(qr_token: str) -> Dict[str, Any]:
     """Verify a certificate by QR token — PUBLIC endpoint.
     

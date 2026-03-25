@@ -1,9 +1,9 @@
 """Public certificate verification endpoint.
 
-GET /api/verify/{certificate_id}
+GET /verify/{certificate_id}
 
-Queries the public_certificate_info table (populated at generation time) and
-returns the certificate's public details.  No authentication required.
+Queries the students table by external_id and returns the imported student's
+public certificate details. No authentication required.
 """
 
 from __future__ import annotations
@@ -13,23 +13,24 @@ from pydantic import BaseModel
 
 from app.core.supabase_client import supabase
 
-router = APIRouter(prefix="/api/verify", tags=["Verify"])
+router = APIRouter(tags=["Verify"])
 
 
 class CertificateVerification(BaseModel):
-    certificate_id: str
-    student_name: str
+    valid: bool
+    full_name: str
     email: str
-    issued_date: str | None
+    external_id: str
+    created_at: str | None
     status: str
 
 
-@router.get("/{certificate_id}", response_model=CertificateVerification)
+@router.get("/verify/{certificate_id}", response_model=CertificateVerification)
 def get_verify_certificate(certificate_id: str) -> CertificateVerification:
-    """Look up a certificate by ID from the public_certificate_info table.
+    """Look up a certificate by external_id from the students table.
 
     Returns:
-        student_name, email, certificate_id, issued_date, status
+        full_name, email, external_id, created_at, status
 
     Raises:
         404 if no matching certificate is found.
@@ -37,9 +38,9 @@ def get_verify_certificate(certificate_id: str) -> CertificateVerification:
     """
     try:
         resp = (
-            supabase.table("public_certificate_info")
-            .select("*")
-            .eq("certificate_id", certificate_id)
+            supabase.table("students")
+            .select("full_name, email, external_id, created_at")
+            .eq("external_id", certificate_id)
             .execute()
         )
     except Exception as exc:
@@ -59,9 +60,10 @@ def get_verify_certificate(certificate_id: str) -> CertificateVerification:
     row = rows[0]
 
     return CertificateVerification(
-        certificate_id=row.get("certificate_id", certificate_id),
-        student_name=row.get("student_name", ""),
+        valid=True,
+        full_name=row.get("full_name", ""),
         email=row.get("email", ""),
-        issued_date=row.get("issued_date") or row.get("created_at"),
-        status=row.get("status", "issued"),
+        external_id=row.get("external_id", certificate_id),
+        created_at=row.get("created_at"),
+        status="valid",
     )

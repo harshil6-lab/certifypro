@@ -1,18 +1,62 @@
+import { useEffect, useState } from "react";
 import { useParams, Link } from "react-router-dom";
-import { CheckCircle2, XCircle, ArrowLeft, ShieldCheck, Calendar, User, BookOpen, Hash } from "lucide-react";
+import { CheckCircle2, XCircle, ArrowLeft, ShieldCheck, Calendar, User, Mail, Hash, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import certifyProIcon from "@/assets/certify_pro_icon.png";
+import { verifyCertificate } from "@/services/apiService";
 
-const validCerts: Record<string, { name: string; course: string; date: string; institution: string; certId: string }> = {
-  "CERT-2024-0001": { name: "Alice Johnson", course: "B.Sc. Computer Science", date: "June 15, 2024", institution: "National University", certId: "CERT-2024-0001" },
-  "CERT-2024-0002": { name: "Bob Smith", course: "M.A. Economics", date: "June 15, 2024", institution: "National University", certId: "CERT-2024-0002" },
+type VerificationDetails = {
+  valid: boolean;
+  full_name: string;
+  email: string;
+  external_id: string;
+  created_at?: string | null;
+  status: string;
 };
 
 const VerifyResult = () => {
   const { certId } = useParams();
-  const cert = certId ? validCerts[certId] : null;
-  const isValid = !!cert;
+  const [cert, setCert] = useState<VerificationDetails | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    let mounted = true;
+
+    const loadVerification = async () => {
+      if (!certId) {
+        if (mounted) {
+          setCert(null);
+          setLoading(false);
+        }
+        return;
+      }
+
+      try {
+        const data = await verifyCertificate(certId);
+        if (mounted && data?.valid) {
+          setCert(data);
+        }
+      } catch {
+        if (mounted) {
+          setCert(null);
+        }
+      } finally {
+        if (mounted) {
+          setLoading(false);
+        }
+      }
+    };
+
+    loadVerification();
+
+    return () => {
+      mounted = false;
+    };
+  }, [certId]);
+
+  const isValid = !!cert?.valid;
+  const issuedDate = cert?.created_at ? new Date(cert.created_at).toLocaleDateString() : "N/A";
 
   return (
     <div className="min-h-screen bg-background">
@@ -31,7 +75,14 @@ const VerifyResult = () => {
       </header>
 
       <main className="max-w-xl mx-auto px-6 py-16 animate-fade-in">
-        {isValid ? (
+        {loading ? (
+          <Card className="shadow-sm">
+            <CardContent className="pt-10 pb-10 text-center space-y-4">
+              <Loader2 className="w-10 h-10 animate-spin text-accent mx-auto" />
+              <p className="text-muted-foreground">Verifying certificate...</p>
+            </CardContent>
+          </Card>
+        ) : isValid ? (
           <div className="text-center space-y-6">
             <div className="w-24 h-24 mx-auto rounded-full bg-success/10 flex items-center justify-center">
               <CheckCircle2 className="w-12 h-12 text-success" />
@@ -49,7 +100,7 @@ const VerifyResult = () => {
                   </div>
                   <div>
                     <p className="text-sm text-muted-foreground">Issued by</p>
-                    <p className="font-heading font-semibold text-foreground">{cert.institution}</p>
+                    <p className="font-heading font-semibold text-foreground">CertifyPro Registry</p>
                   </div>
                 </div>
 
@@ -58,28 +109,28 @@ const VerifyResult = () => {
                     <Hash className="w-4 h-4 text-muted-foreground mt-0.5" />
                     <div>
                       <p className="text-xs text-muted-foreground">Certificate ID</p>
-                      <p className="text-sm font-mono font-medium">{cert.certId}</p>
+                      <p className="text-sm font-mono font-medium">{cert.external_id}</p>
                     </div>
                   </div>
                   <div className="flex items-start gap-2">
                     <User className="w-4 h-4 text-muted-foreground mt-0.5" />
                     <div>
                       <p className="text-xs text-muted-foreground">Recipient</p>
-                      <p className="text-sm font-medium">{cert.name}</p>
+                      <p className="text-sm font-medium">{cert.full_name}</p>
                     </div>
                   </div>
                   <div className="flex items-start gap-2">
-                    <BookOpen className="w-4 h-4 text-muted-foreground mt-0.5" />
+                    <Mail className="w-4 h-4 text-muted-foreground mt-0.5" />
                     <div>
-                      <p className="text-xs text-muted-foreground">Program</p>
-                      <p className="text-sm font-medium">{cert.course}</p>
+                      <p className="text-xs text-muted-foreground">Email</p>
+                      <p className="text-sm font-medium break-all">{cert.email || "N/A"}</p>
                     </div>
                   </div>
                   <div className="flex items-start gap-2">
                     <Calendar className="w-4 h-4 text-muted-foreground mt-0.5" />
                     <div>
                       <p className="text-xs text-muted-foreground">Date Issued</p>
-                      <p className="text-sm font-medium">{cert.date}</p>
+                      <p className="text-sm font-medium">{issuedDate}</p>
                     </div>
                   </div>
                 </div>

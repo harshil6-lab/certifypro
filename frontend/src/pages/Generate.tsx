@@ -12,10 +12,18 @@ import {
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Progress } from "@/components/ui/progress";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { supabase } from "@/lib/supabaseClient";
+
+type StudentRecord = {
+  id: string;
+  full_name?: string;
+  email?: string;
+  external_id?: string;
+  certificate_id?: string;
+};
 
 const steps = [
   { id: 1, title: "Select Template", icon: FileText },
@@ -29,13 +37,16 @@ const Generate = () => {
   const [progress, setProgress] = useState(0);
   
   // State for data loading
-  const [students, setStudents] = useState<any[]>([]);
+  const [students, setStudents] = useState<StudentRecord[]>([]);
   const [loadingData, setLoadingData] = useState(true);
   const [selectedTemplate, setSelectedTemplate] = useState("");
-  const [selectedStudent, setSelectedStudent] = useState("");
+  const [selectedStudentIds, setSelectedStudentIds] = useState<string[]>([]);
+  const [selectAllStudents, setSelectAllStudents] = useState(false);
   const [zipUrl, setZipUrl] = useState("");
   const [generatedCerts, setGeneratedCerts] = useState<any[]>([]);
   const [generateError, setGenerateError] = useState("");
+
+  const selectedStudentRecords = students.filter((student) => selectedStudentIds.includes(student.id));
 
   // Seed template from localStorage immediately (synchronous fallback)
   useEffect(() => {
@@ -76,13 +87,38 @@ const Generate = () => {
       .finally(() => setLoadingData(false));
   }, []);
 
+  useEffect(() => {
+    if (selectAllStudents) {
+      setSelectedStudentIds(students.map((student) => student.id));
+    }
+  }, [students, selectAllStudents]);
+
+  const handleSelectAllStudents = (checked: boolean) => {
+    setSelectAllStudents(checked);
+    setSelectedStudentIds(checked ? students.map((student) => student.id) : []);
+  };
+
+  const handleToggleStudent = (studentId: string, checked: boolean) => {
+    setSelectedStudentIds((prev) => {
+      const nextIds = checked
+        ? Array.from(new Set([...prev, studentId]))
+        : prev.filter((id) => id !== studentId);
+      setSelectAllStudents(students.length > 0 && nextIds.length === students.length);
+      return nextIds;
+    });
+  };
+
   const handleGenerate = async () => {
     if (!selectedTemplate) {
       setGenerateError("No template selected. Go to Templates → Workspace and save a layout first.");
       return;
     }
-    if (!selectedStudent) {
+    if (selectedStudentIds.length === 0) {
       setGenerateError("Please select a student.");
+      return;
+    }
+    if (selectedStudentRecords.length === 0) {
+      setGenerateError("No students available for generation.");
       return;
     }
 
@@ -92,17 +128,14 @@ const Generate = () => {
     setGeneratedCerts([]);
     setGenerateError("");
 
-    // Find full student object so we can send name + email
-    const studentObj = students.find((s: any) => s.id === selectedStudent);
     const payload = {
       template_id: selectedTemplate,
-      students: [
-        {
-          student_name: studentObj?.full_name || studentObj?.name || "",
-          email: studentObj?.email || "",
-          certificate_id: studentObj?.certificate_id || "",
-        },
-      ],
+      students: selectedStudentRecords.map((student) => ({
+        student_id: student.id,
+        student_name: student.full_name || "",
+        email: student.email || "",
+        certificate_id: student.external_id || student.certificate_id || "",
+      })),
     };
 
     try {
@@ -196,11 +229,26 @@ const Generate = () => {
               <div>
                 <h3 className="text-2xl font-heading font-bold text-foreground">Choose Student</h3>
                 <p className="text-base text-muted-foreground mt-2">
-                  Select the student who will receive this certificate.
+                  Select one student or generate certificates for the full imported list.
                 </p>
               </div>
 
               <div className="space-y-3">
+                <div className="flex items-center gap-3 rounded-lg border border-border/50 bg-muted/20 px-4 py-3">
+                  <Checkbox
+                    id="select-all-students"
+                    checked={selectAllStudents}
+                    onCheckedChange={(checked) => {
+                      handleSelectAllStudents(checked === true);
+                    }}
+                  />
+                  <label htmlFor="select-all-students" className="text-sm font-medium text-foreground cursor-pointer">
+                    Select All Students
+                  </label>
+                  <Badge variant="outline" className="ml-auto">
+                    {selectedStudentIds.length} selected
+                  </Badge>
+                </div>
                 <label className="text-sm font-medium text-foreground px-1">Available Students</label>
                 {loadingData ? (
                   <div className="flex items-center gap-2 p-3 text-sm text-muted-foreground">
@@ -208,28 +256,49 @@ const Generate = () => {
                     Loading students...
                   </div>
                 ) : (
-                  <Select value={selectedStudent} onValueChange={setSelectedStudent}>
-                    <SelectTrigger className="w-full h-12 text-base px-4 border-input/60 bg-background/50 focus:ring-2 focus:ring-accent/20">
-                      <SelectValue placeholder="Select a student..." />
-                    </SelectTrigger>
-                    <SelectContent className="max-h-[300px]">
-                      {students.length > 0 ? (
-                        students.map((student: any) => (
-                          <SelectItem key={student.id} value={student.id} className="py-3 text-base">
-                            {student.full_name || student.email || `Student ${student.id.slice(0, 8)}`}
-                          </SelectItem>
-                        ))
-                      ) : (
-                        <SelectItem value="none" disabled>
-                          No students available
-                        </SelectItem>
-                      )}
-                    </SelectContent>
-                  </Select>
+                  <div className="max-h-[320px] overflow-y-auto rounded-xl border border-border/60 bg-background/70 divide-y divide-border/60">
+                    {students.length > 0 ? (
+                      students.map((student) => {
+                        const isChecked = selectedStudentIds.includes(student.id);
+                        return (
+                          <label
+                            key={student.id}
+                            htmlFor={`student-${student.id}`}
+                            className="flex items-start gap-3 px-4 py-3 cursor-pointer hover:bg-accent/5 transition-colors"
+                          >
+                            <Checkbox
+                              id={`student-${student.id}`}
+                              checked={isChecked}
+                              onCheckedChange={(checked) => handleToggleStudent(student.id, checked === true)}
+                            />
+                            <div className="min-w-0 flex-1">
+                              <p className="text-sm font-medium text-foreground truncate">
+                                {student.full_name || student.email || `Student ${student.id.slice(0, 8)}`}
+                              </p>
+                              <p className="text-xs text-muted-foreground truncate">
+                                {student.email || student.external_id || student.id}
+                              </p>
+                            </div>
+                            {student.external_id ? (
+                              <Badge variant="outline" className="text-[10px] font-mono">
+                                {student.external_id}
+                              </Badge>
+                            ) : null}
+                          </label>
+                        );
+                      })
+                    ) : (
+                      <div className="p-4 text-sm text-muted-foreground">No students available</div>
+                    )}
+                  </div>
                 )}
                 <div className="flex items-center gap-2 px-1 text-sm text-muted-foreground bg-muted/30 p-3 rounded-lg border border-border/50">
                   <Users className="w-4 h-4 text-accent" />
-                  <span>The selected student will receive a certificate with the chosen template.</span>
+                  <span>
+                    {selectAllStudents
+                      ? `All ${students.length} imported students will receive certificates with the chosen template.`
+                      : `${selectedStudentIds.length || "No"} student${selectedStudentIds.length === 1 ? "" : "s"} selected for certificate generation.`}
+                  </span>
                 </div>
               </div>
             </div>
@@ -239,7 +308,9 @@ const Generate = () => {
             <div className="space-y-8 max-w-2xl mx-auto py-4">
               <div className="text-center space-y-2">
                 <h3 className="text-2xl font-heading font-bold text-foreground">Review & Generate</h3>
-                <p className="text-base text-muted-foreground">Ready to generate certificate for the selected student.</p>
+                <p className="text-base text-muted-foreground">
+                  Ready to generate {selectedStudentRecords.length} certificate{selectedStudentRecords.length !== 1 ? "s" : ""}.
+                </p>
               </div>
 
               {!generating && progress === 0 && (
@@ -250,7 +321,7 @@ const Generate = () => {
 
                   <div className="space-y-1">
                     <p className="text-xl font-medium text-foreground">Ready to process</p>
-                    <p className="text-base text-muted-foreground">Estimated time: 5 seconds</p>
+                    <p className="text-base text-muted-foreground">Estimated time: {Math.max(5, selectedStudentRecords.length * 2)} seconds</p>
                   </div>
 
                   <div className="flex flex-col sm:flex-row gap-4 justify-center px-6">
@@ -264,11 +335,11 @@ const Generate = () => {
                     </Button>
                     <Button
                       onClick={handleGenerate}
-                      disabled={!selectedTemplate || !selectedStudent}
+                      disabled={!selectedTemplate || selectedStudentRecords.length === 0}
                       size="lg"
                       className="gold-gradient text-accent-foreground font-bold h-12 text-base px-8 shadow-md hover:shadow-lg hover:brightness-110 transition-all disabled:opacity-50"
                     >
-                      <Printer className="w-5 h-5" /> Generate Certificate
+                      <Printer className="w-5 h-5" /> Generate {selectedStudentRecords.length > 1 ? "Certificates" : "Certificate"}
                     </Button>
                   </div>
                 </div>

@@ -59,17 +59,15 @@ const PublicCertificateVerificationModal = ({
     try {
         const data = await verifyCertificate(certId.trim());
 
-        // Expected shape: { valid: boolean, certificate: { ... } }
-        if (!data || !data.certificate) {
+        if (!data || !data.valid) {
           throw new Error("Certificate not found");
         }
 
-        const cert = data.certificate;
         setResult({
-          certificateId: cert.id || cert.certificate_id || cert.qr_token || certId,
-          issuingInstitution: cert.data?.issuingInstitution || cert.data?.institution || "",
-          recipientName: cert.data?.recipientName || cert.data?.full_name || "",
-          issueDate: cert.issued_at || cert.data?.issued_at || "",
+          certificateId: data.external_id || certId,
+          issuingInstitution: "CertifyPro Registry",
+          recipientName: data.full_name || "",
+          issueDate: data.created_at || "",
           status: data.valid ? "verified" : "invalid",
         });
 

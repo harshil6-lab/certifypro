@@ -23,11 +23,12 @@ from typing import Any
 
 import httpx
 import qrcode
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Request
 from PIL import Image, ImageDraw, ImageFont
 from pydantic import BaseModel, Field
 
 from app.core.supabase_client import supabase
+from app.services.auth_service import get_current_user
 
 router = APIRouter(prefix="/api/generate-certificates", tags=["Generate Certificates"])
 
@@ -48,6 +49,7 @@ QR_VERIFY_BASE = "https://certifypro.app/verify"
 
 
 class StudentIn(BaseModel):
+    student_id: str | None = None
     student_name: str
     email: str = ""
     certificate_id: str = Field(default_factory=lambda: str(uuid.uuid4())[:8].upper())
@@ -67,6 +69,17 @@ class CertificateOut(BaseModel):
 class GenerateResponse(BaseModel):
     certificates: list[CertificateOut]
     zip_url: str
+
+
+def _extract_user_id(user: Any) -> str | None:
+    if user is None:
+        return None
+    if isinstance(user, dict):
+        return user.get("id")
+    inner = getattr(user, "user", None)
+    if inner is not None:
+        return getattr(inner, "id", None)
+    return getattr(user, "id", None)
 
 
 # ---------------------------------------------------------------------------
@@ -126,6 +139,22 @@ def _make_qr(verify_url: str, size: int = 120) -> Image.Image:
     qr.make(fit=True)
     img = qr.make_image(fill_color="black", back_color="white").convert("RGBA")
     return img.resize((size, size))
+
+
+def _persist_generated_certificate(
+    *,
+    template_id: str,
+    student_id: str | None,
+    file_url: str,
+    verification_url: str,
+) -> None:
+    payload = {
+        "student_id": student_id,
+        "template_id": template_id,
+        "file_url": file_url,
+        "verification_url": verification_url,
+    }
+    supabase.table("generated_certificates").insert(payload).execute()
 
 
 # ---------------------------------------------------------------------------
@@ -225,7 +254,7 @@ def post_generate_certificates(body: GenerateRequest) -> GenerateResponse:
     try:
         resp = (
             supabase.table("templates")
-            .select("file_url, image_url, layout_config")
+            .select("file_url, layout_config")
             .eq("id", body.template_id)
             .single()
             .execute()
@@ -241,7 +270,7 @@ def post_generate_certificates(body: GenerateRequest) -> GenerateResponse:
     layout_config: dict[str, Any] = template.get("layout_config") or {}
 
     # --- 3. Load template background ---
-    file_url: str | None = template.get("file_url") or template.get("image_url")
+    file_url: str | None = template.get("file_url")
     if not file_url:
         raise HTTPException(
             status_code=422,
@@ -261,10 +290,11 @@ def post_generate_certificates(body: GenerateRequest) -> GenerateResponse:
     generated_paths: list[str] = []
 
     for student in body.students:
+        student_id = student.student_id.strip() if student.student_id else None
         cert_id = student.certificate_id or str(uuid.uuid4())[:8].upper()
         student_name = student.student_name.strip()
         email = student.email.strip()
-        qr_url = f"{QR_VERIFY_BASE}/{cert_id}"
+        qr_url = f"http://localhost:8000/verify/{cert_id}"
 
         rendered = _render_certificate(background, student_name, cert_id, layout_config)
 
@@ -274,28 +304,24 @@ def post_generate_certificates(body: GenerateRequest) -> GenerateResponse:
         rendered.convert("RGB").save(out_path, "PNG")
         generated_paths.append(out_path)
 
-        download_url = f"{API_BASE_URL}/uploads/generated/{out_name}"
+        generated_path = f"{API_BASE_URL}/uploads/generated/{out_name}"
 
-        # --- Persist certificate info for public verification ---
+        # Persist generated certificate metadata in the generated_certificates table.
         try:
-            supabase.table("public_certificate_info").insert(
-                {
-                    "certificate_id": cert_id,
-                    "student_name": student_name,
-                    "email": email,
-                    "template_id": body.template_id,
-                    "verification_url": qr_url,
-                }
-            ).execute()
+            _persist_generated_certificate(
+                template_id=body.template_id,
+                student_id=student_id,
+                file_url=generated_path,
+                verification_url=qr_url,
+            )
         except Exception as exc:
-            # Non-fatal: log but continue so the PNG is still returned
-            print(f"[generate_certificates] Failed to save public_certificate_info for {cert_id}: {exc}")
+            print(f"[generate_certificates] Failed to save generated certificate record for {cert_id}: {exc}")
 
         results.append(
             CertificateOut(
                 certificate_id=cert_id,
                 student_name=student_name,
-                url=download_url,
+                url=generated_path,
             )
         )
 
@@ -312,7 +338,7 @@ def post_generate_certificates(body: GenerateRequest) -> GenerateResponse:
 
 
 # ---------------------------------------------------------------------------
-# Bulk endpoint — generate for all "ready" students in the DB
+# Bulk endpoint — generate for all imported students for the authenticated user
 # ---------------------------------------------------------------------------
 
 
@@ -321,41 +347,78 @@ class BulkGenerateRequest(BaseModel):
 
 
 @router.post("/all", response_model=GenerateResponse)
-def post_generate_all_ready(body: BulkGenerateRequest) -> GenerateResponse:
-    """Generate certificates for every student whose status is 'ready'.
+def post_generate_all_ready(body: BulkGenerateRequest, request: Request) -> GenerateResponse:
+    """Generate certificates for every imported student owned by the caller.
 
-    1. Fetches all students with status='ready' from the students table.
+    1. Authenticates the caller and fetches all imported students for that user.
     2. Loads the specified template background + layout_config from Supabase.
     3. Renders a certificate PNG per student.
     4. Packages all PNGs into a single ZIP archive.
     5. Returns individual download URLs and a ZIP download URL.
     """
 
-    # --- 1. Fetch all ready students ---
+    auth_header = request.headers.get("Authorization", "")
+    token = auth_header.split(" ", 1)[1] if auth_header.lower().startswith("bearer ") else None
+    user = get_current_user(token) if token else None
+    user_id = _extract_user_id(user)
+
+    if not user_id:
+        raise HTTPException(status_code=401, detail="Unauthorized")
+
+    # --- 1. Fetch all imported students for the authenticated user ---
     try:
         students_resp = (
             supabase.table("students")
             .select("id, full_name, email, external_id, metadata")
-            .eq("status", "ready")
+            .eq("created_by", user_id)
             .execute()
         )
-        ready_students: list[dict[str, Any]] = (
+        imported_students: list[dict[str, Any]] = (
             students_resp.data if hasattr(students_resp, "data") and students_resp.data else []
         )
     except Exception as exc:
         raise HTTPException(status_code=500, detail=f"Failed to fetch students: {exc}")
 
-    if not ready_students:
+    if not imported_students:
         raise HTTPException(
             status_code=404,
-            detail="No students with status='ready' found. Import and validate students first.",
+            detail="No imported students found for the authenticated user.",
+        )
+
+    invalid_students: list[str] = []
+    valid_students: list[dict[str, Any]] = []
+    for student in imported_students:
+        student_name = (student.get("full_name") or "").strip()
+        external_id = (student.get("external_id") or "").strip()
+        if not student_name or not external_id:
+            student_ref = (
+                external_id
+                or (student.get("email") or "").strip()
+                or str(student.get("id") or "unknown")
+            )
+            missing_fields: list[str] = []
+            if not student_name:
+                missing_fields.append("full_name")
+            if not external_id:
+                missing_fields.append("external_id")
+            invalid_students.append(f"{student_ref} missing {', '.join(missing_fields)}")
+            continue
+        valid_students.append(student)
+
+    if invalid_students:
+        raise HTTPException(
+            status_code=422,
+            detail={
+                "message": "Some imported students cannot be used for certificate generation.",
+                "invalid_students": invalid_students,
+            },
         )
 
     # --- 2. Load template from Supabase ---
     try:
         template_resp = (
             supabase.table("templates")
-            .select("file_url, image_url, layout_config")
+            .select("file_url, layout_config")
             .eq("id", body.template_id)
             .single()
             .execute()
@@ -369,7 +432,7 @@ def post_generate_all_ready(body: BulkGenerateRequest) -> GenerateResponse:
 
     layout_config: dict[str, Any] = template.get("layout_config") or {}
 
-    file_url: str | None = template.get("file_url") or template.get("image_url")
+    file_url: str | None = template.get("file_url")
     if not file_url:
         raise HTTPException(
             status_code=422,
@@ -382,16 +445,16 @@ def post_generate_all_ready(body: BulkGenerateRequest) -> GenerateResponse:
     except Exception as exc:
         raise HTTPException(status_code=422, detail=f"Could not open template image: {exc}")
 
-    # --- 3. Render a certificate for each ready student ---
+    # --- 3. Render a certificate for each imported student ---
     results: list[CertificateOut] = []
     generated_files: list[str] = []
 
-    for student in ready_students:
+    for student in valid_students:
         student_name: str = (student.get("full_name") or "").strip()
         email: str = (student.get("email") or "").strip()
-        # Use external_id (certificate_id from import) or generate one
-        cert_id: str = (student.get("external_id") or "").strip() or str(uuid.uuid4())[:8].upper()
-        qr_url = f"{QR_VERIFY_BASE}/{cert_id}"
+        student_id: str | None = student.get("id")
+        cert_id: str = (student.get("external_id") or "").strip()
+        qr_url = f"http://localhost:8000/verify/{cert_id}"
 
         rendered = _render_certificate(background, student_name, cert_id, layout_config)
 
@@ -400,27 +463,24 @@ def post_generate_all_ready(body: BulkGenerateRequest) -> GenerateResponse:
         rendered.convert("RGB").save(out_path, "PNG")
         generated_files.append(out_path)
 
-        download_url = f"{API_BASE_URL}/uploads/generated/{out_name}"
+        generated_path = f"{API_BASE_URL}/uploads/generated/{out_name}"
 
-        # Persist verification record (non-fatal)
+        # Persist generated certificate metadata in the generated_certificates table.
         try:
-            supabase.table("public_certificate_info").insert(
-                {
-                    "certificate_id": cert_id,
-                    "student_name": student_name,
-                    "email": email,
-                    "template_id": body.template_id,
-                    "verification_url": qr_url,
-                }
-            ).execute()
+            _persist_generated_certificate(
+                template_id=body.template_id,
+                student_id=student_id,
+                file_url=generated_path,
+                verification_url=qr_url,
+            )
         except Exception as exc:
-            print(f"[generate_all] Failed to save public_certificate_info for {cert_id}: {exc}")
+            print(f"[generate_all] Failed to save generated certificate record for {cert_id}: {exc}")
 
         results.append(
             CertificateOut(
                 certificate_id=cert_id,
                 student_name=student_name,
-                url=download_url,
+                url=generated_path,
             )
         )
 

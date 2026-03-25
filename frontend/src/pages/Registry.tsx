@@ -1,10 +1,10 @@
 import { useState, useEffect } from "react";
+import axios from "axios";
 import {
   Search,
+  ExternalLink,
   Download,
-  XCircle,
   Filter,
-  MoreHorizontal,
   CheckCircle2,
   Clock,
   Ban,
@@ -23,19 +23,14 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { getCertificates } from "@/services/apiService";
+import { supabase } from "@/lib/supabaseClient";
+import { API_BASE } from "@/services/apiService";
 
 const statusConfig = {
   issued: { label: "Active", icon: CheckCircle2, className: "text-success border-success/30 bg-success/5" },
@@ -43,8 +38,20 @@ const statusConfig = {
   revoked: { label: "Revoked", icon: Ban, className: "text-destructive border-destructive/30 bg-destructive/5" },
 };
 
+type RegistryCertificate = {
+  id: string;
+  template_id?: string;
+  full_name: string;
+  email: string;
+  external_id: string;
+  created_at?: string | null;
+  status?: string;
+  download_url?: string | null;
+  verification_url?: string | null;
+};
+
 const Registry = () => {
-  const [certificates, setCertificates] = useState<any[]>([]);
+  const [certificates, setCertificates] = useState<RegistryCertificate[]>([]);
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [loading, setLoading] = useState(true);
@@ -55,8 +62,25 @@ const Registry = () => {
       setLoading(true);
       setError(null);
       try {
-        const data = await getCertificates();
-        setCertificates(Array.isArray(data) ? data : data.certificates || []);
+        let authHeader = "";
+        if (supabase) {
+          const { data } = await supabase.auth.getSession();
+          const token = data.session?.access_token;
+          if (token) authHeader = `Bearer ${token}`;
+        }
+
+        const response = await axios.get("/api/my-certificates", {
+          baseURL: API_BASE,
+          headers: authHeader ? { Authorization: authHeader } : {},
+        });
+
+        const rows = Array.isArray(response.data)
+          ? response.data
+          : Array.isArray(response.data?.certificates)
+            ? response.data.certificates
+            : [];
+
+        setCertificates(rows);
       } catch (err) {
         setError(err instanceof Error ? err.message : "Failed to load certificates");
         console.error("Error loading certificates:", err);
@@ -70,9 +94,11 @@ const Registry = () => {
 
   const filtered = certificates.filter((c) => {
     const matchesSearch =
-      (c.student_id?.toLowerCase().includes(search.toLowerCase()) ?? false) ||
-      (c.id?.toLowerCase().includes(search.toLowerCase()) ?? false);
-    const matchesStatus = statusFilter === "all" || c.status === statusFilter;
+      (c.full_name?.toLowerCase().includes(search.toLowerCase()) ?? false) ||
+      (c.external_id?.toLowerCase().includes(search.toLowerCase()) ?? false) ||
+      (c.email?.toLowerCase().includes(search.toLowerCase()) ?? false);
+    const certificateStatus = c.status ?? "issued";
+    const matchesStatus = statusFilter === "all" || certificateStatus === statusFilter;
     return matchesSearch && matchesStatus;
   });
 
@@ -144,8 +170,8 @@ const Registry = () => {
               <TableHeader>
                 <TableRow>
                   <TableHead>Certificate ID</TableHead>
-                  <TableHead>Student ID</TableHead>
-                  <TableHead>Template</TableHead>
+                  <TableHead>Recipient</TableHead>
+                  <TableHead>Email</TableHead>
                   <TableHead>Date Issued</TableHead>
                   <TableHead>Status</TableHead>
                   <TableHead className="text-right">Actions</TableHead>
@@ -154,13 +180,14 @@ const Registry = () => {
               <TableBody>
                 {filtered.length > 0 ? (
                   filtered.map((cert) => {
-                    const status = statusConfig[cert.status as keyof typeof statusConfig] || statusConfig.pending;
-                    const issuedDate = cert.issued_at ? new Date(cert.issued_at).toLocaleDateString() : "N/A";
+                    const certificateStatus = cert.status ?? "issued";
+                    const status = statusConfig[certificateStatus as keyof typeof statusConfig] || statusConfig.pending;
+                    const issuedDate = cert.created_at ? new Date(cert.created_at).toLocaleDateString() : "N/A";
                     return (
-                      <TableRow key={cert.id} className="hover:bg-accent/5 transition-colors cursor-pointer">
-                        <TableCell className="font-mono text-sm">{cert.id.slice(0, 8)}...</TableCell>
-                        <TableCell className="font-medium text-sm">{cert.student_id.slice(0, 8)}...</TableCell>
-                        <TableCell className="text-sm text-muted-foreground">{cert.template_id ? cert.template_id.slice(0, 8) + "..." : "N/A"}</TableCell>
+                      <TableRow key={cert.id || cert.external_id} className="hover:bg-accent/5 transition-colors">
+                        <TableCell className="font-mono text-sm">{cert.external_id || "N/A"}</TableCell>
+                        <TableCell className="font-medium text-sm">{cert.full_name || "N/A"}</TableCell>
+                        <TableCell className="text-sm text-muted-foreground">{cert.email || "N/A"}</TableCell>
                         <TableCell className="text-sm text-muted-foreground">{issuedDate}</TableCell>
                         <TableCell>
                           <Badge variant="outline" className={`gap-1 ${status.className}`}>
@@ -169,21 +196,20 @@ const Registry = () => {
                           </Badge>
                         </TableCell>
                         <TableCell className="text-right">
-                          <DropdownMenu>
-                            <DropdownMenuTrigger asChild>
-                              <Button variant="ghost" size="sm" className="hover:bg-accent/10 transition-colors">
-                                <MoreHorizontal className="w-4 h-4" />
+                          <div className="flex items-center justify-end gap-2">
+                            {cert.download_url ? (
+                              <Button asChild variant="ghost" size="sm" className="hover:bg-accent/10 transition-colors gap-2">
+                                <a href={cert.download_url} target="_blank" rel="noreferrer">
+                                  <Download className="w-4 h-4" /> Download
+                                </a>
                               </Button>
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent align="end">
-                              <DropdownMenuItem className="gap-2">
-                                <Download className="w-4 h-4" /> Download
-                              </DropdownMenuItem>
-                              <DropdownMenuItem className="gap-2 text-destructive">
-                                <XCircle className="w-4 h-4" /> Revoke
-                              </DropdownMenuItem>
-                            </DropdownMenuContent>
-                          </DropdownMenu>
+                            ) : null}
+                            <Button asChild variant="ghost" size="sm" className="hover:bg-accent/10 transition-colors gap-2">
+                              <a href={`/verify/${encodeURIComponent(cert.external_id)}`} target="_blank" rel="noreferrer">
+                                <ExternalLink className="w-4 h-4" /> Verify
+                              </a>
+                            </Button>
+                          </div>
                         </TableCell>
                       </TableRow>
                     );

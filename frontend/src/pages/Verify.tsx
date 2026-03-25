@@ -21,7 +21,7 @@ const Verify = () => {
       .then((data) => {
         if (data && data.valid) {
           setResult("verified");
-          setDetails(data.certificate || null);
+          setDetails(data);
         } else {
           setResult("not-found");
         }
@@ -79,8 +79,8 @@ const Verify = () => {
                     <CheckCircle2 className="w-4 h-4 text-success mt-1" />
                     <div>
                       <p className="text-sm text-success font-medium">Certificate is valid.</p>
-                      {details?.data && (
-                        <p className="text-xs text-muted-foreground mt-1">Recipient: {details.data.full_name || details.data.recipientName}</p>
+                      {details && (
+                        <p className="text-xs text-muted-foreground mt-1">Recipient: {details.full_name}</p>
                       )}
                     </div>
                   </div>

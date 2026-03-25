@@ -61,6 +61,15 @@ create table if not exists certificates (
   issued_at timestamptz default now()
 );
 
+create table if not exists generated_certificates (
+  id uuid primary key default gen_random_uuid(),
+  student_id uuid references students(id) on delete cascade,
+  template_id uuid references templates(id) on delete set null,
+  file_url text not null,
+  verification_url text,
+  created_at timestamptz default now()
+);
+
 -- ACTIVITY LOG: for dashboard recent activity
 create table if not exists activities (
   id uuid primary key default gen_random_uuid(),
@@ -75,6 +84,7 @@ create index if not exists idx_templates_category on templates(category);
 create index if not exists idx_students_email on students(email);
 create index if not exists idx_certificates_qr_token on certificates(qr_token);
 create index if not exists idx_certificates_student on certificates(student_id);
+create index if not exists idx_generated_certificates_student on generated_certificates(student_id);
 create index if not exists idx_activities_user on activities(user_id);
 
 -- VIEW: dashboard_stats (counts)
