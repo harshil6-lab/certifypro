@@ -65,9 +65,22 @@ create table if not exists generated_certificates (
   id uuid primary key default gen_random_uuid(),
   student_id uuid references students(id) on delete cascade,
   template_id uuid references templates(id) on delete set null,
+  certificate_id text,
+  student_name text,
   file_url text not null,
   verification_url text,
   created_at timestamptz default now()
+);
+
+create table if not exists workspace_templates (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid,
+  template_id uuid references templates(id) on delete cascade,
+  custom_template_url text,
+  layout_config jsonb default '{}'::jsonb,
+  is_active boolean default false,
+  created_at timestamptz default now(),
+  updated_at timestamptz default now()
 );
 
 -- ACTIVITY LOG: for dashboard recent activity
@@ -85,6 +98,7 @@ create index if not exists idx_students_email on students(email);
 create index if not exists idx_certificates_qr_token on certificates(qr_token);
 create index if not exists idx_certificates_student on certificates(student_id);
 create index if not exists idx_generated_certificates_student on generated_certificates(student_id);
+create index if not exists idx_workspace_templates_user on workspace_templates(user_id);
 create index if not exists idx_activities_user on activities(user_id);
 
 -- VIEW: dashboard_stats (counts)

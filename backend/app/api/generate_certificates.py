@@ -7,7 +7,7 @@ Expected JSON body:
     {
         "template_id": "<uuid>",
         "students": [
-            {"student_name": "Alice", "email": "alice@example.com", "certificate_id": "CERT001"},
+            {"student_name": "Alice", "email": "alice@example.com", "external_id": "CERT001"},
             ...
         ]
     }
@@ -52,7 +52,7 @@ class StudentIn(BaseModel):
     student_id: str | None = None
     student_name: str
     email: str = ""
-    certificate_id: str = Field(default_factory=lambda: str(uuid.uuid4())[:8].upper())
+    external_id: str
 
 
 class GenerateRequest(BaseModel):
@@ -145,16 +145,45 @@ def _persist_generated_certificate(
     *,
     template_id: str,
     student_id: str | None,
+    certificate_id: str,
+    student_name: str,
     file_url: str,
     verification_url: str,
 ) -> None:
     payload = {
         "student_id": student_id,
         "template_id": template_id,
+        "certificate_id": certificate_id,
+        "student_name": student_name,
         "file_url": file_url,
         "verification_url": verification_url,
     }
     supabase.table("generated_certificates").insert(payload).execute()
+
+
+def _get_existing_generated_certificate(certificate_id: str) -> dict[str, Any] | None:
+    resp = (
+        supabase.table("generated_certificates")
+        .select("file_url")
+        .eq("certificate_id", certificate_id)
+        .limit(1)
+        .execute()
+    )
+    rows = resp.data if hasattr(resp, "data") and resp.data else []
+    return rows[0] if rows else None
+
+
+def _local_generated_path(file_url: str | None) -> str | None:
+    if not file_url:
+        return None
+    prefix = f"{API_BASE_URL}/uploads/generated/"
+    if not file_url.startswith(prefix):
+        return None
+    file_name = file_url[len(prefix):]
+    if not file_name:
+        return None
+    local_path = os.path.join(GENERATED_DIR, file_name)
+    return local_path if os.path.exists(local_path) else None
 
 
 # ---------------------------------------------------------------------------
@@ -254,7 +283,7 @@ def post_generate_certificates(body: GenerateRequest) -> GenerateResponse:
     try:
         resp = (
             supabase.table("templates")
-            .select("file_url, layout_config")
+            .select("id, file_url, image_url, layout_config")
             .eq("id", body.template_id)
             .single()
             .execute()
@@ -270,11 +299,11 @@ def post_generate_certificates(body: GenerateRequest) -> GenerateResponse:
     layout_config: dict[str, Any] = template.get("layout_config") or {}
 
     # --- 3. Load template background ---
-    file_url: str | None = template.get("file_url")
+    file_url: str | None = template.get("file_url") or template.get("image_url")
     if not file_url:
         raise HTTPException(
             status_code=422,
-            detail="Template has no file_url. Upload a background image first.",
+            detail="Template has no file_url or image_url. Upload a background image first.",
         )
 
     img_bytes = _download_image(file_url)
@@ -291,10 +320,25 @@ def post_generate_certificates(body: GenerateRequest) -> GenerateResponse:
 
     for student in body.students:
         student_id = student.student_id.strip() if student.student_id else None
-        cert_id = student.certificate_id or str(uuid.uuid4())[:8].upper()
+        cert_id = student.external_id.strip()
         student_name = student.student_name.strip()
         email = student.email.strip()
         qr_url = f"http://localhost:8000/verify/{cert_id}"
+
+        existing = _get_existing_generated_certificate(cert_id)
+        if existing:
+            existing_url = existing.get("file_url") or ""
+            existing_path = _local_generated_path(existing_url)
+            if existing_path:
+                generated_paths.append(existing_path)
+            results.append(
+                CertificateOut(
+                    certificate_id=cert_id,
+                    student_name=student_name,
+                    url=existing_url,
+                )
+            )
+            continue
 
         rendered = _render_certificate(background, student_name, cert_id, layout_config)
 
@@ -309,8 +353,10 @@ def post_generate_certificates(body: GenerateRequest) -> GenerateResponse:
         # Persist generated certificate metadata in the generated_certificates table.
         try:
             _persist_generated_certificate(
-                template_id=body.template_id,
+                template_id=template.get("id") or body.template_id,
                 student_id=student_id,
+                certificate_id=cert_id,
+                student_name=student_name,
                 file_url=generated_path,
                 verification_url=qr_url,
             )
@@ -418,7 +464,7 @@ def post_generate_all_ready(body: BulkGenerateRequest, request: Request) -> Gene
     try:
         template_resp = (
             supabase.table("templates")
-            .select("file_url, layout_config")
+            .select("id, file_url, image_url, layout_config")
             .eq("id", body.template_id)
             .single()
             .execute()
@@ -432,11 +478,11 @@ def post_generate_all_ready(body: BulkGenerateRequest, request: Request) -> Gene
 
     layout_config: dict[str, Any] = template.get("layout_config") or {}
 
-    file_url: str | None = template.get("file_url")
+    file_url: str | None = template.get("file_url") or template.get("image_url")
     if not file_url:
         raise HTTPException(
             status_code=422,
-            detail="Template has no file_url. Upload a background image first.",
+            detail="Template has no file_url or image_url. Upload a background image first.",
         )
 
     img_bytes = _download_image(file_url)
@@ -456,6 +502,21 @@ def post_generate_all_ready(body: BulkGenerateRequest, request: Request) -> Gene
         cert_id: str = (student.get("external_id") or "").strip()
         qr_url = f"http://localhost:8000/verify/{cert_id}"
 
+        existing = _get_existing_generated_certificate(cert_id)
+        if existing:
+            existing_url = existing.get("file_url") or ""
+            existing_path = _local_generated_path(existing_url)
+            if existing_path:
+                generated_files.append(existing_path)
+            results.append(
+                CertificateOut(
+                    certificate_id=cert_id,
+                    student_name=student_name,
+                    url=existing_url,
+                )
+            )
+            continue
+
         rendered = _render_certificate(background, student_name, cert_id, layout_config)
 
         out_name = f"{cert_id}.png"
@@ -468,8 +529,10 @@ def post_generate_all_ready(body: BulkGenerateRequest, request: Request) -> Gene
         # Persist generated certificate metadata in the generated_certificates table.
         try:
             _persist_generated_certificate(
-                template_id=body.template_id,
+                template_id=template.get("id") or body.template_id,
                 student_id=student_id,
+                certificate_id=cert_id,
+                student_name=student_name,
                 file_url=generated_path,
                 verification_url=qr_url,
             )

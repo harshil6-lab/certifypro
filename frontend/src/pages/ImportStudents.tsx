@@ -1,9 +1,20 @@
-import { useRef, useState, type DragEvent } from "react";
+import { useEffect, useRef, useState, type DragEvent } from "react";
 import { Upload, FileSpreadsheet, AlertCircle, CheckCircle2, XCircle, Loader2, FileDown, Database } from "lucide-react";
 import { supabase } from "@/lib/supabaseClient";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 import {
   Table,
   TableBody,
@@ -14,6 +25,7 @@ import {
 } from "@/components/ui/table";
 
 const API_BASE = "http://127.0.0.1:8000";
+const IMPORT_SESSION_KEY = "certifypro_import_students_session";
 
 interface PreviewRow {
   row: number;
@@ -41,6 +53,55 @@ const ImportStudents = () => {
   const [saveSuccess, setSaveSuccess] = useState(0);
   const [saveRejected, setSaveRejected] = useState<{ row: number; student_name?: string; missing?: string[]; error?: string }[]>([]);
 
+  useEffect(() => {
+    try {
+      const raw = sessionStorage.getItem(IMPORT_SESSION_KEY);
+      if (!raw) {
+        return;
+      }
+      const cached = JSON.parse(raw);
+      setExcelFile(cached.excelFileName ? { name: cached.excelFileName } as File : null);
+      setRows(Array.isArray(cached.rows) ? cached.rows : []);
+      setSummary(cached.summary ?? { valid: 0, errors: 0, duplicates: 0, total: 0 });
+      setParseError(cached.parseError ?? "");
+      setSaveError(cached.saveError ?? "");
+      setSaveSuccess(cached.saveSuccess ?? 0);
+      setSaveRejected(Array.isArray(cached.saveRejected) ? cached.saveRejected : []);
+    } catch {
+      sessionStorage.removeItem(IMPORT_SESSION_KEY);
+    }
+  }, []);
+
+  useEffect(() => {
+    const payload = {
+      excelFileName: excelFile?.name ?? null,
+      rows,
+      summary,
+      parseError,
+      saveError,
+      saveSuccess,
+      saveRejected,
+    };
+    sessionStorage.setItem(IMPORT_SESSION_KEY, JSON.stringify(payload));
+  }, [excelFile, rows, summary, parseError, saveError, saveSuccess, saveRejected]);
+
+  const clearImportedSession = () => {
+    setExcelFile(null);
+    setDragActive(false);
+    setParsing(false);
+    setParseError("");
+    setRows([]);
+    setSummary({ valid: 0, errors: 0, duplicates: 0, total: 0 });
+    setSaving(false);
+    setSaveError("");
+    setSaveSuccess(0);
+    setSaveRejected([]);
+    sessionStorage.removeItem(IMPORT_SESSION_KEY);
+    if (fileInputRef.current) {
+      fileInputRef.current.value = "";
+    }
+  };
+
   const parseFile = async (file: File) => {
     setExcelFile(file);
     setRows([]);
@@ -48,6 +109,7 @@ const ImportStudents = () => {
     setParseError("");
     setSaveError("");
     setSaveSuccess(0);
+    setSaveRejected([]);
     setParsing(true);
 
     try {
@@ -131,9 +193,36 @@ const ImportStudents = () => {
           <h1 className="text-3xl font-heading font-bold text-foreground">Import Student Data</h1>
           <p className="text-lg text-muted-foreground mt-1">Upload an Excel file containing the list of students for certification.</p>
         </div>
-        <Button variant="outline" size="lg" className="gap-2 h-11 px-6 text-base shadow-sm hover:bg-background hover:text-foreground hover:border-foreground/40 transition-all" onClick={downloadSampleTemplate}>
-          <FileDown className="w-5 h-5" /> Download Sample Template
-        </Button>
+        <div className="flex flex-col sm:flex-row gap-3">
+          {rows.length > 0 && (
+            <AlertDialog>
+              <AlertDialogTrigger asChild>
+                <Button
+                  variant="outline"
+                  size="lg"
+                  className="gap-2 h-11 px-6 text-base shadow-sm"
+                >
+                  <XCircle className="w-5 h-5" /> Clear Imported Session
+                </Button>
+              </AlertDialogTrigger>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>Clear imported student session?</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    This removes the current uploaded sheet preview, validation summary, and unsaved session data from this browser session.
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel>Cancel</AlertDialogCancel>
+                  <AlertDialogAction onClick={clearImportedSession}>Clear Session</AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
+          )}
+          <Button variant="outline" size="lg" className="gap-2 h-11 px-6 text-base shadow-sm hover:bg-background hover:text-foreground hover:border-foreground/40 transition-all" onClick={downloadSampleTemplate}>
+            <FileDown className="w-5 h-5" /> Download Sample Template
+          </Button>
+        </div>
       </div>
 
       {/* Upload Area */}

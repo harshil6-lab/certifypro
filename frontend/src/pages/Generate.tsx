@@ -9,6 +9,7 @@ import {
   ArrowRight,
   ArrowLeft,
   Loader2,
+  AlertCircle,
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -16,6 +17,28 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
 import { supabase } from "@/lib/supabaseClient";
+import { LayoutPreview } from "@/components/LayoutPreview";
+
+type LayoutConfig = {
+  showStudentName: boolean;
+  showQR: boolean;
+  showID: boolean;
+  placeholderField: string;
+  placeholderX: number;
+  placeholderY: number;
+  qrX: number;
+  qrY: number;
+  idX: number;
+  idY: number;
+};
+
+type WorkspaceTemplate = {
+  template_id: string;
+  file_url: string | null;
+  layout_config: Partial<LayoutConfig> | null;
+};
+
+type WorkspaceTemplateSource = "workspace" | "local-cache" | "template-list" | "none";
 
 type StudentRecord = {
   id: string;
@@ -24,6 +47,21 @@ type StudentRecord = {
   external_id?: string;
   certificate_id?: string;
 };
+
+const defaultLayoutConfig: LayoutConfig = {
+  showStudentName: true,
+  showQR: true,
+  showID: true,
+  placeholderField: "STUDENT_NAME",
+  placeholderX: 40,
+  placeholderY: 36,
+  qrX: 82,
+  qrY: 76,
+  idX: 10,
+  idY: 88,
+};
+
+const WORKSPACE_LAYOUT_KEY = "certifypro_layout_config";
 
 const steps = [
   { id: 1, title: "Select Template", icon: FileText },
@@ -40,6 +78,8 @@ const Generate = () => {
   const [students, setStudents] = useState<StudentRecord[]>([]);
   const [loadingData, setLoadingData] = useState(true);
   const [selectedTemplate, setSelectedTemplate] = useState("");
+  const [workspaceTemplate, setWorkspaceTemplate] = useState<WorkspaceTemplate | null>(null);
+  const [workspaceTemplateSource, setWorkspaceTemplateSource] = useState<WorkspaceTemplateSource>("none");
   const [selectedStudentIds, setSelectedStudentIds] = useState<string[]>([]);
   const [selectAllStudents, setSelectAllStudents] = useState(false);
   const [zipUrl, setZipUrl] = useState("");
@@ -47,12 +87,63 @@ const Generate = () => {
   const [generateError, setGenerateError] = useState("");
 
   const selectedStudentRecords = students.filter((student) => selectedStudentIds.includes(student.id));
+  const resolvedLayoutConfig: LayoutConfig = {
+    ...defaultLayoutConfig,
+    ...(workspaceTemplate?.layout_config ?? {}),
+  };
 
   // Seed template from localStorage immediately (synchronous fallback)
   useEffect(() => {
     const templateId = localStorage.getItem("certifypro_selected_template");
-    if (templateId) setSelectedTemplate(templateId);
+    if (templateId) {
+      setSelectedTemplate(templateId);
+      setWorkspaceTemplateSource("local-cache");
+    }
+    try {
+      const savedLayout = localStorage.getItem(WORKSPACE_LAYOUT_KEY);
+      if (savedLayout) {
+        setWorkspaceTemplate((prev) => ({
+          template_id: prev?.template_id || templateId || "",
+          file_url: prev?.file_url || null,
+          layout_config: JSON.parse(savedLayout),
+        }));
+        setWorkspaceTemplateSource((prev) => (prev === "workspace" ? prev : "local-cache"));
+      }
+    } catch {
+      // Ignore invalid cached layout JSON.
+    }
   }, []);
+
+  useEffect(() => {
+    const hydrateSelectedTemplate = async () => {
+      if (!selectedTemplate) {
+        return;
+      }
+      if (workspaceTemplate?.template_id === selectedTemplate && workspaceTemplate?.file_url) {
+        return;
+      }
+
+      try {
+        const res = await axios.get("http://127.0.0.1:8000/api/templates");
+        const templates = Array.isArray(res.data) ? res.data : [];
+        const matched = templates.find((template: any) => template.id === selectedTemplate);
+        if (!matched) {
+          return;
+        }
+
+        setWorkspaceTemplate((prev) => ({
+          template_id: selectedTemplate,
+          file_url: matched.file_url || matched.image_url || prev?.file_url || null,
+          layout_config: prev?.layout_config || null,
+        }));
+        setWorkspaceTemplateSource((prev) => (prev === "workspace" ? prev : "template-list"));
+      } catch {
+        // Keep local fallback state only.
+      }
+    };
+
+    hydrateSelectedTemplate();
+  }, [selectedTemplate, workspaceTemplate?.file_url, workspaceTemplate?.template_id]);
 
   // Load workspace template from backend (authoritative source)
   useEffect(() => {
@@ -67,8 +158,15 @@ const Generate = () => {
         const res = await axios.get("http://127.0.0.1:8000/api/workspace-template", {
           headers: authHeader ? { Authorization: authHeader } : {},
         });
-        if (res.data.template) {
-          setSelectedTemplate(res.data.template);
+        const templateId = res.data.template_id || res.data.template;
+        if (templateId) {
+          setSelectedTemplate(templateId);
+          setWorkspaceTemplate({
+            template_id: templateId,
+            file_url: res.data.file_url ?? null,
+            layout_config: res.data.layout_config ?? null,
+          });
+          setWorkspaceTemplateSource("workspace");
         }
       } catch {
         // API unavailable — localStorage value already applied above
@@ -128,22 +226,35 @@ const Generate = () => {
     setGeneratedCerts([]);
     setGenerateError("");
 
-    const payload = {
-      template_id: selectedTemplate,
-      students: selectedStudentRecords.map((student) => ({
-        student_id: student.id,
-        student_name: student.full_name || "",
-        email: student.email || "",
-        certificate_id: student.external_id || student.certificate_id || "",
-      })),
-    };
+    let authHeader = "";
+    if (supabase) {
+      const { data } = await supabase.auth.getSession();
+      const token = data.session?.access_token;
+      if (token) authHeader = `Bearer ${token}`;
+    }
 
     try {
       setProgress(30);
-      const { data } = await axios.post(
-        "http://127.0.0.1:8000/api/generate-certificates",
-        payload,
-      );
+      const request = selectAllStudents
+        ? axios.post(
+            "http://127.0.0.1:8000/api/generate-certificates/all",
+            { template_id: selectedTemplate },
+            { headers: authHeader ? { Authorization: authHeader } : {} },
+          )
+        : axios.post(
+            "http://127.0.0.1:8000/api/generate-certificates",
+            {
+              template_id: selectedTemplate,
+              students: selectedStudentRecords.map((student) => ({
+                student_id: student.id,
+                student_name: student.full_name || "",
+                email: student.email || "",
+                external_id: student.external_id || student.certificate_id || "",
+              })),
+            },
+          );
+
+      const { data } = await request;
       setProgress(100);
       setGeneratedCerts(data.certificates ?? []);
       setZipUrl(data.zip_url ?? "");
@@ -157,6 +268,23 @@ const Generate = () => {
       setGenerating(false);
     }
   };
+
+  const showWorkspaceTemplateFallbackBanner =
+    Boolean(selectedTemplate) && workspaceTemplateSource !== "workspace";
+
+  const workspaceTemplateSourceBadge =
+    workspaceTemplateSource === "workspace"
+      ? { label: "Using workspace template", variant: "secondary" as const }
+      : workspaceTemplateSource === "template-list"
+        ? { label: "Using template-list fallback", variant: "outline" as const }
+        : workspaceTemplateSource === "local-cache"
+          ? { label: "Using cached fallback", variant: "outline" as const }
+          : null;
+
+  const workspaceTemplateFallbackMessage =
+    workspaceTemplateSource === "template-list"
+      ? "Preview is using template-list fallback data because no active workspace-template record was returned."
+      : "Preview is using cached local layout/template data because no active workspace-template record was returned.";
 
   return (
     <div className="p-8 max-w-[1200px] mx-auto space-y-6 animate-fade-in">
@@ -208,11 +336,91 @@ const Generate = () => {
               </div>
 
               {selectedTemplate ? (
-                <div className="rounded-xl border border-accent/30 bg-accent/5 p-4 flex items-center gap-3">
-                  <CheckCircle2 className="w-5 h-5 text-accent shrink-0" />
-                  <div>
-                    <p className="font-medium text-foreground">Template loaded from workspace</p>
-                    <p className="text-xs text-muted-foreground font-mono mt-0.5">{selectedTemplate}</p>
+                <div className="space-y-4">
+                  <div className="rounded-xl border border-accent/30 bg-accent/5 p-4 flex items-center gap-3">
+                    <CheckCircle2 className="w-5 h-5 text-accent shrink-0" />
+                    <div>
+                      <p className="font-medium text-foreground">Template loaded from workspace</p>
+                      <p className="text-xs text-muted-foreground font-mono mt-0.5">{workspaceTemplate?.template_id || selectedTemplate}</p>
+                    </div>
+                    {workspaceTemplateSourceBadge && (
+                      <Badge variant={workspaceTemplateSourceBadge.variant} className="ml-auto">
+                        {workspaceTemplateSourceBadge.label}
+                      </Badge>
+                    )}
+                  </div>
+
+                  {showWorkspaceTemplateFallbackBanner && (
+                    <div className="rounded-xl border border-amber-300/40 bg-amber-50/40 p-4 flex items-start gap-3 text-sm text-amber-800 dark:text-amber-300">
+                      <AlertCircle className="w-5 h-5 shrink-0 mt-0.5" />
+                      <div className="space-y-1">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <p className="font-medium">Fallback preview in use</p>
+                          {workspaceTemplateSourceBadge && (
+                            <Badge variant={workspaceTemplateSourceBadge.variant}>
+                              {workspaceTemplateSourceBadge.label}
+                            </Badge>
+                          )}
+                        </div>
+                        <p>{workspaceTemplateFallbackMessage}</p>
+                      </div>
+                    </div>
+                  )}
+
+                  <div className="space-y-3">
+                    <p className="text-sm font-medium text-foreground">Workspace Template Preview</p>
+                    <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_280px] items-start">
+                      <LayoutPreview
+                        templateUrl={workspaceTemplate?.file_url ?? null}
+                        templateTitle="workspace template"
+                        layoutConfig={resolvedLayoutConfig}
+                      />
+                      <div className="rounded-xl border border-border/60 bg-card p-4 space-y-4">
+                        <div>
+                          <p className="text-sm font-semibold text-foreground">Saved Layout Coordinates</p>
+                          <p className="text-xs text-muted-foreground mt-1">Verify the workspace layout values before generating certificates.</p>
+                        </div>
+
+                        <div className="space-y-3 text-sm">
+                          <div className="rounded-lg bg-muted/30 border border-border/50 p-3 space-y-1">
+                            <div className="flex items-center justify-between">
+                              <span className="font-medium text-foreground">student_name</span>
+                              <Badge variant={resolvedLayoutConfig.showStudentName ? "secondary" : "outline"}>
+                                {resolvedLayoutConfig.showStudentName ? "Visible" : "Hidden"}
+                              </Badge>
+                            </div>
+                            <p className="text-muted-foreground">Field: {resolvedLayoutConfig.placeholderField}</p>
+                            <p className="text-muted-foreground">X: {resolvedLayoutConfig.placeholderX}%</p>
+                            <p className="text-muted-foreground">Y: {resolvedLayoutConfig.placeholderY}%</p>
+                          </div>
+
+                          <div className="rounded-lg bg-muted/30 border border-border/50 p-3 space-y-1">
+                            <div className="flex items-center justify-between">
+                              <span className="font-medium text-foreground">certificate_id</span>
+                              <Badge variant={resolvedLayoutConfig.showID ? "secondary" : "outline"}>
+                                {resolvedLayoutConfig.showID ? "Visible" : "Hidden"}
+                              </Badge>
+                            </div>
+                            <p className="text-muted-foreground">X: {resolvedLayoutConfig.idX}%</p>
+                            <p className="text-muted-foreground">Y: {resolvedLayoutConfig.idY}%</p>
+                          </div>
+
+                          <div className="rounded-lg bg-muted/30 border border-border/50 p-3 space-y-1">
+                            <div className="flex items-center justify-between">
+                              <span className="font-medium text-foreground">qr</span>
+                              <Badge variant={resolvedLayoutConfig.showQR ? "secondary" : "outline"}>
+                                {resolvedLayoutConfig.showQR ? "Visible" : "Hidden"}
+                              </Badge>
+                            </div>
+                            <p className="text-muted-foreground">X: {resolvedLayoutConfig.qrX}%</p>
+                            <p className="text-muted-foreground">Y: {resolvedLayoutConfig.qrY}%</p>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                    <div className="rounded-lg border border-border/60 bg-muted/20 px-4 py-3 text-sm text-muted-foreground">
+                      Preview includes placeholder overlays for <strong>student_name</strong>, <strong>certificate_id</strong>, and <strong>qr</strong> using the saved workspace layout.
+                    </div>
                   </div>
                 </div>
               ) : (
