@@ -82,3 +82,53 @@ export const normalizeLayoutConfig = (raw: unknown): LayoutConfig => {
     idY: toNumber(source.idY ?? source.id_y ?? certificateId.y, defaultLayoutConfig.idY),
   };
 };
+
+export type ActiveTemplateSession = {
+  templateId: string;
+  fileUrl: string | null;
+  title?: string;
+  isCustom?: boolean;
+  layoutConfig?: LayoutConfig | null;
+};
+
+export const ACTIVE_TEMPLATE_SESSION_KEY = "certifypro_active_template_session";
+export const LEGACY_LAYOUT_STORAGE_KEY = "certifypro_layout_config";
+export const LEGACY_TEMPLATE_STORAGE_KEY = "certifypro_selected_template";
+
+export const readActiveTemplateSession = (): ActiveTemplateSession | null => {
+  try {
+    const raw = sessionStorage.getItem(ACTIVE_TEMPLATE_SESSION_KEY);
+    if (!raw) {
+      return null;
+    }
+    const parsed = JSON.parse(raw) as Partial<ActiveTemplateSession>;
+    if (!parsed?.templateId || typeof parsed.templateId !== "string") {
+      return null;
+    }
+
+    return {
+      templateId: parsed.templateId,
+      fileUrl: typeof parsed.fileUrl === "string" ? parsed.fileUrl : null,
+      title: typeof parsed.title === "string" ? parsed.title : undefined,
+      isCustom: Boolean(parsed.isCustom),
+      layoutConfig: parsed.layoutConfig ? normalizeLayoutConfig(parsed.layoutConfig) : null,
+    };
+  } catch {
+    return null;
+  }
+};
+
+export const writeActiveTemplateSession = (session: ActiveTemplateSession) => {
+  sessionStorage.setItem(
+    ACTIVE_TEMPLATE_SESSION_KEY,
+    JSON.stringify({
+      ...session,
+      layoutConfig: session.layoutConfig ? normalizeLayoutConfig(session.layoutConfig) : null,
+    }),
+  );
+};
+
+export const clearLegacyTemplateCache = () => {
+  localStorage.removeItem(LEGACY_LAYOUT_STORAGE_KEY);
+  localStorage.removeItem(LEGACY_TEMPLATE_STORAGE_KEY);
+};

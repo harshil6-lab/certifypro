@@ -16,7 +16,13 @@ import {
 import { API_BASE, getTemplates } from "@/services/apiService";
 import { LayoutPreview } from "@/components/LayoutPreview";
 import { addSessionActivity } from "@/services/sessionActivity";
-import { defaultLayoutConfig, normalizeLayoutConfig } from "@/lib/layoutConfig";
+import {
+  clearLegacyTemplateCache,
+  defaultLayoutConfig,
+  normalizeLayoutConfig,
+  readActiveTemplateSession,
+  writeActiveTemplateSession,
+} from "@/lib/layoutConfig";
 
 const categories: Array<"All" | GalleryCategory> = ["All", "Academic", "Corporate", "Internship", "Event", "Compliance", "Training"];
 
@@ -69,7 +75,7 @@ const Templates = () => {
   const templatesPerPage = 4;
 
   const [dragActive, setDragActive] = useState(false);
-  const [uploadedTemplateName, setUploadedTemplateName] = useState("sample-certificate-layout.pdf");
+  const [uploadedTemplateName, setUploadedTemplateName] = useState("");
   const [layoutSaveStatus, setLayoutSaveStatus] = useState("Ready");
 
   // Unified layout configuration state
@@ -79,15 +85,24 @@ const Templates = () => {
   const [workspaceTemplate, setWorkspaceTemplate] = useState<WorkspaceTemplateState | null>(null);
   const [isGallerySelected, setIsGallerySelected] = useState(false);
 
-  // Load saved layout config from localStorage on mount
   useEffect(() => {
-    try {
-      const savedLayout = localStorage.getItem("certifypro_layout_config");
-      if (savedLayout) {
-        setLayoutConfig((prev) => ({ ...prev, ...normalizeLayoutConfig(JSON.parse(savedLayout)) }));
-      }
-    } catch {
-      // ignore corrupt data
+    clearLegacyTemplateCache();
+
+    const activeSession = readActiveTemplateSession();
+    if (!activeSession) {
+      return;
+    }
+
+    setWorkspaceTemplate({
+      id: activeSession.templateId,
+      file_url: activeSession.fileUrl,
+      title: activeSession.title,
+      is_custom: activeSession.isCustom,
+    });
+    setIsGallerySelected(!activeSession.isCustom);
+    setUploadedTemplateName(activeSession.isCustom ? activeSession.title ?? "" : "");
+    if (activeSession.layoutConfig) {
+      setLayoutConfig(activeSession.layoutConfig);
     }
   }, []);
 
@@ -111,49 +126,6 @@ const Templates = () => {
 
     loadDrafts();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  useEffect(() => {
-    const loadWorkspaceTemplate = async () => {
-      try {
-        const { data } = await supabase.auth.getSession();
-        const token = data.session?.access_token;
-        if (!token) {
-          return;
-        }
-
-        const res = await fetch(`${API_BASE}/api/workspace-template`, {
-          headers: { Authorization: `Bearer ${token}` },
-        });
-        if (!res.ok) {
-          return;
-        }
-
-        const payload = await res.json();
-        if (!payload?.template_id) {
-          return;
-        }
-
-        setWorkspaceTemplate({
-          id: payload.template_id,
-          file_url: payload.file_url ?? payload.template_url ?? null,
-          title: payload.title ?? "Workspace Template",
-          is_custom: payload.is_official === false,
-        });
-        setSelectedTemplateId(payload.template_id);
-        setIsGallerySelected(payload.is_official === true);
-        if (payload.title && payload.is_official === false) {
-          setUploadedTemplateName(payload.title);
-        }
-        if (payload.layout_config) {
-          setLayoutConfig((prev) => ({ ...prev, ...normalizeLayoutConfig(payload.layout_config) }));
-        }
-      } catch {
-        // Ignore workspace preload failures and fall back to localStorage state.
-      }
-    };
-
-    loadWorkspaceTemplate();
   }, []);
 
   useEffect(() => {
@@ -256,7 +228,7 @@ const Templates = () => {
 
   const saveLayout = async () => {
     if (!workspaceTemplate?.id) {
-      setLayoutSaveStatus("Select a gallery template preview or upload a custom certificate before saving.");
+      setLayoutSaveStatus("Please , Select or Uplaod template");
       return;
     }
 
@@ -288,8 +260,13 @@ const Templates = () => {
         throw new Error(errText || "Failed to save workspace layout.");
       }
 
-      localStorage.setItem("certifypro_layout_config", JSON.stringify(layoutConfig));
-      localStorage.setItem("certifypro_selected_template", workspaceTemplate.id);
+      writeActiveTemplateSession({
+        templateId: workspaceTemplate.id,
+        fileUrl: workspaceTemplate.file_url ?? null,
+        title: workspaceTemplate.title,
+        isCustom: Boolean(workspaceTemplate.is_custom),
+        layoutConfig,
+      });
       setLayoutSaveStatus("Layout saved successfully");
       addSessionActivity(
         "workspace_layout_saved",
@@ -326,13 +303,21 @@ const Templates = () => {
   };
 
   const handleWorkspacePreview = (template: CertificateTemplateMeta) => {
-    setWorkspaceTemplate({
+    const nextTemplate = {
       file_url: (template as any).file_url || (template as any).image_url,
       title: template.title,
       id: template.id,
       is_custom: false,
-    });
+    };
+    setWorkspaceTemplate(nextTemplate);
     setIsGallerySelected(true);
+    writeActiveTemplateSession({
+      templateId: nextTemplate.id,
+      fileUrl: nextTemplate.file_url ?? null,
+      title: nextTemplate.title,
+      isCustom: false,
+      layoutConfig,
+    });
   };
 
   const uploadTemplate = async (file: File) => {
@@ -377,6 +362,13 @@ const Templates = () => {
         is_custom: true,
       });
       setIsGallerySelected(false);
+      writeActiveTemplateSession({
+        templateId: data.template_id ?? data.template?.id,
+        fileUrl: data.preview_url ?? data.template?.image_url ?? data.file_url ?? null,
+        title: data.template?.title ?? file.name,
+        isCustom: true,
+        layoutConfig,
+      });
       addSessionActivity("template_uploaded", file.name, {
         templateId: data.template_id ?? data.template?.id ?? null,
       });
@@ -560,7 +552,7 @@ const Templates = () => {
               </div>
 
               <div className="rounded-md bg-muted/50 border border-border px-3 py-2 text-xs text-muted-foreground">
-                Active uploaded file: <span className="font-medium text-foreground">{uploadedTemplateName}</span>
+                Active uploaded file: <span className="font-medium text-foreground">{uploadedTemplateName || "None"}</span>
               </div>
                 </>
               )}
@@ -575,6 +567,12 @@ const Templates = () => {
               {!isGallerySelected && workspaceTemplate && (
                 <div className="rounded-md bg-primary/10 border border-primary/20 px-3 py-2 text-xs text-primary">
                   Custom workspace template selected: <span className="font-medium">{workspaceTemplate.title || uploadedTemplateName}</span>
+                </div>
+              )}
+
+              {!workspaceTemplate && (
+                <div className="rounded-md border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-800">
+                  Please , Select or Uplaod template
                 </div>
               )}
 
