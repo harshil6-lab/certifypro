@@ -29,6 +29,7 @@ from pydantic import BaseModel, Field
 
 from app.core.supabase_client import supabase
 from app.services.auth_service import get_current_user
+from app.services.generated_certificate_retention_service import cleanup_expired_generated_certificate_files
 
 router = APIRouter(prefix="/api/generate-certificates", tags=["Generate Certificates"])
 
@@ -145,6 +146,7 @@ def _persist_generated_certificate(
     *,
     template_id: str,
     student_id: str | None,
+    created_by: str | None,
     certificate_id: str,
     student_name: str,
     file_url: str,
@@ -158,7 +160,29 @@ def _persist_generated_certificate(
         "file_url": file_url,
         "verification_url": verification_url,
     }
-    supabase.table("generated_certificates").insert(payload).execute()
+    if created_by:
+        payload["created_by"] = created_by
+
+    candidate_payloads = [
+        payload,
+        {key: value for key, value in payload.items() if key != "created_by"},
+        {
+            key: value
+            for key, value in payload.items()
+            if key not in {"created_by", "certificate_id", "student_name", "verification_url"}
+        },
+    ]
+
+    last_error: Exception | None = None
+    for candidate in candidate_payloads:
+        try:
+            supabase.table("generated_certificates").insert(candidate).execute()
+            return
+        except Exception as exc:
+            last_error = exc
+
+    if last_error is not None:
+        raise last_error
 
 
 def _get_existing_generated_certificate(certificate_id: str) -> dict[str, Any] | None:
@@ -272,7 +296,7 @@ def _render_certificate(
 
 
 @router.post("", response_model=GenerateResponse)
-def post_generate_certificates(body: GenerateRequest) -> GenerateResponse:
+def post_generate_certificates(body: GenerateRequest, request: Request) -> GenerateResponse:
     """Generate PNG certificates for the provided student list.
 
     1. Loads template background image and layout_config from Supabase.
@@ -283,6 +307,13 @@ def post_generate_certificates(body: GenerateRequest) -> GenerateResponse:
     """
     if not body.students:
         raise HTTPException(status_code=400, detail="No students provided.")
+
+    cleanup_expired_generated_certificate_files()
+
+    auth_header = request.headers.get("Authorization", "")
+    token = auth_header.split(" ", 1)[1] if auth_header.lower().startswith("bearer ") else None
+    user = get_current_user(token) if token else None
+    user_id = _extract_user_id(user)
 
     # --- 1. Load template from Supabase ---
     try:
@@ -360,6 +391,7 @@ def post_generate_certificates(body: GenerateRequest) -> GenerateResponse:
             _persist_generated_certificate(
                 template_id=template.get("id") or body.template_id,
                 student_id=student_id,
+                created_by=user_id,
                 certificate_id=cert_id,
                 student_name=student_name,
                 file_url=generated_path,
@@ -412,6 +444,8 @@ def post_generate_all_ready(body: BulkGenerateRequest, request: Request) -> Gene
     token = auth_header.split(" ", 1)[1] if auth_header.lower().startswith("bearer ") else None
     user = get_current_user(token) if token else None
     user_id = _extract_user_id(user)
+
+    cleanup_expired_generated_certificate_files()
 
     if not user_id:
         raise HTTPException(status_code=401, detail="Unauthorized")
@@ -536,6 +570,7 @@ def post_generate_all_ready(body: BulkGenerateRequest, request: Request) -> Gene
             _persist_generated_certificate(
                 template_id=template.get("id") or body.template_id,
                 student_id=student_id,
+                created_by=user_id,
                 certificate_id=cert_id,
                 student_name=student_name,
                 file_url=generated_path,
