@@ -200,15 +200,24 @@ def _normalize_registry_rows(
 
 
 @router.get("/students-ready")
-async def get_students_ready():
+async def get_students_ready(request: Request):
     """Return all students from the database as a flat array.
 
     Each entry contains: id, full_name, email, external_id (certificate_id), metadata.
     """
     try:
-        students = list_students()
+        auth_header = request.headers.get("Authorization", "")
+        token = auth_header.split(" ", 1)[1] if auth_header.lower().startswith("bearer ") else None
+        user = get_current_user(token) if token else None
+        user_id = _extract_user_id(user)
+        user_email = _extract_user_email(user)
+        if not user_id:
+            raise HTTPException(status_code=401, detail="Unauthorized")
+        students = list_students(user_id, user_email)
         return students  # plain list — frontend sets this directly via setStudents(res.data)
     except Exception as exc:
+        if isinstance(exc, HTTPException):
+            raise
         raise HTTPException(status_code=500, detail=str(exc))
 
 

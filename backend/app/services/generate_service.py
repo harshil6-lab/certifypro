@@ -39,14 +39,41 @@ _WINDOWS_FONTS = [
     r"C:\Windows\Fonts\arial.ttf",
     r"C:\Windows\Fonts\verdana.ttf",
 ]
+_WINDOWS_SERIF_FONTS = [
+    r"C:\Windows\Fonts\times.ttf",
+    r"C:\Windows\Fonts\timesbd.ttf",
+    r"C:\Windows\Fonts\georgia.ttf",
+    r"C:\Windows\Fonts\cambria.ttc",
+]
 _LINUX_FONTS = [
     "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf",
     "/usr/share/fonts/truetype/liberation/LiberationSans-Regular.ttf",
+]
+_LINUX_SERIF_FONTS = [
+    "/usr/share/fonts/truetype/dejavu/DejaVuSerif.ttf",
+    "/usr/share/fonts/truetype/liberation/LiberationSerif-Regular.ttf",
 ]
 _MAC_FONTS = [
     "/System/Library/Fonts/Helvetica.ttc",
     "/Library/Fonts/Arial.ttf",
 ]
+_MAC_SERIF_FONTS = [
+    "/System/Library/Fonts/Times.ttc",
+    "/Library/Fonts/Georgia.ttf",
+]
+
+_DOC_NAME_PT = 52
+_CERT_ID_PT = 18
+_QR_MM = 60
+_DOC_DPI = 96
+
+
+def _pt_to_px(value: int, dpi: int = _DOC_DPI) -> int:
+    return max(1, round(value * dpi / 72))
+
+
+def _mm_to_px(value: int, dpi: int = _DOC_DPI) -> int:
+    return max(1, round(value * dpi / 25.4))
 
 
 def _get_font(size: int = 28) -> ImageFont.FreeTypeFont | ImageFont.ImageFont:
@@ -54,6 +81,17 @@ def _get_font(size: int = 28) -> ImageFont.FreeTypeFont | ImageFont.ImageFont:
         if os.path.exists(path):
             return ImageFont.truetype(path, size)
     return ImageFont.load_default()
+
+
+def _get_serif_font(size: int) -> ImageFont.FreeTypeFont | ImageFont.ImageFont:
+    for path in _WINDOWS_SERIF_FONTS + _LINUX_SERIF_FONTS + _MAC_SERIF_FONTS:
+        if os.path.exists(path):
+            return ImageFont.truetype(path, size)
+    return _get_font(size)
+
+
+def _get_sans_font(size: int) -> ImageFont.FreeTypeFont | ImageFont.ImageFont:
+    return _get_font(size)
 
 
 def _get_small_font() -> ImageFont.FreeTypeFont | ImageFont.ImageFont:
@@ -113,6 +151,24 @@ def _build_qr(verify_url: str, size: int = 120) -> Image.Image:
     return img.resize((size, size))
 
 
+def _draw_centered_text(
+    draw: ImageDraw.ImageDraw,
+    *,
+    text: str,
+    x: int,
+    y: int,
+    font: ImageFont.FreeTypeFont | ImageFont.ImageFont,
+    fill: tuple[int, int, int],
+) -> None:
+    try:
+        bbox = draw.textbbox((0, 0), text, font=font)
+        text_width = bbox[2] - bbox[0]
+        text_height = bbox[3] - bbox[1]
+        draw.text((x - text_width // 2, y - text_height // 2), text, fill=fill, font=font)
+    except Exception:
+        draw.text((x, y), text, fill=fill, font=font)
+
+
 async def generate_certificates(
     template_url: str,
     layout_config: dict[str, Any],
@@ -146,8 +202,8 @@ async def generate_certificates(
     show_qr = bool(layout_config.get("showQR", True))
     show_id = bool(layout_config.get("showID", True))
 
-    font_name = _get_font(max(24, width // 30))
-    font_id = _get_small_font()
+    font_name = _get_serif_font(_pt_to_px(_DOC_NAME_PT))
+    font_id = _get_sans_font(_pt_to_px(_CERT_ID_PT))
 
     results: list[dict[str, str]] = []
 
@@ -166,24 +222,21 @@ async def generate_certificates(
         id_x = int(width * id_x_pct / 100)
         id_y = int(height * id_y_pct / 100)
 
-        # Draw student name (centred on computed position)
+        # Draw student name (centre-anchored to match preview)
         if show_name:
-            try:
-                bbox = draw.textbbox((0, 0), student_name, font=font_name)
-                tw = bbox[2] - bbox[0]
-                draw.text(
-                    (name_x - tw // 2, name_y),
-                    student_name,
-                    fill=(20, 20, 80),
-                    font=font_name,
-                )
-            except Exception:
-                draw.text((name_x, name_y), student_name, fill=(20, 20, 80))
+            _draw_centered_text(
+                draw,
+                text=student_name,
+                x=name_x,
+                y=name_y,
+                fill=(20, 20, 80),
+                font=font_name,
+            )
 
         # Paste QR code
         if show_qr:
             verify_url = f"{verify_base_url}/{cert_id}"
-            qr_img = _build_qr(verify_url, size=min(120, width // 8))
+            qr_img = _build_qr(verify_url, size=_mm_to_px(_QR_MM))
             qr_half = qr_img.size[0] // 2
             qr_pos = (max(0, qr_x - qr_half), max(0, qr_y - qr_half))
             bg.paste(qr_img, qr_pos, mask=qr_img)
@@ -191,10 +244,14 @@ async def generate_certificates(
         # Draw certificate ID
         if show_id:
             id_text = f"ID: {cert_id}"
-            try:
-                draw.text((id_x, id_y), id_text, fill=(80, 80, 80), font=font_id)
-            except Exception:
-                draw.text((id_x, id_y), id_text, fill=(80, 80, 80))
+            _draw_centered_text(
+                draw,
+                text=id_text,
+                x=id_x,
+                y=id_y,
+                fill=(56, 56, 56),
+                font=font_id,
+            )
 
         # Save as RGB PNG
         out_name = f"{cert_id}.png"

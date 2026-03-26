@@ -19,19 +19,13 @@ import { Badge } from "@/components/ui/badge";
 import { supabase } from "@/lib/supabaseClient";
 import { LayoutPreview } from "@/components/LayoutPreview";
 import { addSessionActivity } from "@/services/sessionActivity";
-
-type LayoutConfig = {
-  showStudentName: boolean;
-  showQR: boolean;
-  showID: boolean;
-  placeholderField: string;
-  placeholderX: number;
-  placeholderY: number;
-  qrX: number;
-  qrY: number;
-  idX: number;
-  idY: number;
-};
+import {
+  clearLegacyTemplateCache,
+  defaultLayoutConfig,
+  normalizeLayoutConfig,
+  readActiveTemplateSession,
+  type LayoutConfig,
+} from "@/lib/layoutConfig";
 
 type WorkspaceTemplate = {
   template_id: string;
@@ -39,7 +33,7 @@ type WorkspaceTemplate = {
   layout_config: Partial<LayoutConfig> | null;
 };
 
-type WorkspaceTemplateSource = "workspace" | "local-cache" | "template-list" | "none";
+type WorkspaceTemplateSource = "workspace" | "session" | "none";
 
 type StudentRecord = {
   id: string;
@@ -48,21 +42,6 @@ type StudentRecord = {
   external_id?: string;
   certificate_id?: string;
 };
-
-const defaultLayoutConfig: LayoutConfig = {
-  showStudentName: true,
-  showQR: true,
-  showID: true,
-  placeholderField: "STUDENT_NAME",
-  placeholderX: 40,
-  placeholderY: 36,
-  qrX: 82,
-  qrY: 76,
-  idX: 10,
-  idY: 88,
-};
-
-const WORKSPACE_LAYOUT_KEY = "certifypro_layout_config";
 
 const steps = [
   { id: 1, title: "Select Template", icon: FileText },
@@ -90,65 +69,32 @@ const Generate = () => {
   const selectedStudentRecords = students.filter((student) => selectedStudentIds.includes(student.id));
   const resolvedLayoutConfig: LayoutConfig = {
     ...defaultLayoutConfig,
-    ...(workspaceTemplate?.layout_config ?? {}),
+    ...normalizeLayoutConfig(workspaceTemplate?.layout_config ?? {}),
   };
 
-  // Seed template from localStorage immediately (synchronous fallback)
   useEffect(() => {
-    const templateId = localStorage.getItem("certifypro_selected_template");
-    if (templateId) {
-      setSelectedTemplate(templateId);
-      setWorkspaceTemplateSource("local-cache");
+    clearLegacyTemplateCache();
+    const activeSession = readActiveTemplateSession();
+    if (!activeSession) {
+      return;
     }
-    try {
-      const savedLayout = localStorage.getItem(WORKSPACE_LAYOUT_KEY);
-      if (savedLayout) {
-        setWorkspaceTemplate((prev) => ({
-          template_id: prev?.template_id || templateId || "",
-          file_url: prev?.file_url || null,
-          layout_config: JSON.parse(savedLayout),
-        }));
-        setWorkspaceTemplateSource((prev) => (prev === "workspace" ? prev : "local-cache"));
-      }
-    } catch {
-      // Ignore invalid cached layout JSON.
-    }
+
+    setSelectedTemplate(activeSession.templateId);
+    setWorkspaceTemplate({
+      template_id: activeSession.templateId,
+      file_url: activeSession.fileUrl,
+      layout_config: activeSession.layoutConfig ?? null,
+    });
+    setWorkspaceTemplateSource("session");
   }, []);
 
   useEffect(() => {
-    const hydrateSelectedTemplate = async () => {
-      if (!selectedTemplate) {
-        return;
-      }
-      if (workspaceTemplate?.template_id === selectedTemplate && workspaceTemplate?.file_url) {
-        return;
-      }
-
-      try {
-        const res = await axios.get("http://127.0.0.1:8000/api/templates");
-        const templates = Array.isArray(res.data) ? res.data : [];
-        const matched = templates.find((template: any) => template.id === selectedTemplate);
-        if (!matched) {
-          return;
-        }
-
-        setWorkspaceTemplate((prev) => ({
-          template_id: selectedTemplate,
-          file_url: matched.file_url || matched.image_url || prev?.file_url || null,
-          layout_config: prev?.layout_config || null,
-        }));
-        setWorkspaceTemplateSource((prev) => (prev === "workspace" ? prev : "template-list"));
-      } catch {
-        // Keep local fallback state only.
-      }
-    };
-
-    hydrateSelectedTemplate();
-  }, [selectedTemplate, workspaceTemplate?.file_url, workspaceTemplate?.template_id]);
-
-  // Load workspace template from backend (authoritative source)
-  useEffect(() => {
     const loadWorkspaceTemplate = async () => {
+      const activeSession = readActiveTemplateSession();
+      if (!activeSession?.templateId) {
+        return;
+      }
+
       try {
         let authHeader = "";
         if (supabase) {
@@ -160,17 +106,17 @@ const Generate = () => {
           headers: authHeader ? { Authorization: authHeader } : {},
         });
         const templateId = res.data.template_id || res.data.template;
-        if (templateId) {
+        if (templateId && templateId === activeSession.templateId) {
           setSelectedTemplate(templateId);
           setWorkspaceTemplate({
             template_id: templateId,
             file_url: res.data.file_url ?? null,
-            layout_config: res.data.layout_config ?? null,
+            layout_config: res.data.layout_config ? normalizeLayoutConfig(res.data.layout_config) : null,
           });
           setWorkspaceTemplateSource("workspace");
         }
       } catch {
-        // API unavailable — localStorage value already applied above
+        // Keep current session state only.
       }
     };
     loadWorkspaceTemplate();
@@ -178,12 +124,28 @@ const Generate = () => {
 
   // Load students on mount from dedicated ready-endpoint
   useEffect(() => {
-    setLoadingData(true);
-    axios
-      .get("http://127.0.0.1:8000/api/students-ready")
-      .then((res) => setStudents(Array.isArray(res.data) ? res.data : []))
-      .catch(() => setStudents([]))
-      .finally(() => setLoadingData(false));
+    const loadStudents = async () => {
+      setLoadingData(true);
+      try {
+        let authHeader = "";
+        if (supabase) {
+          const { data } = await supabase.auth.getSession();
+          const token = data.session?.access_token;
+          if (token) authHeader = `Bearer ${token}`;
+        }
+
+        const res = await axios.get("http://127.0.0.1:8000/api/students-ready", {
+          headers: authHeader ? { Authorization: authHeader } : {},
+        });
+        setStudents(Array.isArray(res.data) ? res.data : []);
+      } catch {
+        setStudents([]);
+      } finally {
+        setLoadingData(false);
+      }
+    };
+
+    void loadStudents();
   }, []);
 
   useEffect(() => {
@@ -209,7 +171,7 @@ const Generate = () => {
 
   const handleGenerate = async () => {
     if (!selectedTemplate) {
-      setGenerateError("No template selected. Go to Templates → Workspace and save a layout first.");
+      setGenerateError("Please , Select or Uplaod template");
       return;
     }
     if (selectedStudentIds.length === 0) {
@@ -236,16 +198,22 @@ const Generate = () => {
 
     try {
       setProgress(30);
+      const renderContext = {
+        template_id: selectedTemplate,
+        template_url: workspaceTemplate?.file_url ?? null,
+        layout_config: resolvedLayoutConfig,
+      };
+
       const request = selectAllStudents
         ? axios.post(
             "http://127.0.0.1:8000/api/generate-certificates/all",
-            { template_id: selectedTemplate },
+            renderContext,
             { headers: authHeader ? { Authorization: authHeader } : {} },
           )
         : axios.post(
             "http://127.0.0.1:8000/api/generate-certificates",
             {
-              template_id: selectedTemplate,
+              ...renderContext,
               students: selectedStudentRecords.map((student) => ({
                 student_id: student.id,
                 student_name: student.full_name || "",
@@ -253,6 +221,7 @@ const Generate = () => {
                 external_id: student.external_id || student.certificate_id || "",
               })),
             },
+            { headers: authHeader ? { Authorization: authHeader } : {} },
           );
 
       const { data } = await request;
@@ -278,22 +247,12 @@ const Generate = () => {
     }
   };
 
-  const showWorkspaceTemplateFallbackBanner =
-    Boolean(selectedTemplate) && workspaceTemplateSource !== "workspace";
-
   const workspaceTemplateSourceBadge =
     workspaceTemplateSource === "workspace"
       ? { label: "Using workspace template", variant: "secondary" as const }
-      : workspaceTemplateSource === "template-list"
-        ? { label: "Using template-list fallback", variant: "outline" as const }
-        : workspaceTemplateSource === "local-cache"
-          ? { label: "Using cached fallback", variant: "outline" as const }
+      : workspaceTemplateSource === "session"
+        ? { label: "Using current session template", variant: "outline" as const }
           : null;
-
-  const workspaceTemplateFallbackMessage =
-    workspaceTemplateSource === "template-list"
-      ? "Preview is using template-list fallback data because no active workspace-template record was returned."
-      : "Preview is using cached local layout/template data because no active workspace-template record was returned.";
 
   return (
     <div className="p-8 max-w-[1200px] mx-auto space-y-6 animate-fade-in">
@@ -359,23 +318,6 @@ const Generate = () => {
                     )}
                   </div>
 
-                  {showWorkspaceTemplateFallbackBanner && (
-                    <div className="rounded-xl border border-amber-300/40 bg-amber-50/40 p-4 flex items-start gap-3 text-sm text-amber-800 dark:text-amber-300">
-                      <AlertCircle className="w-5 h-5 shrink-0 mt-0.5" />
-                      <div className="space-y-1">
-                        <div className="flex flex-wrap items-center gap-2">
-                          <p className="font-medium">Fallback preview in use</p>
-                          {workspaceTemplateSourceBadge && (
-                            <Badge variant={workspaceTemplateSourceBadge.variant}>
-                              {workspaceTemplateSourceBadge.label}
-                            </Badge>
-                          )}
-                        </div>
-                        <p>{workspaceTemplateFallbackMessage}</p>
-                      </div>
-                    </div>
-                  )}
-
                   <div className="space-y-3">
                     <p className="text-sm font-medium text-foreground">Workspace Template Preview</p>
                     <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_280px] items-start">
@@ -433,9 +375,8 @@ const Generate = () => {
                   </div>
                 </div>
               ) : (
-                <div className="rounded-xl border border-amber-300/40 bg-amber-50/30 p-4 text-sm text-amber-700 dark:text-amber-400">
-                  No template selected. Go to <strong>Templates → Workspace</strong>, select a gallery template,
-                  then click <strong>Save Layout</strong>.
+                <div className="rounded-xl border border-amber-300 bg-amber-50 p-4 text-sm text-amber-800">
+                  Please , Select or Uplaod template
                 </div>
               )}
             </div>

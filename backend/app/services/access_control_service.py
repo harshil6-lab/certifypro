@@ -31,6 +31,7 @@ class AuthIdentity:
     auth_user_id: str
     email: str
     full_name: str | None = None
+    organization: str | None = None
 
 
 def _now_iso() -> str:
@@ -53,6 +54,142 @@ def _safe_metadata(value: Any) -> dict[str, Any]:
 def _safe_access_control(metadata: dict[str, Any]) -> dict[str, Any]:
     access_control = metadata.get("access_control")
     return access_control if isinstance(access_control, dict) else {}
+
+
+def _normalize_org_name(value: str | None) -> str:
+    if not value or not isinstance(value, str):
+        return ""
+    return " ".join(value.strip().split())
+
+
+def _organization_key(value: str | None) -> str:
+    normalized = _normalize_org_name(value).lower()
+    if not normalized:
+        return ""
+    return "".join(ch for ch in normalized if ch.isalnum())
+
+
+def _extract_organization_id(metadata: dict[str, Any]) -> str:
+    access_control = _safe_access_control(metadata)
+    profile = metadata.get("profile") if isinstance(metadata.get("profile"), dict) else {}
+    org_id = (
+        access_control.get("organization_id")
+        or metadata.get("organization_id")
+        or profile.get("organization_id")
+    )
+    return str(org_id).strip() if org_id else ""
+
+
+def _extract_profile_org(metadata: dict[str, Any]) -> str:
+    profile = metadata.get("profile") if isinstance(metadata.get("profile"), dict) else {}
+    return _normalize_org_name(
+        profile.get("organization")
+        or profile.get("institution_name")
+        or metadata.get("organization")
+    )
+
+
+def _resolve_identity_org(identity: AuthIdentity, metadata: dict[str, Any]) -> str:
+    existing_org = _extract_profile_org(metadata)
+    if existing_org:
+        return existing_org
+
+    hinted_org = _normalize_org_name(identity.organization)
+    if hinted_org:
+        return hinted_org
+
+    try:
+        response = (
+            supabase.table("access_requests")
+            .select("organization")
+            .ilike("email", identity.email.strip().lower())
+            .order("created_at", desc=True)
+            .limit(1)
+            .execute()
+        )
+        row = _single(response)
+        if row:
+            return _normalize_org_name(row.get("organization"))
+    except Exception:
+        pass
+
+    return ""
+
+
+def _merge_org_metadata(metadata: dict[str, Any], organization: str) -> dict[str, Any]:
+    if not organization:
+        return metadata
+
+    profile = metadata.get("profile") if isinstance(metadata.get("profile"), dict) else {}
+    return {
+        **metadata,
+        "organization": organization,
+        "profile": {
+            **profile,
+            "organization": organization,
+            "institution_name": profile.get("institution_name") or organization,
+        },
+    }
+
+
+def _merge_org_id_metadata(metadata: dict[str, Any], organization_id: str | None) -> dict[str, Any]:
+    if not organization_id:
+        return metadata
+
+    profile = metadata.get("profile") if isinstance(metadata.get("profile"), dict) else {}
+    return {
+        **metadata,
+        "organization_id": organization_id,
+        "profile": {
+            **profile,
+            "organization_id": organization_id,
+        },
+    }
+
+
+def _resolve_or_create_organization(organization: str) -> tuple[str, str] | None:
+    normalized_org = _normalize_org_name(organization)
+    org_key = _organization_key(normalized_org)
+    if not normalized_org or not org_key:
+        return None
+
+    try:
+        response = (
+            supabase.table("organizations")
+            .select("id, name, organization_key")
+            .eq("organization_key", org_key)
+            .limit(1)
+            .execute()
+        )
+        existing = _single(response)
+        if existing and existing.get("id"):
+            return str(existing.get("id")), _normalize_org_name(existing.get("name") or normalized_org)
+
+        insert_resp = (
+            supabase.table("organizations")
+            .insert({"name": normalized_org, "organization_key": org_key})
+            .execute()
+        )
+        inserted = _single(insert_resp)
+        if inserted and inserted.get("id"):
+            return str(inserted.get("id")), _normalize_org_name(inserted.get("name") or normalized_org)
+    except Exception:
+        # Handle race conditions or unique conflicts by reading the existing row.
+        try:
+            retry_resp = (
+                supabase.table("organizations")
+                .select("id, name, organization_key")
+                .eq("organization_key", org_key)
+                .limit(1)
+                .execute()
+            )
+            existing = _single(retry_resp)
+            if existing and existing.get("id"):
+                return str(existing.get("id")), _normalize_org_name(existing.get("name") or normalized_org)
+        except Exception:
+            return None
+
+    return None
 
 
 def _display_name(email: str, full_name: str | None = None) -> str:
@@ -84,6 +221,8 @@ def _merge_access_control_metadata(
     permissions: list[str],
     invited_by_user_id: str | None,
     invited_by_email: str | None,
+    organization_key: str | None = None,
+    organization_id: str | None = None,
     existing_access_control: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     existing = existing_access_control or {}
@@ -94,6 +233,8 @@ def _merge_access_control_metadata(
         "permissions": permissions,
         "invited_by_user_id": invited_by_user_id or existing.get("invited_by_user_id"),
         "invited_by_email": invited_by_email or existing.get("invited_by_email"),
+        "organization_key": organization_key or existing.get("organization_key"),
+        "organization_id": organization_id or existing.get("organization_id"),
         "updated_at": _now_iso(),
     }
     if not existing.get("created_at"):
@@ -143,20 +284,44 @@ def _fetch_app_user_by_auth_or_email(auth_user_id: str | None, email: str | None
     return None
 
 
+def _fetch_app_user_by_id(app_user_id: str | None) -> dict[str, Any] | None:
+    if not app_user_id:
+        return None
+
+    try:
+        response = (
+            supabase.table("app_users")
+            .select("*")
+            .eq("id", app_user_id)
+            .limit(1)
+            .execute()
+        )
+        return _single(response)
+    except Exception:
+        return None
+
+
 def _persist_app_user(existing_row: dict[str, Any] | None, payload: dict[str, Any]) -> dict[str, Any]:
     if existing_row and existing_row.get("id"):
-        response = (
+        (
             supabase.table("app_users")
             .update(payload)
             .eq("id", existing_row["id"])
-            .select("*")
             .execute()
         )
-        row = _single(response)
+        row = _fetch_app_user_by_id(existing_row["id"])
         return row or {**existing_row, **payload}
 
-    response = supabase.table("app_users").insert(payload).select("*").execute()
+    response = supabase.table("app_users").insert(payload).execute()
     row = _single(response)
+    if row and row.get("id"):
+        refreshed_row = _fetch_app_user_by_id(row.get("id"))
+        if refreshed_row:
+            return refreshed_row
+
+    if not row and (payload.get("auth_uid") or payload.get("email")):
+        row = _fetch_app_user_by_auth_or_email(payload.get("auth_uid"), payload.get("email"))
+
     if not row:
         raise HTTPException(status_code=500, detail="Failed to create access control member.")
     return row
@@ -166,6 +331,9 @@ def _serialize_member(row: dict[str, Any], current_auth_user_id: str | None = No
     metadata = _safe_metadata(row.get("metadata"))
     access_control = _safe_access_control(metadata)
     email = (row.get("email") or "").lower()
+    organization = _extract_profile_org(metadata)
+    organization_id = _extract_organization_id(metadata)
+    organization_key = access_control.get("organization_key") or _organization_key(organization)
     member_type = access_control.get("member_type") or ("super_admin" if email == SUPER_ADMIN_EMAIL else "admin")
     status = access_control.get("status") or ("active" if row.get("auth_uid") else "invited")
     permissions = _normalize_permissions(member_type, access_control.get("permissions"))
@@ -178,6 +346,9 @@ def _serialize_member(row: dict[str, Any], current_auth_user_id: str | None = No
         "member_type": member_type,
         "status": status,
         "permissions": permissions,
+        "organization": organization,
+        "organization_id": organization_id,
+        "organization_key": organization_key,
         "joined_at": row.get("created_at") or access_control.get("created_at"),
         "invited_by_email": access_control.get("invited_by_email"),
         "is_current_user": bool(current_auth_user_id and row.get("auth_uid") == current_auth_user_id),
@@ -269,6 +440,14 @@ def ensure_actor_membership(identity: AuthIdentity) -> dict[str, Any]:
     existing_row = _fetch_app_user_by_auth_or_email(identity.auth_user_id, email)
     metadata = _safe_metadata((existing_row or {}).get("metadata"))
     access_control = _safe_access_control(metadata)
+    actor_org = _resolve_identity_org(identity, metadata)
+    actor_org_record = _resolve_or_create_organization(actor_org)
+    if actor_org_record:
+        actor_org_id, canonical_org_name = actor_org_record
+        actor_org = canonical_org_name
+    else:
+        actor_org_id = _extract_organization_id(metadata)
+    actor_org_key = _organization_key(actor_org)
 
     if email == SUPER_ADMIN_EMAIL:
         member_type = "super_admin"
@@ -293,12 +472,14 @@ def ensure_actor_membership(identity: AuthIdentity) -> dict[str, Any]:
         "role": role,
         "full_name": full_name or _display_name(email, identity.full_name),
         "metadata": _merge_access_control_metadata(
-            metadata,
+            _merge_org_id_metadata(_merge_org_metadata(metadata, actor_org), actor_org_id),
             member_type=member_type,
             status=status,
             permissions=permissions,
             invited_by_user_id=access_control.get("invited_by_user_id"),
             invited_by_email=access_control.get("invited_by_email"),
+            organization_key=actor_org_key,
+            organization_id=actor_org_id,
             existing_access_control=access_control,
         ),
     }
@@ -309,6 +490,8 @@ def ensure_actor_membership(identity: AuthIdentity) -> dict[str, Any]:
 def get_access_control_overview(identity: AuthIdentity) -> dict[str, Any]:
     actor_row = ensure_actor_membership(identity)
     actor_member = _serialize_member(actor_row, identity.auth_user_id)
+    actor_email = identity.email.strip().lower()
+    actor_org_key = actor_member.get("organization_key") or ""
 
     response = supabase.table("app_users").select("id, auth_uid, email, role, full_name, metadata, created_at").execute()
     rows = _rows(response)
@@ -327,6 +510,14 @@ def get_access_control_overview(identity: AuthIdentity) -> dict[str, Any]:
         member = _serialize_member(row, identity.auth_user_id)
         if member["status"] == "removed":
             continue
+        if actor_email != SUPER_ADMIN_EMAIL and email != SUPER_ADMIN_EMAIL:
+            member_org_key = member.get("organization_key") or ""
+            if not actor_org_key and not member.get("is_current_user"):
+                continue
+            if actor_org_key and member_org_key and member_org_key != actor_org_key:
+                continue
+            if actor_org_key and not member_org_key and not member.get("is_current_user"):
+                continue
         if member["email"] in seen_emails:
             continue
         seen_emails.add(member["email"])
@@ -389,6 +580,9 @@ def invite_member(
     _require_manage_access(actor_member)
 
     actor_type = actor_member["member_type"]
+    actor_org = _normalize_org_name(actor_member.get("organization"))
+    actor_org_id = str(actor_member.get("organization_id") or "").strip()
+    actor_org_key = actor_member.get("organization_key") or _organization_key(actor_org)
     invite_email = invite_email.strip().lower()
     if invite_email == SUPER_ADMIN_EMAIL and actor_type != "super_admin":
         raise HTTPException(status_code=403, detail="Super admin email is reserved.")
@@ -402,6 +596,28 @@ def invite_member(
     existing_row = _load_member_by_email(invite_email)
     metadata = _safe_metadata((existing_row or {}).get("metadata"))
     access_control = _safe_access_control(metadata)
+    existing_org_id = _extract_organization_id(metadata)
+    existing_org_key = access_control.get("organization_key") or _organization_key(_extract_profile_org(metadata))
+
+    if actor_type != "super_admin" and not actor_org_key:
+        raise HTTPException(status_code=400, detail="Your account is missing organization mapping. Complete access request/profile setup first.")
+    if actor_type != "super_admin" and not actor_org_id:
+        raise HTTPException(status_code=400, detail="Your account organization ID is missing. Re-login or complete profile bootstrap.")
+    if actor_type != "super_admin" and existing_row and existing_org_key and existing_org_key != actor_org_key:
+        raise HTTPException(status_code=403, detail="Cannot invite members from another organization.")
+    if actor_type != "super_admin" and existing_row and existing_org_id and existing_org_id != actor_org_id:
+        raise HTTPException(status_code=403, detail="Cannot invite members from another organization.")
+    if actor_type == "super_admin" and not actor_org and existing_row:
+        actor_org = _extract_profile_org(metadata)
+        actor_org_key = existing_org_key or actor_org_key
+        actor_org_id = existing_org_id or actor_org_id
+
+    if actor_org and not actor_org_id:
+        actor_org_record = _resolve_or_create_organization(actor_org)
+        if actor_org_record:
+            actor_org_id, canonical_org_name = actor_org_record
+            actor_org = canonical_org_name
+            actor_org_key = _organization_key(canonical_org_name)
 
     normalized_permissions = _normalize_permissions(target_member_type, permissions)
     if target_member_type == "co_admin" and not normalized_permissions:
@@ -412,12 +628,14 @@ def invite_member(
         "role": "admin" if target_member_type in {"admin", "co_admin"} else "user",
         "full_name": (existing_row or {}).get("full_name") or _display_name(invite_email),
         "metadata": _merge_access_control_metadata(
-            metadata,
+            _merge_org_id_metadata(_merge_org_metadata(metadata, actor_org), actor_org_id),
             member_type=target_member_type,
             status="active" if (existing_row or {}).get("auth_uid") else "invited",
             permissions=normalized_permissions,
             invited_by_user_id=actor_identity.auth_user_id,
             invited_by_email=actor_identity.email,
+            organization_key=actor_org_key,
+            organization_id=actor_org_id,
             existing_access_control=access_control,
         ),
     }
@@ -466,6 +684,13 @@ def update_member_permissions(
         raise HTTPException(status_code=404, detail="Member not found.")
 
     member = _serialize_member(member_row)
+    actor_type = actor_member.get("member_type")
+    actor_org_key = actor_member.get("organization_key") or ""
+    member_org_key = member.get("organization_key") or ""
+    if actor_type != "super_admin" and not actor_org_key:
+        raise HTTPException(status_code=403, detail="Your account organization is not configured.")
+    if actor_type != "super_admin" and actor_org_key and member_org_key and actor_org_key != member_org_key:
+        raise HTTPException(status_code=403, detail="Cannot manage members outside your organization.")
     if member["email"] == SUPER_ADMIN_EMAIL:
         raise HTTPException(status_code=403, detail="Super admin permissions are fixed.")
     if member["member_type"] != "co_admin":
@@ -487,6 +712,8 @@ def update_member_permissions(
                 permissions=normalized_permissions,
                 invited_by_user_id=access_control.get("invited_by_user_id"),
                 invited_by_email=access_control.get("invited_by_email"),
+                organization_key=access_control.get("organization_key") or member_org_key,
+                organization_id=access_control.get("organization_id") or _extract_organization_id(metadata),
                 existing_access_control=access_control,
             ),
         },
@@ -512,6 +739,12 @@ def remove_member(actor_identity: AuthIdentity, *, member_id: str) -> dict[str, 
 
     member = _serialize_member(member_row)
     actor_type = actor_member["member_type"]
+    actor_org_key = actor_member.get("organization_key") or ""
+    member_org_key = member.get("organization_key") or ""
+    if actor_type != "super_admin" and not actor_org_key:
+        raise HTTPException(status_code=403, detail="Your account organization is not configured.")
+    if actor_type != "super_admin" and actor_org_key and member_org_key and actor_org_key != member_org_key:
+        raise HTTPException(status_code=403, detail="Cannot remove members outside your organization.")
     if member["email"] == SUPER_ADMIN_EMAIL:
         raise HTTPException(status_code=403, detail="Super admin cannot be removed.")
     if member["is_current_user"]:
@@ -532,6 +765,8 @@ def remove_member(actor_identity: AuthIdentity, *, member_id: str) -> dict[str, 
                 permissions=[],
                 invited_by_user_id=access_control.get("invited_by_user_id"),
                 invited_by_email=access_control.get("invited_by_email"),
+                organization_key=access_control.get("organization_key") or member_org_key,
+                organization_id=access_control.get("organization_id") or _extract_organization_id(metadata),
                 existing_access_control=access_control,
             ),
         },

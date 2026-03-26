@@ -49,6 +49,72 @@ const getDomain = (email:string) =>
 const normalize = (v:string) =>
   v.toLowerCase().replace(/[^a-z0-9]/g,"");
 
+const normalizeOrganization = (v:string) =>
+  v.trim().replace(/\s+/g, " ");
+
+async function resolveOrCreateOrganization(organizationName: string) {
+  const normalizedName = normalizeOrganization(organizationName);
+  const key = normalize(normalizedName);
+  if (!normalizedName || !key) {
+    return null;
+  }
+
+  const { data: existing, error: lookupError } = await admin
+    .from("organizations")
+    .select("id, name, organization_key")
+    .eq("organization_key", key)
+    .maybeSingle();
+
+  if (lookupError) {
+    throw new Error(`Organization lookup failed: ${lookupError.message}`);
+  }
+
+  if (existing?.id) {
+    return {
+      id: existing.id,
+      name: normalizeOrganization(existing.name ?? normalizedName),
+      organizationKey: existing.organization_key ?? key,
+    };
+  }
+
+  const { data: inserted, error: insertError } = await admin
+    .from("organizations")
+    .insert({
+      name: normalizedName,
+      organization_key: key,
+    })
+    .select("id, name, organization_key")
+    .single();
+
+  if (!insertError && inserted?.id) {
+    return {
+      id: inserted.id,
+      name: normalizeOrganization(inserted.name ?? normalizedName),
+      organizationKey: inserted.organization_key ?? key,
+    };
+  }
+
+  const { data: retried, error: retryError } = await admin
+    .from("organizations")
+    .select("id, name, organization_key")
+    .eq("organization_key", key)
+    .maybeSingle();
+
+  if (retryError) {
+    throw new Error(`Organization retry lookup failed: ${retryError.message}`);
+  }
+
+  if (!retried?.id) {
+    throw new Error(insertError?.message || "Failed to resolve organization record");
+  }
+
+  return {
+    id: retried.id,
+    name: normalizeOrganization(retried.name ?? normalizedName),
+    organizationKey: retried.organization_key ?? key,
+  };
+}
+
 const statusFromScore = (s:number) =>
   s >= 70 ? "approved" : s >= 40 ? "hold" : "rejected";
 
@@ -109,11 +175,31 @@ async function processRequest(requestId: string) {
     throw err;
   }
 
+  let organizationName = normalizeOrganization(row.organization ?? "");
+  let organizationKey = normalize(organizationName);
+  let organizationId: string | null = null;
+  const notes: string[] = [];
+
+  try {
+    const organizationRecord = await resolveOrCreateOrganization(organizationName);
+    if (organizationRecord) {
+      if (organizationRecord.name !== organizationName) {
+        notes.push(`Organization normalized to canonical name: ${organizationRecord.name}`);
+      }
+      organizationName = organizationRecord.name;
+      organizationKey = organizationRecord.organizationKey;
+      organizationId = organizationRecord.id;
+    }
+  } catch (orgErr) {
+    notes.push(
+      `Organization registry sync failed: ${orgErr instanceof Error ? orgErr.message : String(orgErr)}`
+    );
+  }
+
   /* STEP 2: SCORING */
   console.log("📊 [STEP 2] Computing access request score...");
 
   let score = 0;
-  const notes: string[] = [];
 
   try {
     /* EMAIL CHECK */
@@ -127,7 +213,7 @@ async function processRequest(requestId: string) {
     }
 
     /* ORG MATCH */
-    if (normalize(domain).includes(normalize(row.organization))) {
+    if (normalize(domain).includes(organizationKey)) {
       score += 20;
       console.log("  ✓ Organization domain matches (+20)");
     } else {
@@ -260,7 +346,20 @@ async function processRequest(requestId: string) {
                 full_name: row.full_name ?? row.organization ?? "Institution Admin",
                 metadata: {
                   source: "access_request",
-                  request_id: row.id
+                  request_id: row.id,
+                  organization: organizationName,
+                  organization_id: organizationId,
+                  profile: {
+                    organization: organizationName,
+                    institution_name: organizationName,
+                    organization_id: organizationId,
+                  },
+                  access_control: {
+                    member_type: "admin",
+                    status: "active",
+                    organization_id: organizationId,
+                    organization_key: organizationKey,
+                  },
                 }
               });
 
@@ -311,11 +410,11 @@ async function processRequest(requestId: string) {
       emailBody = buildWelcomeEmailBody(
         "temporary-password",
         appLoginUrl,
-        row.organization
+        organizationName
       );
     } else if (status === "hold") {
       emailSubject = `CertifyPro Access Request - Under Review`;
-      emailBody = buildUnderReviewEmailBody(row.organization);
+      emailBody = buildUnderReviewEmailBody(organizationName);
     } else if (status === "rejected") {
       emailSubject = `CertifyPro Access Request - Decision`;
       emailBody = buildRejectionEmailBody();
@@ -366,6 +465,7 @@ async function processRequest(requestId: string) {
         score,
         status,
         approved_user_id: approvedUserId,
+        organization: organizationName,
         validation_notes: validationNotes,
       })
       .eq("id", row.id);

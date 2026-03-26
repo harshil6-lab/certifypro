@@ -7,6 +7,54 @@ from app.services.auth_service import get_current_user
 router = APIRouter(prefix="/api", tags=["Workspace"])
 
 
+def _as_layout_dict(value: Any) -> Dict[str, Any]:
+    return value if isinstance(value, dict) else {}
+
+
+def _to_bool(value: Any, fallback: bool) -> bool:
+    if isinstance(value, bool):
+        return value
+    if isinstance(value, str):
+        normalized = value.strip().lower()
+        if normalized in {"true", "1", "yes", "on"}:
+            return True
+        if normalized in {"false", "0", "no", "off"}:
+            return False
+    if isinstance(value, (int, float)):
+        return value != 0
+    return fallback
+
+
+def _to_float(value: Any, fallback: float) -> float:
+    try:
+        return float(value)
+    except (TypeError, ValueError):
+        return fallback
+
+
+def _normalize_layout_config(layout_config: Any) -> Dict[str, Any]:
+    source = _as_layout_dict(layout_config)
+    student_name = _as_layout_dict(source.get("student_name"))
+    qr_code = _as_layout_dict(source.get("qr_code"))
+    certificate_id = _as_layout_dict(source.get("certificate_id"))
+
+    return {
+        "showStudentName": _to_bool(
+            source.get("showStudentName", source.get("show_name", student_name.get("visible"))),
+            True,
+        ),
+        "showQR": _to_bool(source.get("showQR", source.get("show_qr", qr_code.get("visible"))), True),
+        "showID": _to_bool(source.get("showID", source.get("show_id", certificate_id.get("visible"))), True),
+        "placeholderField": str(source.get("placeholderField") or "STUDENT_NAME").strip().upper() or "STUDENT_NAME",
+        "placeholderX": _to_float(source.get("placeholderX", source.get("nameX", student_name.get("x"))), 40),
+        "placeholderY": _to_float(source.get("placeholderY", source.get("nameY", student_name.get("y"))), 36),
+        "qrX": _to_float(source.get("qrX", source.get("qr_x", qr_code.get("x"))), 82),
+        "qrY": _to_float(source.get("qrY", source.get("qr_y", qr_code.get("y"))), 76),
+        "idX": _to_float(source.get("idX", source.get("id_x", certificate_id.get("x"))), 10),
+        "idY": _to_float(source.get("idY", source.get("id_y", certificate_id.get("y"))), 88),
+    }
+
+
 def _is_missing_custom_template_url_column(exc: Exception) -> bool:
     message = str(exc)
     return "custom_template_url" in message and "schema cache" in message
@@ -86,7 +134,7 @@ async def get_workspace_template(request: Request):
             "file_url": template_url,
             "title": template_data.get("title"),
             "is_official": template_data.get("is_official"),
-            "layout_config": workspace_template_data.get("layout_config"),
+            "layout_config": _normalize_layout_config(workspace_template_data.get("layout_config")),
         }
     except Exception as exc:
         if isinstance(exc, HTTPException):
@@ -121,13 +169,15 @@ async def save_layout(payload: _SaveLayoutPayload, request: Request):
         raise HTTPException(status_code=401, detail="Unauthorized")
 
     try:
+        normalized_layout_config = _normalize_layout_config(payload.layout_config)
+
         # Step 1: deactivate all previous active layouts for this user
         supabase.table("workspace_templates").update({"is_active": False}).eq("user_id", user_id).execute()
 
         base_payload = {
             "user_id": user_id,
             "template_id": payload.template_id,
-            "layout_config": payload.layout_config,
+            "layout_config": normalized_layout_config,
             "is_active": True,
         }
 

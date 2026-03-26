@@ -30,6 +30,7 @@ from pydantic import BaseModel, Field
 from app.core.supabase_client import supabase
 from app.services.auth_service import get_current_user
 from app.services.generated_certificate_retention_service import cleanup_expired_generated_certificate_files
+from app.services.students_service import list_students
 
 router = APIRouter(prefix="/api/generate-certificates", tags=["Generate Certificates"])
 
@@ -59,6 +60,8 @@ class StudentIn(BaseModel):
 class GenerateRequest(BaseModel):
     template_id: str
     students: list[StudentIn]
+    layout_config: dict[str, Any] | None = None
+    template_url: str | None = None
 
 
 class CertificateOut(BaseModel):
@@ -83,6 +86,110 @@ def _extract_user_id(user: Any) -> str | None:
     return getattr(user, "id", None)
 
 
+def _extract_user_email(user: Any) -> str | None:
+    if user is None:
+        return None
+    if isinstance(user, dict):
+        nested = user.get("user")
+        if isinstance(nested, dict) and nested.get("email"):
+            return nested.get("email")
+        return user.get("email")
+    inner = getattr(user, "user", None)
+    if inner is not None:
+        return getattr(inner, "email", None)
+    return getattr(user, "email", None)
+
+
+def _as_layout_dict(value: Any) -> dict[str, Any]:
+    return value if isinstance(value, dict) else {}
+
+
+def _to_bool(value: Any, fallback: bool) -> bool:
+    if isinstance(value, bool):
+        return value
+    if isinstance(value, str):
+        normalized = value.strip().lower()
+        if normalized in {"true", "1", "yes", "on"}:
+            return True
+        if normalized in {"false", "0", "no", "off"}:
+            return False
+    if isinstance(value, (int, float)):
+        return value != 0
+    return fallback
+
+
+def _to_float(value: Any, fallback: float) -> float:
+    try:
+        return float(value)
+    except (TypeError, ValueError):
+        return fallback
+
+
+def _normalize_layout_config(layout_config: Any) -> dict[str, Any]:
+    source = _as_layout_dict(layout_config)
+    student_name = _as_layout_dict(source.get("student_name"))
+    qr_code = _as_layout_dict(source.get("qr_code"))
+    certificate_id = _as_layout_dict(source.get("certificate_id"))
+
+    return {
+        "showStudentName": _to_bool(
+            source.get("showStudentName", source.get("show_name", student_name.get("visible"))),
+            True,
+        ),
+        "showQR": _to_bool(source.get("showQR", source.get("show_qr", qr_code.get("visible"))), True),
+        "showID": _to_bool(source.get("showID", source.get("show_id", certificate_id.get("visible"))), True),
+        "placeholderField": str(source.get("placeholderField") or "STUDENT_NAME").strip().upper() or "STUDENT_NAME",
+        "placeholderX": _to_float(source.get("placeholderX", source.get("nameX", student_name.get("x"))), 40),
+        "placeholderY": _to_float(source.get("placeholderY", source.get("nameY", student_name.get("y"))), 36),
+        "qrX": _to_float(source.get("qrX", source.get("qr_x", qr_code.get("x"))), 82),
+        "qrY": _to_float(source.get("qrY", source.get("qr_y", qr_code.get("y"))), 76),
+        "idX": _to_float(source.get("idX", source.get("id_x", certificate_id.get("x"))), 10),
+        "idY": _to_float(source.get("idY", source.get("id_y", certificate_id.get("y"))), 88),
+    }
+
+
+def _resolve_template_render_context(
+    template_id: str,
+    user_id: str | None,
+    *,
+    layout_override: dict[str, Any] | None = None,
+    template_url_override: str | None = None,
+) -> tuple[dict[str, Any], dict[str, Any], str | None]:
+    try:
+        resp = (
+            supabase.table("templates")
+            .select("*")
+            .eq("id", template_id)
+            .single()
+            .execute()
+        )
+        template = resp.data if hasattr(resp, "data") else None
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=f"Failed to fetch template: {exc}") from exc
+
+    if not template:
+        raise HTTPException(status_code=404, detail="Template not found.")
+
+    layout_config = _normalize_layout_config(template.get("layout_config") or {})
+    file_url = template.get("file_url") or template.get("image_url")
+
+    if user_id:
+        workspace_rows = _workspace_template_rows(user_id, template_id)
+
+        if workspace_rows:
+            workspace_layout = _normalize_layout_config(workspace_rows[0].get("layout_config") or {})
+            layout_config = {**layout_config, **workspace_layout}
+            file_url = workspace_rows[0].get("custom_template_url") or file_url
+
+    if layout_override:
+        layout_config = {**layout_config, **_normalize_layout_config(layout_override)}
+
+    if template_url_override:
+        file_url = template_url_override
+
+    return template, layout_config, file_url
+
+
 # ---------------------------------------------------------------------------
 # Font helpers
 # ---------------------------------------------------------------------------
@@ -92,14 +199,41 @@ _WINDOWS_FONTS = [
     r"C:\Windows\Fonts\arial.ttf",
     r"C:\Windows\Fonts\verdana.ttf",
 ]
+_WINDOWS_SERIF_FONTS = [
+    r"C:\Windows\Fonts\times.ttf",
+    r"C:\Windows\Fonts\timesbd.ttf",
+    r"C:\Windows\Fonts\georgia.ttf",
+    r"C:\Windows\Fonts\cambria.ttc",
+]
 _LINUX_FONTS = [
     "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf",
     "/usr/share/fonts/truetype/liberation/LiberationSans-Regular.ttf",
+]
+_LINUX_SERIF_FONTS = [
+    "/usr/share/fonts/truetype/dejavu/DejaVuSerif.ttf",
+    "/usr/share/fonts/truetype/liberation/LiberationSerif-Regular.ttf",
 ]
 _MAC_FONTS = [
     "/System/Library/Fonts/Helvetica.ttc",
     "/Library/Fonts/Arial.ttf",
 ]
+_MAC_SERIF_FONTS = [
+    "/System/Library/Fonts/Times.ttc",
+    "/Library/Fonts/Georgia.ttf",
+]
+
+_DOC_NAME_PT = 52
+_CERT_ID_PT = 18
+_QR_MM = 60
+_DOC_DPI = 96
+
+
+def _pt_to_px(value: int, dpi: int = _DOC_DPI) -> int:
+    return max(1, round(value * dpi / 72))
+
+
+def _mm_to_px(value: int, dpi: int = _DOC_DPI) -> int:
+    return max(1, round(value * dpi / 25.4))
 
 
 def _get_font(size: int = 28) -> ImageFont.FreeTypeFont | ImageFont.ImageFont:
@@ -107,6 +241,17 @@ def _get_font(size: int = 28) -> ImageFont.FreeTypeFont | ImageFont.ImageFont:
         if os.path.exists(path):
             return ImageFont.truetype(path, size)
     return ImageFont.load_default()
+
+
+def _get_serif_font(size: int) -> ImageFont.FreeTypeFont | ImageFont.ImageFont:
+    for path in _WINDOWS_SERIF_FONTS + _LINUX_SERIF_FONTS + _MAC_SERIF_FONTS:
+        if os.path.exists(path):
+            return ImageFont.truetype(path, size)
+    return _get_font(size)
+
+
+def _get_sans_font(size: int) -> ImageFont.FreeTypeFont | ImageFont.ImageFont:
+    return _get_font(size)
 
 
 # ---------------------------------------------------------------------------
@@ -215,6 +360,116 @@ def _local_generated_path(file_url: str | None) -> str | None:
     return local_path if os.path.exists(local_path) else None
 
 
+def _workspace_template_rows(user_id: str, template_id: str) -> list[dict[str, Any]]:
+    try:
+        workspace_resp = (
+            supabase.table("workspace_templates")
+            .select("template_id, custom_template_url, layout_config")
+            .eq("user_id", user_id)
+            .eq("template_id", template_id)
+            .eq("is_active", True)
+            .limit(1)
+            .execute()
+        )
+        return workspace_resp.data if hasattr(workspace_resp, "data") and workspace_resp.data else []
+    except Exception as exc:
+        if "custom_template_url" not in str(exc):
+            return []
+
+    try:
+        workspace_resp = (
+            supabase.table("workspace_templates")
+            .select("template_id, layout_config")
+            .eq("user_id", user_id)
+            .eq("template_id", template_id)
+            .eq("is_active", True)
+            .limit(1)
+            .execute()
+        )
+        return workspace_resp.data if hasattr(workspace_resp, "data") and workspace_resp.data else []
+    except Exception:
+        return []
+
+
+def _upsert_generated_certificate(
+    *,
+    template_id: str,
+    student_id: str | None,
+    created_by: str | None,
+    certificate_id: str,
+    student_name: str,
+    file_url: str,
+    verification_url: str,
+) -> None:
+    payload = {
+        "student_id": student_id,
+        "template_id": template_id,
+        "certificate_id": certificate_id,
+        "student_name": student_name,
+        "file_url": file_url,
+        "verification_url": verification_url,
+    }
+    if created_by:
+        payload["created_by"] = created_by
+
+    try:
+        existing_resp = (
+            supabase.table("generated_certificates")
+            .select("id")
+            .eq("certificate_id", certificate_id)
+            .limit(1)
+            .execute()
+        )
+        existing_rows = existing_resp.data if hasattr(existing_resp, "data") and existing_resp.data else []
+    except Exception:
+        existing_rows = []
+
+    if existing_rows:
+        try:
+            (
+                supabase.table("generated_certificates")
+                .update(payload)
+                .eq("id", existing_rows[0]["id"])
+                .execute()
+            )
+            return
+        except Exception:
+            pass
+
+    _persist_generated_certificate(
+        template_id=template_id,
+        student_id=student_id,
+        created_by=created_by,
+        certificate_id=certificate_id,
+        student_name=student_name,
+        file_url=file_url,
+        verification_url=verification_url,
+    )
+
+
+def _draw_centered_text(
+    draw: ImageDraw.ImageDraw,
+    *,
+    text: str,
+    x: int,
+    y: int,
+    font: ImageFont.FreeTypeFont | ImageFont.ImageFont,
+    fill: tuple[int, int, int],
+) -> None:
+    try:
+        bbox = draw.textbbox((0, 0), text, font=font)
+        text_width = bbox[2] - bbox[0]
+        text_height = bbox[3] - bbox[1]
+        draw.text(
+            (x - text_width // 2, y - text_height // 2),
+            text,
+            fill=fill,
+            font=font,
+        )
+    except Exception:
+        draw.text((x, y), text, fill=fill, font=font)
+
+
 # ---------------------------------------------------------------------------
 # Core rendering
 # ---------------------------------------------------------------------------
@@ -233,16 +488,18 @@ def _render_certificate(
 
     # --- Resolve layout percentages ---
     # Support both nameX/nameY and placeholderX/placeholderY key aliases
-    name_x_pct = float(layout_config.get("nameX", layout_config.get("placeholderX", 40)))
-    name_y_pct = float(layout_config.get("nameY", layout_config.get("placeholderY", 36)))
-    id_x_pct   = float(layout_config.get("idX", 10))
-    id_y_pct   = float(layout_config.get("idY", 88))
-    qr_x_pct   = float(layout_config.get("qrX", 82))
-    qr_y_pct   = float(layout_config.get("qrY", 76))
+    normalized_layout = _normalize_layout_config(layout_config)
 
-    show_name = bool(layout_config.get("showStudentName", True))
-    show_id   = bool(layout_config.get("showID", True))
-    show_qr   = bool(layout_config.get("showQR", True))
+    name_x_pct = normalized_layout["placeholderX"]
+    name_y_pct = normalized_layout["placeholderY"]
+    id_x_pct = normalized_layout["idX"]
+    id_y_pct = normalized_layout["idY"]
+    qr_x_pct = normalized_layout["qrX"]
+    qr_y_pct = normalized_layout["qrY"]
+
+    show_name = normalized_layout["showStudentName"]
+    show_id = normalized_layout["showID"]
+    show_qr = normalized_layout["showQR"]
 
     # --- Convert percent → pixel coordinates ---
     x_name = int(width * name_x_pct / 100)
@@ -254,46 +511,41 @@ def _render_certificate(
     x_qr = int(width * qr_x_pct / 100)
     y_qr = int(height * qr_y_pct / 100)
 
-    font_name = _get_font(max(24, width // 30))
-    font_id   = _get_font(max(14, width // 60))
+    font_name = _get_serif_font(_pt_to_px(_DOC_NAME_PT))
+    font_id = _get_sans_font(_pt_to_px(_CERT_ID_PT))
 
-    # --- Render student name (horizontally centred on x_name) ---
+    # --- Render student name (centre-anchored to match preview) ---
     if show_name:
-        try:
-            bbox = draw.textbbox((0, 0), student_name, font=font_name)
-            text_w = bbox[2] - bbox[0]
-            draw.text(
-                (x_name - text_w // 2, y_name),
-                student_name,
-                fill=(20, 20, 80),
-                font=font_name,
-            )
-        except Exception:
-            draw.text((x_name, y_name), student_name, fill=(20, 20, 80))
+        _draw_centered_text(
+            draw,
+            text=student_name,
+            x=x_name,
+            y=y_name,
+            fill=(20, 20, 80),
+            font=font_name,
+        )
 
     # --- Render certificate ID ---
     if show_id:
         id_text = f"ID: {certificate_id}"
-        try:
-            draw.text((x_id, y_id), id_text, fill=(80, 80, 80), font=font_id)
-        except Exception:
-            draw.text((x_id, y_id), id_text, fill=(80, 80, 80))
+        _draw_centered_text(
+            draw,
+            text=id_text,
+            x=x_id,
+            y=y_id,
+            fill=(56, 56, 56),
+            font=font_id,
+        )
 
     # --- Generate and paste QR code ---
     if show_qr:
         qr_url = f"{QR_VERIFY_BASE}/{certificate_id}"
-        qr_img = _make_qr(qr_url, size=min(120, width // 8))
+        qr_img = _make_qr(qr_url, size=_mm_to_px(_QR_MM))
         qr_half = qr_img.size[0] // 2
         qr_pos = (max(0, x_qr - qr_half), max(0, y_qr - qr_half))
         bg.paste(qr_img, qr_pos, mask=qr_img)
 
     return bg
-
-
-# ---------------------------------------------------------------------------
-# Endpoint
-# ---------------------------------------------------------------------------
-
 
 @router.post("", response_model=GenerateResponse)
 def post_generate_certificates(body: GenerateRequest, request: Request) -> GenerateResponse:
@@ -314,28 +566,17 @@ def post_generate_certificates(body: GenerateRequest, request: Request) -> Gener
     token = auth_header.split(" ", 1)[1] if auth_header.lower().startswith("bearer ") else None
     user = get_current_user(token) if token else None
     user_id = _extract_user_id(user)
+    user_email = _extract_user_email(user)
 
     # --- 1. Load template from Supabase ---
-    try:
-        resp = (
-            supabase.table("templates")
-            .select("*")
-            .eq("id", body.template_id)
-            .single()
-            .execute()
-        )
-        template = resp.data if hasattr(resp, "data") else None
-    except Exception as exc:
-        raise HTTPException(status_code=500, detail=f"Failed to fetch template: {exc}")
+    template, layout_config, file_url = _resolve_template_render_context(
+        body.template_id,
+        user_id,
+        layout_override=body.layout_config,
+        template_url_override=body.template_url,
+    )
 
-    if not template:
-        raise HTTPException(status_code=404, detail="Template not found.")
-
-    # --- 2. Extract layout_config ---
-    layout_config: dict[str, Any] = template.get("layout_config") or {}
-
-    # --- 3. Load template background ---
-    file_url: str | None = template.get("file_url") or template.get("image_url")
+    # --- 2. Load template background ---
     if not file_url:
         raise HTTPException(
             status_code=422,
@@ -361,21 +602,6 @@ def post_generate_certificates(body: GenerateRequest, request: Request) -> Gener
         email = student.email.strip()
         qr_url = f"{QR_VERIFY_BASE}/{cert_id}"
 
-        existing = _get_existing_generated_certificate(cert_id)
-        if existing:
-            existing_url = existing.get("file_url") or ""
-            existing_path = _local_generated_path(existing_url)
-            if existing_path:
-                generated_paths.append(existing_path)
-            results.append(
-                CertificateOut(
-                    certificate_id=cert_id,
-                    student_name=student_name,
-                    url=existing_url,
-                )
-            )
-            continue
-
         rendered = _render_certificate(background, student_name, cert_id, layout_config)
 
         # Save as RGB PNG
@@ -388,7 +614,7 @@ def post_generate_certificates(body: GenerateRequest, request: Request) -> Gener
 
         # Persist generated certificate metadata in the generated_certificates table.
         try:
-            _persist_generated_certificate(
+            _upsert_generated_certificate(
                 template_id=template.get("id") or body.template_id,
                 student_id=student_id,
                 created_by=user_id,
@@ -427,6 +653,8 @@ def post_generate_certificates(body: GenerateRequest, request: Request) -> Gener
 
 class BulkGenerateRequest(BaseModel):
     template_id: str
+    layout_config: dict[str, Any] | None = None
+    template_url: str | None = None
 
 
 @router.post("/all", response_model=GenerateResponse)
@@ -444,6 +672,7 @@ def post_generate_all_ready(body: BulkGenerateRequest, request: Request) -> Gene
     token = auth_header.split(" ", 1)[1] if auth_header.lower().startswith("bearer ") else None
     user = get_current_user(token) if token else None
     user_id = _extract_user_id(user)
+    user_email = _extract_user_email(user)
 
     cleanup_expired_generated_certificate_files()
 
@@ -452,15 +681,7 @@ def post_generate_all_ready(body: BulkGenerateRequest, request: Request) -> Gene
 
     # --- 1. Fetch all imported students for the authenticated user ---
     try:
-        students_resp = (
-            supabase.table("students")
-            .select("id, full_name, email, external_id, metadata")
-            .eq("created_by", user_id)
-            .execute()
-        )
-        imported_students: list[dict[str, Any]] = (
-            students_resp.data if hasattr(students_resp, "data") and students_resp.data else []
-        )
+        imported_students = list_students(user_id, user_email)
     except Exception as exc:
         raise HTTPException(status_code=500, detail=f"Failed to fetch students: {exc}")
 
@@ -500,24 +721,13 @@ def post_generate_all_ready(body: BulkGenerateRequest, request: Request) -> Gene
         )
 
     # --- 2. Load template from Supabase ---
-    try:
-        template_resp = (
-            supabase.table("templates")
-            .select("*")
-            .eq("id", body.template_id)
-            .single()
-            .execute()
-        )
-        template = template_resp.data if hasattr(template_resp, "data") else None
-    except Exception as exc:
-        raise HTTPException(status_code=500, detail=f"Failed to fetch template: {exc}")
+    template, layout_config, file_url = _resolve_template_render_context(
+        body.template_id,
+        user_id,
+        layout_override=body.layout_config,
+        template_url_override=body.template_url,
+    )
 
-    if not template:
-        raise HTTPException(status_code=404, detail="Template not found.")
-
-    layout_config: dict[str, Any] = template.get("layout_config") or {}
-
-    file_url: str | None = template.get("file_url") or template.get("image_url")
     if not file_url:
         raise HTTPException(
             status_code=422,
@@ -541,21 +751,6 @@ def post_generate_all_ready(body: BulkGenerateRequest, request: Request) -> Gene
         cert_id: str = (student.get("external_id") or "").strip()
         qr_url = f"{QR_VERIFY_BASE}/{cert_id}"
 
-        existing = _get_existing_generated_certificate(cert_id)
-        if existing:
-            existing_url = existing.get("file_url") or ""
-            existing_path = _local_generated_path(existing_url)
-            if existing_path:
-                generated_files.append(existing_path)
-            results.append(
-                CertificateOut(
-                    certificate_id=cert_id,
-                    student_name=student_name,
-                    url=existing_url,
-                )
-            )
-            continue
-
         rendered = _render_certificate(background, student_name, cert_id, layout_config)
 
         out_name = f"{cert_id}.png"
@@ -567,7 +762,7 @@ def post_generate_all_ready(body: BulkGenerateRequest, request: Request) -> Gene
 
         # Persist generated certificate metadata in the generated_certificates table.
         try:
-            _persist_generated_certificate(
+            _upsert_generated_certificate(
                 template_id=template.get("id") or body.template_id,
                 student_id=student_id,
                 created_by=user_id,

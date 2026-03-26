@@ -181,7 +181,7 @@ export function AccessControlProvider({ children }: { children: ReactNode }) {
       const nextOverview = await requestJson<AccessOverview>("/api/access-control/overview");
       setOverview(nextOverview);
       setError(null);
-      setDegraded(false);
+      setDegraded(nextOverview.management_available === false);
     } catch (nextError) {
       setOverview((current) => current ?? FALLBACK_OVERVIEW);
       setError(nextError instanceof Error ? nextError.message : "Unable to load access control state.");
