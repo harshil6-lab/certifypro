@@ -23,6 +23,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { addSessionActivity } from "@/services/sessionActivity";
 
 const API_BASE = "http://127.0.0.1:8000";
 const IMPORT_SESSION_KEY = "certifypro_import_students_session";
@@ -166,6 +167,14 @@ const ImportStudents = () => {
       const data = await res.json();
       setSaveSuccess(data.saved ?? validRows.length);
       if (data.rejected_rows?.length) setSaveRejected(data.rejected_rows);
+      addSessionActivity(
+        "students_imported",
+        `${data.saved ?? validRows.length} students saved${data.rejected_rows?.length ? `, ${data.rejected_rows.length} rejected` : ""}`,
+        {
+          saved: data.saved ?? validRows.length,
+          rejected: data.rejected_rows?.length ?? 0,
+        },
+      );
     } catch (err) {
       setSaveError(err instanceof Error ? err.message : String(err));
     } finally {

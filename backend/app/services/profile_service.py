@@ -101,11 +101,24 @@ def mark_first_login_complete(user_id: Optional[str]) -> bool:
     
     try:
         logger.info(f"[mark_first_login_complete] Marking onboarding complete for user: {user_id}")
+
+        existing_profile = (
+            supabase.table("app_users")
+            .select("metadata")
+            .eq("auth_uid", user_id)
+            .maybeSingle()
+            .execute()
+        )
+        existing_metadata = {}
+        if hasattr(existing_profile, "data") and existing_profile.data:
+            metadata = existing_profile.data.get("metadata")
+            if isinstance(metadata, dict):
+                existing_metadata = metadata
         
         # Update app_users metadata to mark onboarding as complete
         response = (
             supabase.table("app_users")
-            .update({"metadata": {"onboarding_completed_at": "now()"}})
+            .update({"metadata": {**existing_metadata, "onboarding_completed_at": "now()"}})
             .eq("auth_uid", user_id)
             .select()
             .execute()

@@ -18,6 +18,7 @@ import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
 import { supabase } from "@/lib/supabaseClient";
 import { LayoutPreview } from "@/components/LayoutPreview";
+import { addSessionActivity } from "@/services/sessionActivity";
 
 type LayoutConfig = {
   showStudentName: boolean;
@@ -258,6 +259,14 @@ const Generate = () => {
       setProgress(100);
       setGeneratedCerts(data.certificates ?? []);
       setZipUrl(data.zip_url ?? "");
+      addSessionActivity(
+        "certificates_generated",
+        `${(data.certificates ?? []).length} certificate(s) generated`,
+        {
+          count: (data.certificates ?? []).length,
+          templateId: selectedTemplate,
+        },
+      );
     } catch (err: any) {
       console.error("Error generating certificate:", err);
       setGenerateError(

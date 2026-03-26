@@ -15,6 +15,7 @@ import {
 } from "@/components/certificates/types";
 import { API_BASE, getTemplates } from "@/services/apiService";
 import { LayoutPreview } from "@/components/LayoutPreview";
+import { addSessionActivity } from "@/services/sessionActivity";
 
 const categories: Array<"All" | GalleryCategory> = ["All", "Academic", "Corporate", "Internship", "Event", "Compliance", "Training"];
 
@@ -300,6 +301,11 @@ const Templates = () => {
       localStorage.setItem("certifypro_layout_config", JSON.stringify(layoutConfig));
       localStorage.setItem("certifypro_selected_template", workspaceTemplate.id);
       setLayoutSaveStatus("Layout saved successfully");
+      addSessionActivity(
+        "workspace_layout_saved",
+        `${workspaceTemplate.title ?? "Workspace template"} layout saved`,
+        { templateId: workspaceTemplate.id },
+      );
     } catch (error) {
       setLayoutSaveStatus(`Save error: ${error instanceof Error ? error.message : String(error)}`);
     }
@@ -396,6 +402,9 @@ const Templates = () => {
         is_custom: true,
       });
       setIsGallerySelected(false);
+      addSessionActivity("template_uploaded", file.name, {
+        templateId: data.template_id ?? data.template?.id ?? null,
+      });
     } catch (error) {
       console.error("Template upload failed:", error);
       setLayoutSaveStatus(`Upload error: ${error instanceof Error ? error.message : String(error)}`);
