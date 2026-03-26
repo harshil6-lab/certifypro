@@ -31,18 +31,21 @@ import {
 import { useNavigate } from "react-router-dom";
 import certifyProLogo from "@/assets/white_certify_pro_logo.png";
 import { signOutUser } from "@/lib/auth";
+import { useAccessControl, type AccessPermission } from "@/context/AccessControlContext";
 
-const navItems = [
-  { title: "Dashboard", url: "/dashboard", icon: LayoutDashboard },
-  { title: "Templates", url: "/templates", icon: FileImage },
-  { title: "Import Students", url: "/import", icon: Upload },
-  { title: "Generate", url: "/generate", icon: Printer },
-  { title: "Registry", url: "/registry", icon: List },
-  { title: "Access Control", url: "/access", icon: Shield },
+const navItems: Array<{ title: string; url: string; icon: typeof LayoutDashboard; permission: AccessPermission }> = [
+  { title: "Dashboard", url: "/dashboard", icon: LayoutDashboard, permission: "dashboard" },
+  { title: "Templates", url: "/templates", icon: FileImage, permission: "templates" },
+  { title: "Import Students", url: "/import", icon: Upload, permission: "import_students" },
+  { title: "Generate", url: "/generate", icon: Printer, permission: "generate" },
+  { title: "Registry", url: "/registry", icon: List, permission: "registry" },
+  { title: "Access Control", url: "/access", icon: Shield, permission: "access_control" },
 ];
 
 const AdminNavbar = () => {
   const navigate = useNavigate();
+  const { actor, hasPermission } = useAccessControl();
+  const visibleItems = navItems.filter((item) => hasPermission(item.permission));
 
   const handleSignOut = () => {
     void signOutUser();
@@ -56,7 +59,7 @@ const AdminNavbar = () => {
         </div>
 
         <nav className="hidden xl:flex flex-1 min-w-0 items-center justify-center gap-1">
-          {navItems.map((item) => (
+          {visibleItems.map((item) => (
             <NavLink
               key={item.url}
               to={item.url}
@@ -88,7 +91,7 @@ const AdminNavbar = () => {
                 </SheetTitle>
               </SheetHeader>
               <div className="mt-8 space-y-3">
-                {navItems.map((item) => (
+                {visibleItems.map((item) => (
                   <SheetClose key={item.url} asChild>
                     <NavLink
                       to={item.url}
@@ -145,7 +148,13 @@ const AdminNavbar = () => {
               onClick={() => navigate("/dashboard/profile")}
               className="gap-2 px-3 py-2 rounded-lg border border-slate-600 bg-white/5 hover:bg-white/15 text-slate-200 hover:text-white transition-all duration-200 shadow-md hover:shadow-lg"
             >
-              <span className="hidden sm:inline text-sm font-medium whitespace-nowrap">Admin</span>
+              <span className="hidden sm:inline text-sm font-medium whitespace-nowrap">
+                {actor?.member_type === "super_admin"
+                  ? "Super Admin"
+                  : actor?.member_type === "co_admin"
+                    ? "Co-Admin"
+                    : "Admin"}
+              </span>
               <div className="flex h-8 w-8 items-center justify-center rounded-full bg-amber-500/20 ring-1 ring-amber-400/50 text-amber-300">
                 <UserCircle className="h-5 w-5" />
               </div>

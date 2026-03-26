@@ -65,6 +65,7 @@ create table if not exists generated_certificates (
   id uuid primary key default gen_random_uuid(),
   student_id uuid references students(id) on delete cascade,
   template_id uuid references templates(id) on delete set null,
+  created_by uuid references app_users(id) on delete set null,
   certificate_id text,
   student_name text,
   file_url text not null,
@@ -98,6 +99,7 @@ create index if not exists idx_students_email on students(email);
 create index if not exists idx_certificates_qr_token on certificates(qr_token);
 create index if not exists idx_certificates_student on certificates(student_id);
 create index if not exists idx_generated_certificates_student on generated_certificates(student_id);
+create index if not exists idx_generated_certificates_created_by on generated_certificates(created_by);
 create index if not exists idx_workspace_templates_user on workspace_templates(user_id);
 create index if not exists idx_activities_user on activities(user_id);
 

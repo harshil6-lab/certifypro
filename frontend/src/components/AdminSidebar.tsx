@@ -11,18 +11,21 @@ import {
 } from "lucide-react";
 import { signOutUser } from "@/lib/auth";
 import certifyProIcon from "@/assets/certify_pro_icon.png";
+import { useAccessControl, type AccessPermission } from "@/context/AccessControlContext";
 
-const navItems = [
-  { title: "Dashboard", url: "/dashboard", icon: LayoutDashboard },
-  { title: "Templates", url: "/templates", icon: FileImage },
-  { title: "Import Students", url: "/import", icon: Upload },
-  { title: "Generate", url: "/generate", icon: Printer },
-  { title: "Registry", url: "/registry", icon: List },
-  { title: "Access Control", url: "/access", icon: Shield },
+const navItems: Array<{ title: string; url: string; icon: typeof LayoutDashboard; permission: AccessPermission }> = [
+  { title: "Dashboard", url: "/dashboard", icon: LayoutDashboard, permission: "dashboard" },
+  { title: "Templates", url: "/templates", icon: FileImage, permission: "templates" },
+  { title: "Import Students", url: "/import", icon: Upload, permission: "import_students" },
+  { title: "Generate", url: "/generate", icon: Printer, permission: "generate" },
+  { title: "Registry", url: "/registry", icon: List, permission: "registry" },
+  { title: "Access Control", url: "/access", icon: Shield, permission: "access_control" },
 ];
 
 export function AdminSidebar() {
   const location = useLocation();
+  const { hasPermission } = useAccessControl();
+  const visibleItems = navItems.filter((item) => hasPermission(item.permission));
 
   return (
     <aside className="w-64 min-h-screen bg-sidebar flex flex-col border-r border-sidebar-border shadow-xl z-20 transition-all duration-300">
@@ -47,7 +50,7 @@ export function AdminSidebar() {
           Management
         </p>
 
-        {navItems.map((item) => {
+        {visibleItems.map((item) => {
           const isActive = location.pathname === item.url;
           return (
             <NavLink

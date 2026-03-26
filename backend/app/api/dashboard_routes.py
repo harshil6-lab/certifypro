@@ -1,3 +1,5 @@
+from typing import Any
+
 from fastapi import APIRouter, HTTPException, Request
 from ..services.dashboard_service import (
     get_dashboard_stats,
@@ -22,18 +24,48 @@ def _require_auth(request: Request):
     return user
 
 
+def _extract_user_id(user: Any) -> str | None:
+    if user is None:
+        return None
+    if isinstance(user, dict):
+        nested = user.get("user")
+        if isinstance(nested, dict) and nested.get("id"):
+            return nested.get("id")
+        return user.get("id")
+    inner = getattr(user, "user", None)
+    if inner is not None:
+        return getattr(inner, "id", None)
+    return getattr(user, "id", None)
+
+
+def _extract_user_email(user: Any) -> str | None:
+    if user is None:
+        return None
+    if isinstance(user, dict):
+        nested = user.get("user")
+        if isinstance(nested, dict) and nested.get("email"):
+            return nested.get("email")
+        return user.get("email")
+    inner = getattr(user, "user", None)
+    if inner is not None:
+        return getattr(inner, "email", None)
+    return getattr(user, "email", None)
+
+
 @router.get("/stats")
 async def dashboard_stats(request: Request):
     """Return dashboard statistics for the authenticated user."""
     try:
-        # For testing, use a dummy user ID
-        user_id = "test-user-id"
-        print("DEBUG: Calling get_dashboard_stats")
-        data = await get_dashboard_stats(user_id)
-        print(f"DEBUG: get_dashboard_stats returned: {data}")
+        user = _require_auth(request)
+        user_id = _extract_user_id(user)
+        user_email = _extract_user_email(user)
+        if not user_id:
+            raise HTTPException(status_code=401, detail="invalid token")
+        data = await get_dashboard_stats(user_id, user_email)
         return data
     except Exception as exc:
-        print(f"DEBUG: Error in dashboard_stats: {exc}")
+        if isinstance(exc, HTTPException):
+            raise
         raise HTTPException(status_code=500, detail=str(exc))
 
 
@@ -41,11 +73,16 @@ async def dashboard_stats(request: Request):
 async def dashboard_activity(request: Request):
     """Return recent activity for the authenticated user."""
     try:
-        # For testing, use a dummy user ID
-        user_id = "test-user-id"
-        data = await get_recent_activity(user_id)
+        user = _require_auth(request)
+        user_id = _extract_user_id(user)
+        user_email = _extract_user_email(user)
+        if not user_id:
+            raise HTTPException(status_code=401, detail="invalid token")
+        data = await get_recent_activity(user_id, user_email)
         return {"items": data}
     except Exception as exc:
+        if isinstance(exc, HTTPException):
+            raise
         raise HTTPException(status_code=500, detail=str(exc))
 
 

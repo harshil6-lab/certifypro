@@ -1,16 +1,22 @@
+import { useEffect, useState } from "react";
 import {
-  Shield,
-  UserPlus,
-  MoreHorizontal,
-  Mail,
+  AlertTriangle,
   Crown,
+  Mail,
+  Shield,
   ShieldCheck,
+  Trash2,
+  UserPlus,
+  Users,
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Label } from "@/components/ui/label";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import {
   Table,
   TableBody,
@@ -20,64 +26,353 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { useToast } from "@/components/ui/use-toast";
+import {
+  useAccessControl,
+  type AccessMember,
+  type AccessPermission,
+} from "@/context/AccessControlContext";
 
-const admins = [
-  { name: "Dr. Sarah Chen", email: "sarah.chen@university.edu", role: "Super Admin", initials: "SC", joined: "Jan 2023" },
-  { name: "Prof. James Wilson", email: "j.wilson@university.edu", role: "Admin", initials: "JW", joined: "Mar 2023" },
-  { name: "Maria Garcia", email: "m.garcia@university.edu", role: "Admin", initials: "MG", joined: "Jun 2023" },
-  { name: "David Kim", email: "d.kim@university.edu", role: "Admin", initials: "DK", joined: "Sep 2023" },
-  { name: "Emily Brown", email: "e.brown@university.edu", role: "Admin", initials: "EB", joined: "Jan 2024" },
-];
+function formatJoined(value?: string | null) {
+  if (!value) {
+    return "Not signed in yet";
+  }
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) {
+    return "Pending";
+  }
+  return new Intl.DateTimeFormat("en-IN", {
+    year: "numeric",
+    month: "short",
+    day: "numeric",
+  }).format(date);
+}
+
+function getInitials(name: string) {
+  return name
+    .split(" ")
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((part) => part[0]?.toUpperCase() || "")
+    .join("");
+}
+
+function roleLabel(member: AccessMember) {
+  if (member.member_type === "super_admin") {
+    return "Super Admin";
+  }
+  if (member.member_type === "co_admin") {
+    return "Co-Admin";
+  }
+  return "Admin";
+}
 
 const AccessControl = () => {
+  const { toast } = useToast();
+  const {
+    actor,
+    members,
+    permissionCatalog,
+    loading,
+    error,
+    degraded,
+    managementAvailable,
+    inviteMember,
+    updatePermissions,
+    removeMember,
+    refresh,
+  } = useAccessControl();
+  const [inviteEmail, setInviteEmail] = useState("");
+  const [inviteRole, setInviteRole] = useState<"admin" | "co_admin">("co_admin");
+  const [invitePermissions, setInvitePermissions] = useState<AccessPermission[]>(["dashboard", "registry"]);
+  const [selectedMemberId, setSelectedMemberId] = useState<string | null>(null);
+  const [memberPermissions, setMemberPermissions] = useState<AccessPermission[]>([]);
+  const [submitting, setSubmitting] = useState(false);
+
+  const selectedMember = members.find((member) => member.id === selectedMemberId) || null;
+  const canManageAdmins = actor?.member_type === "super_admin";
+  const canManageCoAdmins = actor?.member_type === "super_admin" || actor?.member_type === "admin";
+
+  useEffect(() => {
+    if (selectedMember?.member_type === "co_admin") {
+      setMemberPermissions(selectedMember.permissions);
+      return;
+    }
+    setMemberPermissions([]);
+  }, [selectedMember?.id, selectedMember?.member_type, selectedMember?.permissions]);
+
+  const toggleInvitePermission = (permission: AccessPermission) => {
+    setInvitePermissions((current) =>
+      current.includes(permission)
+        ? current.filter((item) => item !== permission)
+        : [...current, permission],
+    );
+  };
+
+  const toggleMemberPermission = (permission: AccessPermission) => {
+    setMemberPermissions((current) =>
+      current.includes(permission)
+        ? current.filter((item) => item !== permission)
+        : [...current, permission],
+    );
+  };
+
+  const handleInvite = async () => {
+    setSubmitting(true);
+    try {
+      const message = await inviteMember({
+        email: inviteEmail,
+        memberType: inviteRole,
+        permissions: inviteRole === "admin" ? [] : invitePermissions,
+      });
+      toast({ title: "Access updated", description: message });
+      setInviteEmail("");
+      setInviteRole("co_admin");
+      setInvitePermissions(["dashboard", "registry"]);
+    } catch (nextError) {
+      toast({
+        title: "Invite failed",
+        description: nextError instanceof Error ? nextError.message : "Unable to invite member.",
+        variant: "destructive",
+      });
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const handlePermissionSave = async () => {
+    if (!selectedMember) {
+      return;
+    }
+    setSubmitting(true);
+    try {
+      const message = await updatePermissions(selectedMember.id, memberPermissions);
+      toast({ title: "Permissions saved", description: message });
+    } catch (nextError) {
+      toast({
+        title: "Save failed",
+        description: nextError instanceof Error ? nextError.message : "Unable to update permissions.",
+        variant: "destructive",
+      });
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const handleRemove = async (memberId: string) => {
+    setSubmitting(true);
+    try {
+      const message = await removeMember(memberId);
+      toast({ title: "Member removed", description: message });
+      if (selectedMemberId === memberId) {
+        setSelectedMemberId(null);
+      }
+    } catch (nextError) {
+      toast({
+        title: "Remove failed",
+        description: nextError instanceof Error ? nextError.message : "Unable to remove member.",
+        variant: "destructive",
+      });
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
   return (
     <div className="p-8 max-w-[1200px] mx-auto space-y-6 animate-fade-in">
       <div className="flex items-start justify-between">
         <div>
           <h1 className="text-3xl font-heading font-bold text-foreground">Access Control</h1>
-          <p className="text-muted-foreground mt-1">Manage administrator access and permissions</p>
+          <p className="text-muted-foreground mt-1">Manage super admin, admin, and co-admin access without changing auth flow.</p>
         </div>
-        <Button className="gold-gradient text-accent-foreground hover:opacity-90 transition-opacity gap-2 shadow-md">
-          <UserPlus className="w-4 h-4" /> Invite Admin
-        </Button>
+        <Badge variant="outline" className="px-3 py-1 text-sm">
+          Active actor: {actor ? roleLabel(actor) : "Loading"}
+        </Badge>
       </div>
 
-      {/* Invite card */}
-      <Card className="card-shadow border-2 border-dashed border-accent/30 hover:border-accent/50 transition-colors">
-        <CardContent className="p-5">
-          <div className="flex flex-wrap items-end gap-4">
-            <div className="flex-1 min-w-[240px]">
-              <label className="text-sm font-medium text-foreground mb-1.5 block">Invite by Email</label>
-              <div className="relative">
-                <Mail className="absolute left-3 top-2.5 w-4 h-4 text-muted-foreground" />
-                <Input placeholder="colleague@institution.edu" className="pl-10 focus:ring-2 focus:ring-accent/20 transition-shadow" />
+      <Alert className="border-amber-300 bg-amber-50/70 text-amber-950">
+        <AlertTriangle className="h-4 w-4" />
+        <AlertTitle>Reserved super admin</AlertTitle>
+        <AlertDescription>
+          The account CERTIFYPRO with email certifyprocare@gmail.com is always treated as the fixed super admin.
+        </AlertDescription>
+      </Alert>
+
+      {error ? (
+        <Alert variant="destructive">
+          <AlertTriangle className="h-4 w-4" />
+          <AlertTitle>Access control load failed</AlertTitle>
+          <AlertDescription>
+            {error}
+            {degraded ? " The rest of the admin panel is still available, but access management needs the backend API to respond." : ""}
+          </AlertDescription>
+        </Alert>
+      ) : null}
+
+      {degraded ? (
+        <Alert className="border-amber-300 bg-amber-50/70 text-amber-950">
+          <AlertTriangle className="h-4 w-4" />
+          <AlertTitle>Read-only fallback mode</AlertTitle>
+          <AlertDescription>
+            Role visibility is available, but invite, update, and remove actions stay disabled until the backend storage responds again.
+          </AlertDescription>
+        </Alert>
+      ) : null}
+
+      {degraded ? (
+        <div className="flex justify-end">
+          <Button variant="outline" onClick={() => void refresh()} disabled={loading || submitting}>
+            Retry Access Control
+          </Button>
+        </div>
+      ) : null}
+
+      <div className="grid gap-6 lg:grid-cols-[1.15fr_0.85fr]">
+        <Card className="card-shadow border-2 border-dashed border-accent/30 hover:border-accent/50 transition-colors">
+          <CardHeader className="pb-3">
+            <CardTitle className="text-base font-heading flex items-center gap-2">
+              <UserPlus className="w-4 h-4 text-accent" />
+              Invite administrator
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-5">
+            <div className="grid gap-4 md:grid-cols-[1fr_220px]">
+              <div>
+                <Label className="mb-2 block text-sm font-medium">Invite by email</Label>
+                <div className="relative">
+                  <Mail className="absolute left-3 top-2.5 w-4 h-4 text-muted-foreground" />
+                  <Input
+                    value={inviteEmail}
+                    onChange={(event) => setInviteEmail(event.target.value)}
+                    placeholder="colleague@institution.edu"
+                    className="pl-10"
+                  />
+                </div>
+              </div>
+              <div>
+                <Label className="mb-2 block text-sm font-medium">Role</Label>
+                <Select
+                  value={inviteRole}
+                  onValueChange={(value: "admin" | "co_admin") => setInviteRole(value)}
+                  disabled={!canManageCoAdmins}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select a role" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {canManageAdmins ? <SelectItem value="admin">Admin</SelectItem> : null}
+                    <SelectItem value="co_admin">Co-Admin</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
             </div>
-            <div className="w-40">
-              <label className="text-sm font-medium text-foreground mb-1.5 block">Role</label>
-              <select className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus:ring-2 focus:ring-accent/20 focus:outline-none transition-shadow">
-                <option>Admin</option>
-                <option>Super Admin</option>
-              </select>
-            </div>
-            <Button className="gap-2 gold-gradient text-accent-foreground hover:opacity-90 transition-opacity">
-              <UserPlus className="w-4 h-4" /> Send Invite
-            </Button>
-          </div>
-        </CardContent>
-      </Card>
 
-      {/* Admins Table */}
+            <div className="rounded-xl border border-border bg-muted/20 p-4">
+              <div className="flex items-center justify-between gap-3">
+                <div>
+                  <p className="text-sm font-medium text-foreground">Component permissions</p>
+                  <p className="text-xs text-muted-foreground">Required for co-admins. Admins automatically get full access.</p>
+                </div>
+                {inviteRole === "admin" ? <Badge>Full access</Badge> : <Badge variant="outline">Custom access</Badge>}
+              </div>
+              <div className="mt-4 grid gap-3 sm:grid-cols-2">
+                {permissionCatalog
+                  .filter((permission) => permission.key !== "access_control")
+                  .map((permission) => (
+                    <label
+                      key={permission.key}
+                      className="flex items-start gap-3 rounded-lg border border-border bg-background px-3 py-3"
+                    >
+                      <Checkbox
+                        checked={inviteRole === "admin" || invitePermissions.includes(permission.key)}
+                        onCheckedChange={() => toggleInvitePermission(permission.key)}
+                        disabled={inviteRole === "admin"}
+                      />
+                      <div>
+                        <p className="text-sm font-medium text-foreground">{permission.label}</p>
+                        <p className="text-xs text-muted-foreground">{permission.description}</p>
+                      </div>
+                    </label>
+                  ))}
+              </div>
+            </div>
+
+            <div className="flex justify-end">
+              <Button
+                onClick={() => void handleInvite()}
+                disabled={submitting || !inviteEmail.trim() || !canManageCoAdmins || degraded || !managementAvailable}
+                className="gap-2 gold-gradient text-accent-foreground hover:opacity-90 transition-opacity"
+              >
+                <UserPlus className="w-4 h-4" />
+                {inviteRole === "admin" ? "Invite Admin" : "Invite Co-Admin"}
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card className="card-shadow">
+          <CardHeader className="pb-3">
+            <CardTitle className="text-base font-heading flex items-center gap-2">
+              <Shield className="w-4 h-4 text-accent" />
+              Selected member permissions
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            {selectedMember ? (
+              <>
+                <div>
+                  <p className="text-sm font-semibold text-foreground">{selectedMember.name}</p>
+                  <p className="text-xs text-muted-foreground">{selectedMember.email}</p>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Badge variant="outline">{roleLabel(selectedMember)}</Badge>
+                  <Badge variant={selectedMember.status === "active" ? "default" : "secondary"}>{selectedMember.status}</Badge>
+                </div>
+                <div className="space-y-3">
+                  {permissionCatalog
+                    .filter((permission) => permission.key !== "access_control")
+                    .map((permission) => (
+                      <label key={permission.key} className="flex items-start gap-3 rounded-lg border border-border p-3">
+                        <Checkbox
+                          checked={selectedMember.member_type !== "co_admin" || memberPermissions.includes(permission.key)}
+                          onCheckedChange={() => toggleMemberPermission(permission.key)}
+                          disabled={selectedMember.member_type !== "co_admin" || !canManageCoAdmins}
+                        />
+                        <div>
+                          <p className="text-sm font-medium text-foreground">{permission.label}</p>
+                          <p className="text-xs text-muted-foreground">{permission.description}</p>
+                        </div>
+                      </label>
+                    ))}
+                </div>
+                <Button
+                  onClick={() => void handlePermissionSave()}
+                  disabled={submitting || selectedMember.member_type !== "co_admin" || !canManageCoAdmins || degraded || !managementAvailable}
+                  className="w-full"
+                >
+                  Save Permissions
+                </Button>
+              </>
+            ) : (
+              <div className="rounded-xl border border-dashed border-border p-6 text-center text-sm text-muted-foreground">
+                Select a co-admin from the table to edit granular component access.
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      </div>
+
       <Card className="card-shadow">
         <CardHeader className="pb-3">
           <CardTitle className="text-base font-heading flex items-center gap-2">
-            <Shield className="w-4 h-4 text-accent" />
-            Approved Administrators ({admins.length})
+            <Users className="w-4 h-4 text-accent" />
+            Approved administrators and co-admins ({members.length})
           </CardTitle>
         </CardHeader>
         <CardContent className="p-0">
@@ -86,53 +381,81 @@ const AccessControl = () => {
               <TableRow>
                 <TableHead>Administrator</TableHead>
                 <TableHead>Role</TableHead>
+                <TableHead>Status</TableHead>
                 <TableHead>Joined</TableHead>
+                <TableHead>Permissions</TableHead>
                 <TableHead className="text-right">Actions</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
-              {admins.map((admin) => (
-                <TableRow key={admin.email} className="hover:bg-accent/5 transition-colors">
-                  <TableCell>
-                    <div className="flex items-center gap-3">
-                      <Avatar className="h-9 w-9">
-                        <AvatarFallback className="bg-primary text-primary-foreground text-xs font-medium">
-                          {admin.initials}
-                        </AvatarFallback>
-                      </Avatar>
-                      <div>
-                        <p className="font-medium text-sm">{admin.name}</p>
-                        <p className="text-xs text-muted-foreground">{admin.email}</p>
+              {members.map((member) => {
+                const removable = member.member_type === "co_admin" ? canManageCoAdmins : canManageAdmins;
+                return (
+                  <TableRow key={member.id} className="hover:bg-accent/5 transition-colors">
+                    <TableCell>
+                      <div className="flex items-center gap-3">
+                        <Avatar className="h-9 w-9">
+                          <AvatarFallback className="bg-primary text-primary-foreground text-xs font-medium">
+                            {getInitials(member.name)}
+                          </AvatarFallback>
+                        </Avatar>
+                        <div>
+                          <p className="font-medium text-sm">{member.name}</p>
+                          <p className="text-xs text-muted-foreground">{member.email}</p>
+                        </div>
                       </div>
-                    </div>
-                  </TableCell>
-                  <TableCell>
-                    {admin.role === "Super Admin" ? (
-                      <Badge className="gap-1 gold-gradient text-accent-foreground border-0">
-                        <Crown className="w-3 h-3" /> Super Admin
-                      </Badge>
-                    ) : (
-                      <Badge variant="outline" className="gap-1">
-                        <ShieldCheck className="w-3 h-3" /> Admin
-                      </Badge>
-                    )}
-                  </TableCell>
-                  <TableCell className="text-sm text-muted-foreground">{admin.joined}</TableCell>
-                  <TableCell className="text-right">
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" size="sm" className="hover:bg-accent/10 transition-colors">
-                          <MoreHorizontal className="w-4 h-4" />
+                    </TableCell>
+                    <TableCell>
+                      {member.member_type === "super_admin" ? (
+                        <Badge className="gap-1 gold-gradient text-accent-foreground border-0">
+                          <Crown className="w-3 h-3" /> Super Admin
+                        </Badge>
+                      ) : (
+                        <Badge variant="outline" className="gap-1">
+                          <ShieldCheck className="w-3 h-3" /> {roleLabel(member)}
+                        </Badge>
+                      )}
+                    </TableCell>
+                    <TableCell>
+                      <Badge variant={member.status === "active" ? "default" : "secondary"}>{member.status}</Badge>
+                    </TableCell>
+                    <TableCell className="text-sm text-muted-foreground">{formatJoined(member.joined_at)}</TableCell>
+                    <TableCell>
+                      <div className="flex flex-wrap gap-2">
+                        {(member.member_type === "admin" || member.member_type === "super_admin"
+                          ? ["All modules"]
+                          : member.permissions.map((permission) => permissionCatalog.find((item) => item.key === permission)?.label || permission)
+                        ).map((permission) => (
+                          <Badge key={`${member.id}-${permission}`} variant="secondary" className="text-xs">
+                            {permission}
+                          </Badge>
+                        ))}
+                      </div>
+                    </TableCell>
+                    <TableCell className="text-right">
+                      <div className="flex justify-end gap-2">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setSelectedMemberId(member.id)}
+                          disabled={member.member_type !== "co_admin" || loading || degraded || !managementAvailable}
+                        >
+                          Manage
                         </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end">
-                        <DropdownMenuItem>Change Role</DropdownMenuItem>
-                        <DropdownMenuItem className="text-destructive">Remove Access</DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                  </TableCell>
-                </TableRow>
-              ))}
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="text-destructive hover:text-destructive"
+                          onClick={() => void handleRemove(member.id)}
+                          disabled={!removable || member.is_current_user || loading || submitting || degraded || !managementAvailable}
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </Button>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                );
+              })}
             </TableBody>
           </Table>
         </CardContent>

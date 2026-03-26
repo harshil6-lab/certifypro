@@ -16,6 +16,7 @@ class Settings:
         origins = os.getenv("FRONTEND_ORIGINS", "http://localhost:5173")
         # allow comma-separated list
         self.FRONTEND_ORIGINS = [o.strip() for o in origins.split(",") if o.strip()]
+        self.ACCESS_INVITE_REDIRECT_URL = os.getenv("ACCESS_INVITE_REDIRECT_URL", "").strip()
 
 
 def get_settings() -> Settings:

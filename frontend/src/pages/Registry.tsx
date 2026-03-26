@@ -31,11 +31,17 @@ import {
 } from "@/components/ui/select";
 import { supabase } from "@/lib/supabaseClient";
 import { API_BASE } from "@/services/apiService";
+import { addSessionActivity } from "@/services/sessionActivity";
 
 const statusConfig = {
   issued: { label: "Active", icon: CheckCircle2, className: "text-success border-success/30 bg-success/5" },
+  active: { label: "Active", icon: CheckCircle2, className: "text-success border-success/30 bg-success/5" },
   pending: { label: "Pending", icon: Clock, className: "text-accent border-accent/30 bg-accent/5" },
+  inactive: { label: "Non-Active", icon: Clock, className: "text-accent border-accent/30 bg-accent/5" },
+  "non-active": { label: "Non-Active", icon: Clock, className: "text-accent border-accent/30 bg-accent/5" },
   revoked: { label: "Revoked", icon: Ban, className: "text-destructive border-destructive/30 bg-destructive/5" },
+  expired: { label: "Archived", icon: Clock, className: "text-muted-foreground border-border bg-muted/40" },
+  archived: { label: "Archived", icon: Clock, className: "text-muted-foreground border-border bg-muted/40" },
 };
 
 type RegistryCertificate = {
@@ -48,6 +54,28 @@ type RegistryCertificate = {
   status?: string;
   download_url?: string | null;
   verification_url?: string | null;
+  retention_note?: string | null;
+};
+
+const formatIssuedTimestamp = (value?: string | null) => {
+  if (!value) return { date: "N/A", time: "" };
+
+  const parsed = new Date(value);
+  if (Number.isNaN(parsed.getTime())) {
+    return { date: "N/A", time: "" };
+  }
+
+  return {
+    date: parsed.toLocaleDateString(),
+    time: parsed.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
+  };
+};
+
+const normalizeStatus = (value?: string | null) => {
+  const normalized = (value ?? "issued").toLowerCase();
+  if (normalized === "active") return "issued";
+  if (normalized === "expired") return "archived";
+  return normalized;
 };
 
 const Registry = () => {
@@ -97,7 +125,7 @@ const Registry = () => {
       (c.full_name?.toLowerCase().includes(search.toLowerCase()) ?? false) ||
       (c.external_id?.toLowerCase().includes(search.toLowerCase()) ?? false) ||
       (c.email?.toLowerCase().includes(search.toLowerCase()) ?? false);
-    const certificateStatus = c.status ?? "issued";
+    const certificateStatus = normalizeStatus(c.status);
     const matchesStatus = statusFilter === "all" || certificateStatus === statusFilter;
     return matchesSearch && matchesStatus;
   });
@@ -109,6 +137,7 @@ const Registry = () => {
           <h1 className="text-3xl font-heading font-bold text-foreground">Certificate Registry</h1>
           <p className="text-muted-foreground mt-1">View, manage, and track all issued certificates</p>
           <Badge variant="secondary" className="mt-2 text-xs">Connected to backend</Badge>
+          <p className="text-xs text-muted-foreground mt-2">Generated certificate files are automatically removed after 1 week.</p>
         </div>
       </div>
 
@@ -149,7 +178,9 @@ const Registry = () => {
                 <SelectItem value="all">All Status</SelectItem>
                 <SelectItem value="issued">Active</SelectItem>
                 <SelectItem value="pending">Pending</SelectItem>
+                <SelectItem value="inactive">Non-Active</SelectItem>
                 <SelectItem value="revoked">Revoked</SelectItem>
+                <SelectItem value="archived">Archived</SelectItem>
               </SelectContent>
             </Select>
             <Button variant="outline" size="sm" className="gap-2 hover:bg-accent/5 hover:border-accent/50 transition-colors">
@@ -188,7 +219,7 @@ const Registry = () => {
                   <TableHead>Certificate ID</TableHead>
                   <TableHead>Recipient</TableHead>
                   <TableHead>Email</TableHead>
-                  <TableHead>Date Issued</TableHead>
+                  <TableHead>Issued At</TableHead>
                   <TableHead>Status</TableHead>
                   <TableHead className="text-right">Actions</TableHead>
                 </TableRow>
@@ -196,15 +227,18 @@ const Registry = () => {
               <TableBody>
                 {filtered.length > 0 ? (
                   filtered.map((cert) => {
-                    const certificateStatus = cert.status ?? "issued";
+                    const certificateStatus = normalizeStatus(cert.status);
                     const status = statusConfig[certificateStatus as keyof typeof statusConfig] || statusConfig.pending;
-                    const issuedDate = cert.created_at ? new Date(cert.created_at).toLocaleDateString() : "N/A";
+                    const issuedAt = formatIssuedTimestamp(cert.created_at);
                     return (
                       <TableRow key={cert.id || cert.external_id} className="hover:bg-accent/5 transition-colors">
                         <TableCell className="font-mono text-sm">{cert.external_id || "N/A"}</TableCell>
                         <TableCell className="font-medium text-sm">{cert.full_name || "N/A"}</TableCell>
                         <TableCell className="text-sm text-muted-foreground">{cert.email || "N/A"}</TableCell>
-                        <TableCell className="text-sm text-muted-foreground">{issuedDate}</TableCell>
+                        <TableCell className="text-sm text-muted-foreground">
+                          <div>{issuedAt.date}</div>
+                          <div className="text-xs text-muted-foreground/80">{issuedAt.time || "Time unavailable"}</div>
+                        </TableCell>
                         <TableCell>
                           <Badge variant="outline" className={`gap-1 ${status.className}`}>
                             <status.icon className="w-3 h-3" />
@@ -215,17 +249,34 @@ const Registry = () => {
                           <div className="flex items-center justify-end gap-2">
                             {cert.download_url ? (
                               <Button asChild variant="ghost" size="sm" className="hover:bg-accent/10 transition-colors gap-2">
-                                <a href={cert.download_url} target="_blank" rel="noreferrer">
+                                <a
+                                  href={cert.download_url}
+                                  target="_blank"
+                                  rel="noreferrer"
+                                  onClick={() => addSessionActivity("certificate_downloaded", cert.external_id || cert.full_name, {
+                                    certificateId: cert.external_id,
+                                  })}
+                                >
                                   <Download className="w-4 h-4" /> Download
                                 </a>
                               </Button>
                             ) : null}
                             <Button asChild variant="ghost" size="sm" className="hover:bg-accent/10 transition-colors gap-2">
-                              <a href={`/verify/${encodeURIComponent(cert.external_id)}`} target="_blank" rel="noreferrer">
+                              <a
+                                href={`/verify/${encodeURIComponent(cert.external_id)}`}
+                                target="_blank"
+                                rel="noreferrer"
+                                onClick={() => addSessionActivity("certificate_verified", cert.external_id || cert.full_name, {
+                                  certificateId: cert.external_id,
+                                })}
+                              >
                                 <ExternalLink className="w-4 h-4" /> Verify
                               </a>
                             </Button>
                           </div>
+                          {cert.retention_note ? (
+                            <p className="mt-2 text-xs text-muted-foreground">{cert.retention_note}</p>
+                          ) : null}
                         </TableCell>
                       </TableRow>
                     );
