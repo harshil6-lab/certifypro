@@ -143,20 +143,44 @@ def _fetch_app_user_by_auth_or_email(auth_user_id: str | None, email: str | None
     return None
 
 
+def _fetch_app_user_by_id(app_user_id: str | None) -> dict[str, Any] | None:
+    if not app_user_id:
+        return None
+
+    try:
+        response = (
+            supabase.table("app_users")
+            .select("*")
+            .eq("id", app_user_id)
+            .limit(1)
+            .execute()
+        )
+        return _single(response)
+    except Exception:
+        return None
+
+
 def _persist_app_user(existing_row: dict[str, Any] | None, payload: dict[str, Any]) -> dict[str, Any]:
     if existing_row and existing_row.get("id"):
-        response = (
+        (
             supabase.table("app_users")
             .update(payload)
             .eq("id", existing_row["id"])
-            .select("*")
             .execute()
         )
-        row = _single(response)
+        row = _fetch_app_user_by_id(existing_row["id"])
         return row or {**existing_row, **payload}
 
-    response = supabase.table("app_users").insert(payload).select("*").execute()
+    response = supabase.table("app_users").insert(payload).execute()
     row = _single(response)
+    if row and row.get("id"):
+        refreshed_row = _fetch_app_user_by_id(row.get("id"))
+        if refreshed_row:
+            return refreshed_row
+
+    if not row and (payload.get("auth_uid") or payload.get("email")):
+        row = _fetch_app_user_by_auth_or_email(payload.get("auth_uid"), payload.get("email"))
+
     if not row:
         raise HTTPException(status_code=500, detail="Failed to create access control member.")
     return row

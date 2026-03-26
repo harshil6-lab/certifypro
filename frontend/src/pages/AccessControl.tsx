@@ -107,6 +107,12 @@ const AccessControl = () => {
     setMemberPermissions([]);
   }, [selectedMember?.id, selectedMember?.member_type, selectedMember?.permissions]);
 
+  useEffect(() => {
+    if (inviteRole === "admin" && !canManageAdmins) {
+      setInviteRole("co_admin");
+    }
+  }, [inviteRole, canManageAdmins]);
+
   const toggleInvitePermission = (permission: AccessPermission) => {
     setInvitePermissions((current) =>
       current.includes(permission)
@@ -313,6 +319,12 @@ const AccessControl = () => {
                 {inviteRole === "admin" ? "Invite Admin" : "Invite Co-Admin"}
               </Button>
             </div>
+
+            {degraded || !managementAvailable ? (
+              <p className="text-xs text-muted-foreground text-right">
+                Invite actions will unlock automatically once access-control storage responds again.
+              </p>
+            ) : null}
           </CardContent>
         </Card>
 
