@@ -1,5 +1,6 @@
 import type { AuthChangeEvent, Session } from "@supabase/supabase-js";
 import { isSupabaseConfigured, supabase } from "@/lib/supabaseClient";
+import { API_BASE } from "@/services/apiService";
 
 const AUTH_KEY = "certifypro_auth";
 
@@ -238,8 +239,49 @@ export type UserProfile = {
   email: string;
   role: "staff" | "admin" | "super_admin";
   organization?: string;
+  full_name?: string;
+  phone?: string;
+  department?: string;
+  designation?: string;
+  institution_name?: string;
+  institution_logo?: string;
+  address?: string;
+  domain?: string;
+  created_at?: string;
+  last_login_at?: string;
+  notification_preferences?: {
+    email_alerts?: boolean;
+    security_alerts?: boolean;
+  };
   first_login_required: boolean;
 };
+
+async function fetchUserProfileWithToken(token: string): Promise<Response> {
+  return fetch(`${API_BASE}/user/profile`, {
+    method: "GET",
+    headers: {
+      "Authorization": `Bearer ${token}`,
+      "Content-Type": "application/json",
+    },
+  });
+}
+
+async function bootstrapMissingProfile(token: string): Promise<boolean> {
+  try {
+    const response = await fetch(`${API_BASE}/api/access-control/overview`, {
+      method: "GET",
+      headers: {
+        "Authorization": `Bearer ${token}`,
+        "Content-Type": "application/json",
+      },
+    });
+
+    return response.ok;
+  } catch (error) {
+    console.warn("Unable to bootstrap missing profile from access control:", error);
+    return false;
+  }
+}
 
 /**
  * Fetch current user's profile with role and organization.
@@ -265,13 +307,7 @@ export async function getCurrentUserProfile(): Promise<UserProfile | null> {
       return null;
     }
 
-    const response = await fetch(`${window.location.origin}/api/user/profile`, {
-      method: "GET",
-      headers: {
-        "Authorization": `Bearer ${token}`,
-        "Content-Type": "application/json",
-      },
-    });
+    let response = await fetchUserProfileWithToken(token);
 
     if (!response.ok) {
       if (response.status === 401) {
@@ -279,10 +315,18 @@ export async function getCurrentUserProfile(): Promise<UserProfile | null> {
         return null;
       }
       if (response.status === 404) {
-        console.warn("User profile not found");
-        return null;
+        const bootstrapped = await bootstrapMissingProfile(token);
+        if (bootstrapped) {
+          response = await fetchUserProfileWithToken(token);
+        }
+        if (response.status === 404) {
+          console.warn("User profile not found");
+          return null;
+        }
       }
+      if (!response.ok) {
       throw new Error(`HTTP ${response.status}`);
+      }
     }
 
     const data = await response.json();
@@ -340,7 +384,7 @@ export async function markFirstLoginComplete(): Promise<AuthResult> {
       };
     }
 
-    const response = await fetch(`${window.location.origin}/api/user/profile/complete-first-login`, {
+    const response = await fetch(`${API_BASE}/user/profile/complete-first-login`, {
       method: "POST",
       headers: {
         "Authorization": `Bearer ${token}`,

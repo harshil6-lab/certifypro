@@ -43,6 +43,50 @@ const createSafeRandomId = (): string => {
   return `fallback-${Date.now()}-${Math.floor(Math.random() * 1_000_000_000)}`;
 };
 
+const normalizeOrganizationName = (value: string): string =>
+  value.trim().replace(/\s+/g, " ");
+
+const organizationKey = (value: string): string =>
+  normalizeOrganizationName(value).toLowerCase().replace(/[^a-z0-9]/g, "");
+
+const findOrganizationConflict = async (
+  submittedOrganization: string,
+): Promise<{ id: string; name: string } | null> => {
+  if (!supabase) {
+    return null;
+  }
+
+  const normalizedOrganization = normalizeOrganizationName(submittedOrganization);
+  const key = organizationKey(normalizedOrganization);
+  if (!normalizedOrganization || !key) {
+    return null;
+  }
+
+  try {
+    const { data, error } = await supabase
+      .from("organizations")
+      .select("id, name, organization_key")
+      .eq("organization_key", key)
+      .maybeSingle();
+
+    if (error || !data?.id || !data?.name) {
+      return null;
+    }
+
+    const canonicalName = normalizeOrganizationName(data.name);
+    if (canonicalName !== normalizedOrganization) {
+      return {
+        id: data.id,
+        name: data.name,
+      };
+    }
+  } catch {
+    return null;
+  }
+
+  return null;
+};
+
 const uploadOrganizationDocument = async (file: File): Promise<string> => {
   if (!supabase) {
     throw new Error("Supabase client is unavailable.");
@@ -89,6 +133,15 @@ export async function submitAccessRequest(
   }
 
   try {
+    const normalizedOrganization = normalizeOrganizationName(input.organization);
+    const conflict = await findOrganizationConflict(normalizedOrganization);
+    if (conflict) {
+      return {
+        success: false,
+        error: `Organization already exists as \"${conflict.name}\" (Org ID: ${conflict.id}). Use the registered organization name exactly.`,
+      };
+    }
+
     const orgDocumentPath = await uploadOrganizationDocument(input.organizationDocument);
 
     const { data: requestRow, error: insertError } = await supabase
@@ -96,7 +149,7 @@ export async function submitAccessRequest(
       .insert({
         full_name: input.fullName.trim(),
         email: input.email.trim().toLowerCase(),
-        organization: input.organization.trim(),
+        organization: normalizedOrganization,
         linkedin_url: input.linkedinUrl?.trim() || null,
         org_document_url: orgDocumentPath,
         reason_for_access: input.reasonForAccess?.trim() || null,

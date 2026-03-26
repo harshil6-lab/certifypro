@@ -16,6 +16,7 @@ from typing import Any, List, Optional
 
 from app.core.supabase_client import supabase
 from app.services.auth_service import get_current_user
+from app.services.students_service import build_student_metadata, resolve_student_scope
 
 router = APIRouter(prefix="/api/import-students", tags=["Import Students"])
 
@@ -145,6 +146,7 @@ async def save_students(payload: _SavePayload, request: Request):
     user = get_current_user(token) if token else None
     user_id = _extract_user_id(user)
     user_email = _extract_user_email(user)
+    scope = resolve_student_scope(user_id, user_email)
 
     # Ensure the app_users record exists before inserting any students so that
     # foreign-key constraints on created_by are satisfied.
@@ -183,7 +185,7 @@ async def save_students(payload: _SavePayload, request: Request):
             "full_name": name,
             "email": email,
             "external_id": cert_id,
-            "metadata": {},
+            "metadata": build_student_metadata(scope, user_email),
         }
         if user_id:
             record["created_by"] = user_id

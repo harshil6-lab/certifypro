@@ -1,3 +1,4 @@
+import { useEffect, useState } from "react";
 import { QrCode, Move } from "lucide-react";
 
 interface LayoutConfig {
@@ -28,9 +29,28 @@ interface LayoutPreviewProps {
  * placeholder using absolute positioning driven by the layout percentages.
  */
 export const LayoutPreview = ({ templateUrl, templateTitle, layoutConfig }: LayoutPreviewProps) => {
+  const [aspectRatio, setAspectRatio] = useState(1.414);
+
+  useEffect(() => {
+    if (!templateUrl) {
+      setAspectRatio(1.414);
+      return;
+    }
+
+    const image = new Image();
+    image.onload = () => {
+      if (image.naturalWidth > 0 && image.naturalHeight > 0) {
+        setAspectRatio(image.naturalWidth / image.naturalHeight);
+      }
+    };
+    image.src = templateUrl;
+  }, [templateUrl]);
+
   return (
-    /* Outer container — fixed aspect ratio, clips children */
-    <div className="aspect-[1.414/1] rounded-lg border border-dashed border-border relative overflow-hidden seal-pattern bg-muted/40">
+    <div
+      className="w-full rounded-lg border border-dashed border-border relative overflow-hidden seal-pattern bg-muted/40"
+      style={{ aspectRatio: `${aspectRatio}` }}
+    >
 
       {/* Background image layer */}
       {templateUrl && (
@@ -38,7 +58,7 @@ export const LayoutPreview = ({ templateUrl, templateTitle, layoutConfig }: Layo
           <img
             src={templateUrl}
             alt={templateTitle ?? "certificate template"}
-            className="preview-background-image absolute inset-0 w-full h-full object-cover"
+            className="preview-background-image absolute inset-0 w-full h-full object-fill"
             style={{ zIndex: 0 }}
           />
         </div>

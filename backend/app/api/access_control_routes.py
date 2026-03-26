@@ -27,19 +27,34 @@ def _extract_identity(user: Any) -> AuthIdentity:
         raise HTTPException(status_code=401, detail="Unauthorized")
     if isinstance(user, dict):
         nested = user.get("user") if isinstance(user.get("user"), dict) else {}
+        nested_metadata = nested.get("user_metadata") if isinstance(nested.get("user_metadata"), dict) else {}
+        user_metadata = user.get("user_metadata") if isinstance(user.get("user_metadata"), dict) else {}
         auth_user_id = nested.get("id") or user.get("id")
         email = nested.get("email") or user.get("email")
-        full_name = nested.get("user_metadata", {}).get("full_name") or user.get("full_name")
+        full_name = nested_metadata.get("full_name") or user.get("full_name")
+        organization = (
+            nested_metadata.get("organization")
+            or user_metadata.get("organization")
+            or nested_metadata.get("institution_name")
+        )
     else:
         nested = getattr(user, "user", None)
         auth_user_id = getattr(nested, "id", None) or getattr(user, "id", None)
         email = getattr(nested, "email", None) or getattr(user, "email", None)
-        full_name = getattr(getattr(nested, "user_metadata", None), "get", lambda *_: None)("full_name") if nested else None
+        metadata = getattr(nested, "user_metadata", None) if nested else None
+        metadata_get = metadata.get if isinstance(metadata, dict) else (lambda *_: None)
+        full_name = metadata_get("full_name") if nested else None
+        organization = metadata_get("organization") if nested else None
 
     if not auth_user_id or not email:
         raise HTTPException(status_code=401, detail="Invalid authenticated user payload")
 
-    return AuthIdentity(auth_user_id=str(auth_user_id), email=str(email), full_name=full_name)
+    return AuthIdentity(
+        auth_user_id=str(auth_user_id),
+        email=str(email),
+        full_name=full_name,
+        organization=organization,
+    )
 
 
 def _require_identity(request: Request) -> AuthIdentity:

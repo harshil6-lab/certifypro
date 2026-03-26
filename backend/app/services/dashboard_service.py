@@ -1,6 +1,7 @@
 from typing import Any, Dict, List
 from ._supabase_helpers import select_table
 from app.core.supabase_client import supabase
+from app.services.students_service import list_students, resolve_student_scope
 
 
 def _rows(resp: Any) -> list[dict[str, Any]]:
@@ -150,8 +151,15 @@ def _count_admins() -> int:
 
 async def get_dashboard_stats(auth_user_id: str, auth_email: str | None = None) -> Dict[str, Any]:
     """Get dashboard statistics for a specific user."""
-    owner_ids = _resolve_app_user_ids(auth_user_id, auth_email)
+    scope = resolve_student_scope(auth_user_id, auth_email)
+    owner_ids = scope.get("owner_ids") or _resolve_app_user_ids(auth_user_id, auth_email)
     student_ids = _resolve_student_ids(owner_ids)
+    if not scope.get("is_super_admin"):
+        student_ids = [
+            str(student.get("id"))
+            for student in list_students(auth_user_id, auth_email)
+            if student.get("id")
+        ]
     template_ids = _resolve_template_ids(auth_user_id, owner_ids)
     generated_ids = _resolve_generated_certificate_ids(owner_ids, student_ids, template_ids)
 

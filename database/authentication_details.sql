@@ -1,5 +1,18 @@
 create extension if not exists "uuid-ossp";
 
+create table if not exists public.organizations (
+  id uuid primary key default uuid_generate_v4(),
+  name text not null,
+  organization_key text not null,
+  created_at timestamptz not null default now()
+);
+
+create unique index if not exists idx_organizations_name_lower_unique
+on public.organizations (lower(name));
+
+create unique index if not exists idx_organizations_key_unique
+on public.organizations (organization_key);
+
 create table if not exists public.access_requests (
   id uuid primary key default uuid_generate_v4(),
   full_name text not null,
@@ -35,6 +48,23 @@ before update on public.access_requests
 for each row execute function public.set_access_request_updated_at();
 
 alter table public.access_requests enable row level security;
+
+alter table public.organizations enable row level security;
+
+drop policy if exists "anon_select_organizations" on public.organizations;
+create policy "anon_select_organizations"
+on public.organizations
+for select
+to anon, authenticated
+using (true);
+
+drop policy if exists "service_role_manage_organizations" on public.organizations;
+create policy "service_role_manage_organizations"
+on public.organizations
+for all
+to service_role
+using (true)
+with check (true);
 
 drop policy if exists "anon_insert_access_requests" on public.access_requests;
 create policy "anon_insert_access_requests"

@@ -14,6 +14,7 @@ from .api import (
     access_control_routes,
     auth_routes,
     certificates_routes,
+    contact_routes,
     dashboard_routes,
     students_routes,
     templates_routes,
@@ -69,6 +70,7 @@ app.include_router(public_verify_router)
 app.include_router(workspace_template_router)
 app.include_router(students_ready_router)
 app.include_router(access_control_routes.router)
+app.include_router(contact_routes.router)
 
 # Enable static file serving for uploaded templates
 uploads_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "uploads")

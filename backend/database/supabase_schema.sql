@@ -9,6 +9,20 @@
 -- Enable pgcrypto extension for gen_random_uuid() on Postgres (Supabase)
 create extension if not exists pgcrypto;
 
+-- ORGANIZATIONS: canonical registry with unique organization name and key
+create table if not exists organizations (
+  id uuid primary key default gen_random_uuid(),
+  name text not null,
+  organization_key text not null,
+  created_at timestamptz default now()
+);
+
+create unique index if not exists idx_organizations_name_lower_unique
+on organizations (lower(name));
+
+create unique index if not exists idx_organizations_key_unique
+on organizations (organization_key);
+
 -- USERS: application user metadata separate from Supabase auth
 create table if not exists app_users (
   id uuid primary key default gen_random_uuid(),

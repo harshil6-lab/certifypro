@@ -12,6 +12,218 @@ This implementation does not add a new database table. It stores access-control 
 4. Super admin can invite/remove admins and co-admins.
 5. Co-admins get only the component permissions assigned to them.
 
+## Organization-Scoped Rules (New)
+
+1. Every admin/co-admin belongs to one organization.
+2. Non-super-admin users can only view/manage members from their own organization.
+3. Admin can invite/remove only co-admin in the same organization.
+4. Co-admin cannot invite, remove, or change account permissions.
+5. Profile organization is auto-hydrated from `app_users.metadata.organization` and request-access history.
+
+## Mandatory SQL Backfill (Run Once)
+
+### 0. Create canonical organizations table (unique name + unique key + generated id)
+
+```sql
+create extension if not exists pgcrypto;
+
+create table if not exists public.organizations (
+  id uuid primary key default gen_random_uuid(),
+  name text not null,
+  organization_key text not null,
+  created_at timestamptz default now()
+);
+
+create unique index if not exists idx_organizations_name_lower_unique
+on public.organizations (lower(name));
+
+create unique index if not exists idx_organizations_key_unique
+on public.organizations (organization_key);
+
+alter table public.organizations enable row level security;
+
+drop policy if exists "anon_select_organizations" on public.organizations;
+create policy "anon_select_organizations"
+on public.organizations
+for select
+to anon, authenticated
+using (true);
+
+drop policy if exists "service_role_manage_organizations" on public.organizations;
+create policy "service_role_manage_organizations"
+on public.organizations
+for all
+to service_role
+using (true)
+with check (true);
+```
+
+### A. Ensure `app_users.metadata` exists
+
+```sql
+alter table public.app_users
+add column if not exists metadata jsonb default '{}'::jsonb;
+
+update public.app_users
+set metadata = '{}'::jsonb
+where metadata is null;
+```
+
+### B. Backfill organization from approved/pending access requests
+
+```sql
+with latest_requests as (
+  select distinct on (lower(email))
+    lower(email) as email,
+    organization,
+    created_at
+  from public.access_requests
+  where organization is not null
+  order by lower(email), created_at desc
+)
+update public.app_users u
+set metadata =
+  coalesce(u.metadata, '{}'::jsonb)
+  || jsonb_build_object('organization', lr.organization)
+  || jsonb_build_object(
+    'profile',
+    coalesce(u.metadata->'profile', '{}'::jsonb)
+    || jsonb_build_object(
+      'organization', lr.organization,
+      'institution_name', coalesce((u.metadata->'profile'->>'institution_name'), lr.organization)
+    )
+  )
+from latest_requests lr
+where lower(u.email) = lr.email
+  and coalesce(u.metadata->>'organization', '') = '';
+```
+
+### C. Backfill organization key for access-control rows
+
+```sql
+update public.app_users
+set metadata =
+  coalesce(metadata, '{}'::jsonb)
+  || jsonb_build_object(
+    'access_control',
+    coalesce(metadata->'access_control', '{}'::jsonb)
+    || jsonb_build_object(
+      'organization_key',
+      regexp_replace(lower(coalesce(metadata->>'organization', '')), '[^a-z0-9]', '', 'g')
+    )
+  )
+where (metadata ? 'access_control');
+```
+
+### C2. Populate canonical organizations and attach organization_id
+
+```sql
+insert into public.organizations (name, organization_key)
+select distinct
+  org_name,
+  regexp_replace(lower(org_name), '[^a-z0-9]', '', 'g') as organization_key
+from (
+  select nullif(trim(coalesce(
+    metadata->>'organization',
+    metadata->'profile'->>'organization',
+    metadata->'profile'->>'institution_name'
+  )), '') as org_name
+  from public.app_users
+) s
+where org_name is not null
+on conflict (organization_key) do update
+set name = excluded.name;
+
+update public.app_users u
+set metadata =
+  coalesce(u.metadata, '{}'::jsonb)
+  || jsonb_build_object('organization_id', o.id::text)
+  || jsonb_build_object(
+    'profile',
+    coalesce(u.metadata->'profile', '{}'::jsonb)
+    || jsonb_build_object('organization_id', o.id::text)
+  )
+  || jsonb_build_object(
+    'access_control',
+    coalesce(u.metadata->'access_control', '{}'::jsonb)
+    || jsonb_build_object(
+      'organization_id', o.id::text,
+      'organization_key', o.organization_key
+    )
+  )
+from public.organizations o
+where regexp_replace(
+        lower(coalesce(
+          u.metadata->>'organization',
+          u.metadata->'profile'->>'organization',
+          u.metadata->'profile'->>'institution_name',
+          ''
+        )),
+        '[^a-z0-9]',
+        '',
+        'g'
+      ) = o.organization_key;
+```
+
+### D. Add index for faster organization-scoped filtering
+
+```sql
+create index if not exists idx_app_users_access_control_org_key
+on public.app_users ((metadata->'access_control'->>'organization_key'));
+
+create index if not exists idx_app_users_email_lower
+on public.app_users (lower(email));
+```
+
+### E. Verify scope output
+
+```sql
+select
+  email,
+  role,
+  metadata->>'organization' as organization,
+  metadata->>'organization_id' as organization_id,
+  metadata->'access_control'->>'member_type' as member_type,
+  metadata->'access_control'->>'organization_key' as organization_key,
+  metadata->'access_control'->>'organization_id' as access_control_organization_id,
+  metadata->'access_control'->>'status' as status
+from public.app_users
+order by lower(email);
+```
+
+### F. Verify unique organization registry
+
+```sql
+select id, name, organization_key, created_at
+from public.organizations
+order by lower(name);
+```
+
+### G. Optional backfill for existing imported students
+
+Run this once if old rows in `public.students` were imported before organization scoping was added.
+
+```sql
+update public.students s
+set metadata =
+  coalesce(s.metadata, '{}'::jsonb)
+  || jsonb_build_object('organization', u.metadata->>'organization')
+  || jsonb_build_object('organization_id', u.metadata->>'organization_id')
+  || jsonb_build_object(
+    'organization_key',
+    coalesce(
+      u.metadata->'access_control'->>'organization_key',
+      regexp_replace(lower(coalesce(u.metadata->>'organization', '')), '[^a-z0-9]', '', 'g')
+    )
+  )
+from public.app_users u
+where s.created_by::text in (u.id::text, u.auth_uid::text)
+  and (
+    coalesce(s.metadata->>'organization_id', '') = ''
+    or coalesce(s.metadata->>'organization_key', '') = ''
+  );
+```
+
 ## Run Queries One By One
 
 ### 1. Check the current `app_users` structure

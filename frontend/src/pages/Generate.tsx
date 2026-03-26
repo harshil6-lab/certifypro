@@ -124,12 +124,28 @@ const Generate = () => {
 
   // Load students on mount from dedicated ready-endpoint
   useEffect(() => {
-    setLoadingData(true);
-    axios
-      .get("http://127.0.0.1:8000/api/students-ready")
-      .then((res) => setStudents(Array.isArray(res.data) ? res.data : []))
-      .catch(() => setStudents([]))
-      .finally(() => setLoadingData(false));
+    const loadStudents = async () => {
+      setLoadingData(true);
+      try {
+        let authHeader = "";
+        if (supabase) {
+          const { data } = await supabase.auth.getSession();
+          const token = data.session?.access_token;
+          if (token) authHeader = `Bearer ${token}`;
+        }
+
+        const res = await axios.get("http://127.0.0.1:8000/api/students-ready", {
+          headers: authHeader ? { Authorization: authHeader } : {},
+        });
+        setStudents(Array.isArray(res.data) ? res.data : []);
+      } catch {
+        setStudents([]);
+      } finally {
+        setLoadingData(false);
+      }
+    };
+
+    void loadStudents();
   }, []);
 
   useEffect(() => {
@@ -182,16 +198,22 @@ const Generate = () => {
 
     try {
       setProgress(30);
+      const renderContext = {
+        template_id: selectedTemplate,
+        template_url: workspaceTemplate?.file_url ?? null,
+        layout_config: resolvedLayoutConfig,
+      };
+
       const request = selectAllStudents
         ? axios.post(
             "http://127.0.0.1:8000/api/generate-certificates/all",
-            { template_id: selectedTemplate },
+            renderContext,
             { headers: authHeader ? { Authorization: authHeader } : {} },
           )
         : axios.post(
             "http://127.0.0.1:8000/api/generate-certificates",
             {
-              template_id: selectedTemplate,
+              ...renderContext,
               students: selectedStudentRecords.map((student) => ({
                 student_id: student.id,
                 student_name: student.full_name || "",
