@@ -16,6 +16,7 @@ import {
 import { API_BASE, getTemplates } from "@/services/apiService";
 import { LayoutPreview } from "@/components/LayoutPreview";
 import { addSessionActivity } from "@/services/sessionActivity";
+import { defaultLayoutConfig, normalizeLayoutConfig } from "@/lib/layoutConfig";
 
 const categories: Array<"All" | GalleryCategory> = ["All", "Academic", "Corporate", "Internship", "Event", "Compliance", "Training"];
 
@@ -72,18 +73,7 @@ const Templates = () => {
   const [layoutSaveStatus, setLayoutSaveStatus] = useState("Ready");
 
   // Unified layout configuration state
-  const [layoutConfig, setLayoutConfig] = useState({
-    showStudentName: true,
-    showQR: true,
-    showID: true,
-    placeholderField: "STUDENT_NAME",
-    placeholderX: 40,
-    placeholderY: 36,
-    qrX: 82,
-    qrY: 76,
-    idX: 10,
-    idY: 88,
-  });
+  const [layoutConfig, setLayoutConfig] = useState(defaultLayoutConfig);
 
   // Workspace preview state
   const [workspaceTemplate, setWorkspaceTemplate] = useState<WorkspaceTemplateState | null>(null);
@@ -94,7 +84,7 @@ const Templates = () => {
     try {
       const savedLayout = localStorage.getItem("certifypro_layout_config");
       if (savedLayout) {
-        setLayoutConfig((prev) => ({ ...prev, ...JSON.parse(savedLayout) }));
+        setLayoutConfig((prev) => ({ ...prev, ...normalizeLayoutConfig(JSON.parse(savedLayout)) }));
       }
     } catch {
       // ignore corrupt data
@@ -156,7 +146,7 @@ const Templates = () => {
           setUploadedTemplateName(payload.title);
         }
         if (payload.layout_config) {
-          setLayoutConfig((prev) => ({ ...prev, ...payload.layout_config }));
+          setLayoutConfig((prev) => ({ ...prev, ...normalizeLayoutConfig(payload.layout_config) }));
         }
       } catch {
         // Ignore workspace preload failures and fall back to localStorage state.
@@ -328,22 +318,7 @@ const Templates = () => {
     try {
       const cfg = (template as any).layout_config;
       if (cfg) {
-        setLayoutConfig((prev) => ({
-          ...prev,
-          ...(cfg.student_name && {
-            placeholderX: cfg.student_name.x ?? prev.placeholderX,
-            placeholderY: cfg.student_name.y ?? prev.placeholderY,
-            showStudentName: cfg.student_name.visible ?? prev.showStudentName,
-          }),
-          ...(cfg.qr_code && {
-            qrX: cfg.qr_code.x ?? prev.qrX,
-            qrY: cfg.qr_code.y ?? prev.qrY,
-            showQR: cfg.qr_code.visible ?? prev.showQR,
-          }),
-          ...(cfg.certificate_id && {
-            showID: cfg.certificate_id.visible ?? prev.showID,
-          }),
-        }));
+        setLayoutConfig((prev) => ({ ...prev, ...normalizeLayoutConfig(cfg) }));
       }
     } catch (err) {
       // ignore

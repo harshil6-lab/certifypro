@@ -83,6 +83,96 @@ def _extract_user_id(user: Any) -> str | None:
     return getattr(user, "id", None)
 
 
+def _as_layout_dict(value: Any) -> dict[str, Any]:
+    return value if isinstance(value, dict) else {}
+
+
+def _to_bool(value: Any, fallback: bool) -> bool:
+    if isinstance(value, bool):
+        return value
+    if isinstance(value, str):
+        normalized = value.strip().lower()
+        if normalized in {"true", "1", "yes", "on"}:
+            return True
+        if normalized in {"false", "0", "no", "off"}:
+            return False
+    if isinstance(value, (int, float)):
+        return value != 0
+    return fallback
+
+
+def _to_float(value: Any, fallback: float) -> float:
+    try:
+        return float(value)
+    except (TypeError, ValueError):
+        return fallback
+
+
+def _normalize_layout_config(layout_config: Any) -> dict[str, Any]:
+    source = _as_layout_dict(layout_config)
+    student_name = _as_layout_dict(source.get("student_name"))
+    qr_code = _as_layout_dict(source.get("qr_code"))
+    certificate_id = _as_layout_dict(source.get("certificate_id"))
+
+    return {
+        "showStudentName": _to_bool(
+            source.get("showStudentName", source.get("show_name", student_name.get("visible"))),
+            True,
+        ),
+        "showQR": _to_bool(source.get("showQR", source.get("show_qr", qr_code.get("visible"))), True),
+        "showID": _to_bool(source.get("showID", source.get("show_id", certificate_id.get("visible"))), True),
+        "placeholderField": str(source.get("placeholderField") or "STUDENT_NAME").strip().upper() or "STUDENT_NAME",
+        "placeholderX": _to_float(source.get("placeholderX", source.get("nameX", student_name.get("x"))), 40),
+        "placeholderY": _to_float(source.get("placeholderY", source.get("nameY", student_name.get("y"))), 36),
+        "qrX": _to_float(source.get("qrX", source.get("qr_x", qr_code.get("x"))), 82),
+        "qrY": _to_float(source.get("qrY", source.get("qr_y", qr_code.get("y"))), 76),
+        "idX": _to_float(source.get("idX", source.get("id_x", certificate_id.get("x"))), 10),
+        "idY": _to_float(source.get("idY", source.get("id_y", certificate_id.get("y"))), 88),
+    }
+
+
+def _resolve_template_render_context(template_id: str, user_id: str | None) -> tuple[dict[str, Any], dict[str, Any], str | None]:
+    try:
+        resp = (
+            supabase.table("templates")
+            .select("*")
+            .eq("id", template_id)
+            .single()
+            .execute()
+        )
+        template = resp.data if hasattr(resp, "data") else None
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=f"Failed to fetch template: {exc}") from exc
+
+    if not template:
+        raise HTTPException(status_code=404, detail="Template not found.")
+
+    layout_config = _normalize_layout_config(template.get("layout_config") or {})
+    file_url = template.get("file_url") or template.get("image_url")
+
+    if user_id:
+        try:
+            workspace_resp = (
+                supabase.table("workspace_templates")
+                .select("template_id, custom_template_url, layout_config")
+                .eq("user_id", user_id)
+                .eq("template_id", template_id)
+                .eq("is_active", True)
+                .limit(1)
+                .execute()
+            )
+            workspace_rows = workspace_resp.data if hasattr(workspace_resp, "data") and workspace_resp.data else []
+        except Exception:
+            workspace_rows = []
+
+        if workspace_rows:
+            workspace_layout = _normalize_layout_config(workspace_rows[0].get("layout_config") or {})
+            layout_config = {**layout_config, **workspace_layout}
+            file_url = workspace_rows[0].get("custom_template_url") or file_url
+
+    return template, layout_config, file_url
+
+
 # ---------------------------------------------------------------------------
 # Font helpers
 # ---------------------------------------------------------------------------
@@ -233,16 +323,18 @@ def _render_certificate(
 
     # --- Resolve layout percentages ---
     # Support both nameX/nameY and placeholderX/placeholderY key aliases
-    name_x_pct = float(layout_config.get("nameX", layout_config.get("placeholderX", 40)))
-    name_y_pct = float(layout_config.get("nameY", layout_config.get("placeholderY", 36)))
-    id_x_pct   = float(layout_config.get("idX", 10))
-    id_y_pct   = float(layout_config.get("idY", 88))
-    qr_x_pct   = float(layout_config.get("qrX", 82))
-    qr_y_pct   = float(layout_config.get("qrY", 76))
+    normalized_layout = _normalize_layout_config(layout_config)
 
-    show_name = bool(layout_config.get("showStudentName", True))
-    show_id   = bool(layout_config.get("showID", True))
-    show_qr   = bool(layout_config.get("showQR", True))
+    name_x_pct = normalized_layout["placeholderX"]
+    name_y_pct = normalized_layout["placeholderY"]
+    id_x_pct = normalized_layout["idX"]
+    id_y_pct = normalized_layout["idY"]
+    qr_x_pct = normalized_layout["qrX"]
+    qr_y_pct = normalized_layout["qrY"]
+
+    show_name = normalized_layout["showStudentName"]
+    show_id = normalized_layout["showID"]
+    show_qr = normalized_layout["showQR"]
 
     # --- Convert percent → pixel coordinates ---
     x_name = int(width * name_x_pct / 100)
@@ -316,26 +408,9 @@ def post_generate_certificates(body: GenerateRequest, request: Request) -> Gener
     user_id = _extract_user_id(user)
 
     # --- 1. Load template from Supabase ---
-    try:
-        resp = (
-            supabase.table("templates")
-            .select("*")
-            .eq("id", body.template_id)
-            .single()
-            .execute()
-        )
-        template = resp.data if hasattr(resp, "data") else None
-    except Exception as exc:
-        raise HTTPException(status_code=500, detail=f"Failed to fetch template: {exc}")
+    template, layout_config, file_url = _resolve_template_render_context(body.template_id, user_id)
 
-    if not template:
-        raise HTTPException(status_code=404, detail="Template not found.")
-
-    # --- 2. Extract layout_config ---
-    layout_config: dict[str, Any] = template.get("layout_config") or {}
-
-    # --- 3. Load template background ---
-    file_url: str | None = template.get("file_url") or template.get("image_url")
+    # --- 2. Load template background ---
     if not file_url:
         raise HTTPException(
             status_code=422,
@@ -500,24 +575,8 @@ def post_generate_all_ready(body: BulkGenerateRequest, request: Request) -> Gene
         )
 
     # --- 2. Load template from Supabase ---
-    try:
-        template_resp = (
-            supabase.table("templates")
-            .select("*")
-            .eq("id", body.template_id)
-            .single()
-            .execute()
-        )
-        template = template_resp.data if hasattr(template_resp, "data") else None
-    except Exception as exc:
-        raise HTTPException(status_code=500, detail=f"Failed to fetch template: {exc}")
+    template, layout_config, file_url = _resolve_template_render_context(body.template_id, user_id)
 
-    if not template:
-        raise HTTPException(status_code=404, detail="Template not found.")
-
-    layout_config: dict[str, Any] = template.get("layout_config") or {}
-
-    file_url: str | None = template.get("file_url") or template.get("image_url")
     if not file_url:
         raise HTTPException(
             status_code=422,

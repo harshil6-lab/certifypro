@@ -19,19 +19,7 @@ import { Badge } from "@/components/ui/badge";
 import { supabase } from "@/lib/supabaseClient";
 import { LayoutPreview } from "@/components/LayoutPreview";
 import { addSessionActivity } from "@/services/sessionActivity";
-
-type LayoutConfig = {
-  showStudentName: boolean;
-  showQR: boolean;
-  showID: boolean;
-  placeholderField: string;
-  placeholderX: number;
-  placeholderY: number;
-  qrX: number;
-  qrY: number;
-  idX: number;
-  idY: number;
-};
+import { defaultLayoutConfig, normalizeLayoutConfig, type LayoutConfig } from "@/lib/layoutConfig";
 
 type WorkspaceTemplate = {
   template_id: string;
@@ -47,19 +35,6 @@ type StudentRecord = {
   email?: string;
   external_id?: string;
   certificate_id?: string;
-};
-
-const defaultLayoutConfig: LayoutConfig = {
-  showStudentName: true,
-  showQR: true,
-  showID: true,
-  placeholderField: "STUDENT_NAME",
-  placeholderX: 40,
-  placeholderY: 36,
-  qrX: 82,
-  qrY: 76,
-  idX: 10,
-  idY: 88,
 };
 
 const WORKSPACE_LAYOUT_KEY = "certifypro_layout_config";
@@ -90,7 +65,7 @@ const Generate = () => {
   const selectedStudentRecords = students.filter((student) => selectedStudentIds.includes(student.id));
   const resolvedLayoutConfig: LayoutConfig = {
     ...defaultLayoutConfig,
-    ...(workspaceTemplate?.layout_config ?? {}),
+    ...normalizeLayoutConfig(workspaceTemplate?.layout_config ?? {}),
   };
 
   // Seed template from localStorage immediately (synchronous fallback)
@@ -106,7 +81,7 @@ const Generate = () => {
         setWorkspaceTemplate((prev) => ({
           template_id: prev?.template_id || templateId || "",
           file_url: prev?.file_url || null,
-          layout_config: JSON.parse(savedLayout),
+          layout_config: normalizeLayoutConfig(JSON.parse(savedLayout)),
         }));
         setWorkspaceTemplateSource((prev) => (prev === "workspace" ? prev : "local-cache"));
       }
@@ -165,7 +140,7 @@ const Generate = () => {
           setWorkspaceTemplate({
             template_id: templateId,
             file_url: res.data.file_url ?? null,
-            layout_config: res.data.layout_config ?? null,
+            layout_config: res.data.layout_config ? normalizeLayoutConfig(res.data.layout_config) : null,
           });
           setWorkspaceTemplateSource("workspace");
         }
@@ -253,6 +228,7 @@ const Generate = () => {
                 external_id: student.external_id || student.certificate_id || "",
               })),
             },
+            { headers: authHeader ? { Authorization: authHeader } : {} },
           );
 
       const { data } = await request;
