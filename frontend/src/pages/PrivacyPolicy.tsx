@@ -234,23 +234,8 @@ const PrivacyPolicy = () => {
                 <p><strong className="text-foreground">Email:</strong></p>
                 <ul className="list-none pl-0 space-y-1 text-sm">
                   <li>
-                    <a href="mailto:24ce049@charusat.edu.in" className="text-primary hover:underline">
-                      24ce049@charusat.edu.in
-                    </a>
-                  </li>
-                  <li>
-                    <a href="mailto:24ce066@charusat.edu.in" className="text-primary hover:underline">
-                      24ce066@charusat.edu.in
-                    </a>
-                  </li>
-                  <li>
-                    <a href="mailto:24ce061@charusat.edu.in" className="text-primary hover:underline">
-                      24ce061@charusat.edu.in
-                    </a>
-                  </li>
-                  <li>
-                    <a href="mailto:24ce069@charusat.edu.in" className="text-primary hover:underline">
-                      24ce069@charusat.edu.in
+                      <a href="mailto:certifyprocare@gmail.com" className="text-primary hover:underline">
+                        certifyprocare@gmail.com
                     </a>
                   </li>
                 </ul>

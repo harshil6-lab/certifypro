@@ -1,33 +1,24 @@
 import { useEffect, useState, type DragEvent } from "react";
-import { supabase } from "@/lib/supabaseClient";
-import { Upload, Loader2, Sparkles, WandSparkles, Eye, Pencil, ChevronLeft, ChevronRight, LayoutGrid } from "lucide-react";
+import axios from "axios";
+import { Sparkles, WandSparkles, Eye, Pencil, LayoutGrid, Upload, ArrowRight } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { useSearchParams } from "react-router-dom";
-import { CertificateTemplate } from "@/components/certificates/CertificateTemplate";
+import { supabase } from "@/lib/supabaseClient";
 import { CertificateEditorModal } from "@/components/certificates/CertificateEditorModal";
 import {
   CertificateDraft,
   CertificateTemplateMeta,
-  GalleryCategory,
 } from "@/components/certificates/types";
-import { API_BASE, getTemplates } from "@/services/apiService";
 import { LayoutPreview } from "@/components/LayoutPreview";
 import { addSessionActivity } from "@/services/sessionActivity";
+import { getTemplates } from "@/services/apiService";
 import {
-  clearLegacyTemplateCache,
   defaultLayoutConfig,
   normalizeLayoutConfig,
-  readActiveTemplateSession,
-  writeActiveTemplateSession,
 } from "@/lib/layoutConfig";
-
-const categories: Array<"All" | GalleryCategory> = ["All", "Academic", "Corporate", "Internship", "Event", "Compliance", "Training"];
-
-// start empty; we'll fetch from backend
-const officialTemplatesInit: CertificateTemplateMeta[] = [];
 
 const emptyDraft: CertificateDraft = {
   recipientName: "Alex Morgan",
@@ -60,50 +51,90 @@ type WorkspaceTemplateState = {
   file_url: string | null;
   title?: string;
   is_custom?: boolean;
+  image_url?: string | null;
+  layout_config?: any;
 };
+
+const upcomingLibraryCertificates = [
+  { title: "Academic Excellence", imageUrl: "/assets/CERT1.png.png" },
+  { title: "Professional Achievement", imageUrl: "/assets/CERT2.png.png" },
+  { title: "Internship Completion", imageUrl: "/assets/CERT3.png.png" },
+  { title: "Training Programs", imageUrl: "/assets/CERT4.png.png" },
+  { title: "Events & Summits", imageUrl: "/assets/CERT5.png.png" },
+  { title: "Compliance & Skills", imageUrl: "/assets/CERT6.png.png" },
+];
 
 const Templates = () => {
   const [searchParams] = useSearchParams();
-  const [selectedCategory, setSelectedCategory] = useState<"All" | GalleryCategory>("All");
-  const [templates, setTemplates] = useState<CertificateTemplateMeta[]>(officialTemplatesInit);
+  const [templates, setTemplates] = useState<CertificateTemplateMeta[]>([]);
+  const [loadingTemplates, setLoadingTemplates] = useState(true);
   const [selectedTemplateId, setSelectedTemplateId] = useState<string>("");
   const [selectedTemplate, setSelectedTemplate] = useState<CertificateTemplateMeta | null>(null);
   const [modalMode, setModalMode] = useState<"preview" | "edit">("preview");
   const [draftByTemplate, setDraftByTemplate] = useState<Record<string, CertificateDraft>>({});
-  const [loading, setLoading] = useState(true);
-  const [currentPage, setCurrentPage] = useState(1);
-  const templatesPerPage = 4;
+  const [isDraggingUpload, setIsDraggingUpload] = useState(false);
+  const [uploadStatus, setUploadStatus] = useState("Upload custom background image");
 
-  const [dragActive, setDragActive] = useState(false);
-  const [uploadedTemplateName, setUploadedTemplateName] = useState("");
   const [layoutSaveStatus, setLayoutSaveStatus] = useState("Ready");
 
-  // Unified layout configuration state
   const [layoutConfig, setLayoutConfig] = useState(defaultLayoutConfig);
 
-  // Workspace preview state
   const [workspaceTemplate, setWorkspaceTemplate] = useState<WorkspaceTemplateState | null>(null);
   const [isGallerySelected, setIsGallerySelected] = useState(false);
 
   useEffect(() => {
-    clearLegacyTemplateCache();
+    const loadOfficialTemplates = async () => {
+      setLoadingTemplates(true);
+      try {
+        const result = await getTemplates({ official: true });
+        setTemplates(Array.isArray(result) ? result : []);
+      } catch {
+        setTemplates([]);
+      } finally {
+        setLoadingTemplates(false);
+      }
+    };
 
-    const activeSession = readActiveTemplateSession();
-    if (!activeSession) {
-      return;
-    }
+    void loadOfficialTemplates();
+  }, []);
 
-    setWorkspaceTemplate({
-      id: activeSession.templateId,
-      file_url: activeSession.fileUrl,
-      title: activeSession.title,
-      is_custom: activeSession.isCustom,
-    });
-    setIsGallerySelected(!activeSession.isCustom);
-    setUploadedTemplateName(activeSession.isCustom ? activeSession.title ?? "" : "");
-    if (activeSession.layoutConfig) {
-      setLayoutConfig(activeSession.layoutConfig);
-    }
+  useEffect(() => {
+    const loadWorkspaceTemplate = async () => {
+      try {
+        let authHeader = "";
+        if (supabase) {
+          const { data } = await supabase.auth.getSession();
+          const token = data.session?.access_token;
+          if (token) authHeader = `Bearer ${token}`;
+        }
+
+        const { data } = await axios.get("http://127.0.0.1:8000/api/workspace-template", {
+          headers: authHeader ? { Authorization: authHeader } : {},
+        });
+
+        if (!data?.template_id) {
+          return;
+        }
+
+        setWorkspaceTemplate({
+          id: data.template_id,
+          file_url: data.file_url ?? data.template_url ?? null,
+          image_url: data.file_url ?? data.template_url ?? null,
+          title: data.title,
+          is_custom: !Boolean(data.is_official),
+          layout_config: data.layout_config ?? null,
+        });
+        setSelectedTemplateId(data.template_id);
+        setIsGallerySelected(true);
+        if (data.layout_config) {
+          setLayoutConfig(normalizeLayoutConfig(data.layout_config));
+        }
+      } catch {
+        // keep page functional without workspace template
+      }
+    };
+
+    void loadWorkspaceTemplate();
   }, []);
 
   useEffect(() => {
@@ -129,27 +160,6 @@ const Templates = () => {
   }, []);
 
   useEffect(() => {
-    const loadTemplates = async () => {
-      setLoading(true);
-      try {
-        const params = selectedCategory === "All" ? { official: true } : { official: true, category: selectedCategory };
-        const t = await getTemplates(params);
-        setTemplates(t as CertificateTemplateMeta[]);
-        console.log("Templates loaded:", t?.length);
-        if (!selectedTemplateId && t?.length) {
-          setSelectedTemplateId(t[0].id);
-        }
-      } catch (err) {
-        console.error("Failed to load templates", err);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    loadTemplates();
-  }, [selectedCategory]);
-
-  useEffect(() => {
     const source = searchParams.get("source");
     const templateId = searchParams.get("templateId");
     const mode = searchParams.get("mode");
@@ -167,32 +177,6 @@ const Templates = () => {
     setSelectedTemplate(target);
     setModalMode(mode === "edit" ? "edit" : "preview");
   }, [searchParams, templates]);
-
-  // Reset to page 1 when category changes
-  useEffect(() => {
-    setCurrentPage(1);
-  }, [selectedCategory]);
-
-  const filteredTemplates =
-    selectedCategory === "All"
-      ? templates
-      : templates.filter(
-          template => template.category === selectedCategory
-        );
-
-  const indexOfLastTemplate =
-    currentPage * templatesPerPage;
-
-  const indexOfFirstTemplate =
-    indexOfLastTemplate - templatesPerPage;
-
-  const paginatedTemplates =
-    filteredTemplates.slice(
-      indexOfFirstTemplate,
-      indexOfLastTemplate
-    );
-
-  const totalPages = Math.ceil(filteredTemplates.length / templatesPerPage);
 
   const currentDraft = selectedTemplate
     ? draftByTemplate[selectedTemplate.id] ?? normalizeDraft({}, selectedTemplate.title)
@@ -226,63 +210,51 @@ const Templates = () => {
     localStorage.setItem("certifypro-official-template-drafts", JSON.stringify(next));
   };
 
-  const saveLayout = async () => {
+  const saveLayout = () => {
     if (!workspaceTemplate?.id) {
       setLayoutSaveStatus("Please , Select or Uplaod template");
       return;
     }
 
-    setLayoutSaveStatus("Saving layout...");
+    const save = async () => {
+      try {
+        const normalizedLayout = normalizeLayoutConfig(layoutConfig);
+        let authHeader = "";
+        if (supabase) {
+          const { data } = await supabase.auth.getSession();
+          const token = data.session?.access_token;
+          if (token) authHeader = `Bearer ${token}`;
+        }
 
-    try {
-      const { data } = await supabase.auth.getSession();
-      const token = data.session?.access_token;
-      if (!token) {
-        setLayoutSaveStatus("You must be signed in to save the workspace layout.");
-        return;
+        await axios.post(
+          "http://127.0.0.1:8000/api/save-layout",
+          {
+            template_id: workspaceTemplate.id,
+            layout_config: normalizedLayout,
+            custom_template_url: workspaceTemplate.is_custom ? workspaceTemplate.file_url : null,
+          },
+          { headers: authHeader ? { Authorization: authHeader } : {} },
+        );
+
+        setLayoutSaveStatus("Layout saved to workspace");
+        addSessionActivity(
+          "workspace_layout_saved",
+          `${workspaceTemplate.title ?? "Workspace template"} layout saved`,
+          { templateId: workspaceTemplate.id },
+        );
+      } catch (err: any) {
+        setLayoutSaveStatus(err?.response?.data?.detail ?? "Failed to save layout");
       }
+    };
 
-      const res = await fetch(`${API_BASE}/api/save-layout`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({
-          template_id: workspaceTemplate.id,
-          layout_config: layoutConfig,
-          custom_template_url: workspaceTemplate.is_custom ? workspaceTemplate.file_url : null,
-        }),
-      });
-
-      if (!res.ok) {
-        const errText = await res.text();
-        throw new Error(errText || "Failed to save workspace layout.");
-      }
-
-      writeActiveTemplateSession({
-        templateId: workspaceTemplate.id,
-        fileUrl: workspaceTemplate.file_url ?? null,
-        title: workspaceTemplate.title,
-        isCustom: Boolean(workspaceTemplate.is_custom),
-        layoutConfig,
-      });
-      setLayoutSaveStatus("Layout saved successfully");
-      addSessionActivity(
-        "workspace_layout_saved",
-        `${workspaceTemplate.title ?? "Workspace template"} layout saved`,
-        { templateId: workspaceTemplate.id },
-      );
-    } catch (error) {
-      setLayoutSaveStatus(`Save error: ${error instanceof Error ? error.message : String(error)}`);
-    }
+    void save();
   };
 
   const openOfficialTemplate = (template: CertificateTemplateMeta, mode: "preview" | "edit") => {
     setSelectedTemplate({
       id: template.id,
-      file_url: (template as any).file_url,
-      image_url: (template as any).image_url,
+      file_url: template.file_url ?? template.image_url,
+      image_url: template.image_url ?? template.file_url,
       title: template.title,
       category: template.category,
       styleType: template.styleType,
@@ -297,94 +269,82 @@ const Templates = () => {
       if (cfg) {
         setLayoutConfig((prev) => ({ ...prev, ...normalizeLayoutConfig(cfg) }));
       }
-    } catch (err) {
+    } catch {
       // ignore
     }
   };
 
   const handleWorkspacePreview = (template: CertificateTemplateMeta) => {
     const nextTemplate = {
-      file_url: (template as any).file_url || (template as any).image_url,
+      file_url: template.file_url ?? template.image_url ?? null,
+      image_url: template.image_url ?? template.file_url ?? null,
       title: template.title,
       id: template.id,
       is_custom: false,
+      layout_config: template.layout_config,
     };
     setWorkspaceTemplate(nextTemplate);
     setIsGallerySelected(true);
-    writeActiveTemplateSession({
-      templateId: nextTemplate.id,
-      fileUrl: nextTemplate.file_url ?? null,
-      title: nextTemplate.title,
-      isCustom: false,
-      layoutConfig,
-    });
+    if (template.layout_config) {
+      setLayoutConfig(normalizeLayoutConfig(template.layout_config));
+    }
   };
 
   const uploadTemplate = async (file: File) => {
+    setUploadStatus("Uploading template...");
     try {
       const formData = new FormData();
       formData.append("file", file);
-      let authHeaders: HeadersInit | undefined;
-      // include current user id when available
-      try {
-        if (supabase) {
-          const sessionRes: any = await supabase.auth.getSession();
-          const userId = sessionRes?.data?.session?.user?.id ?? sessionRes?.data?.user?.id ?? null;
-          const token = sessionRes?.data?.session?.access_token ?? null;
-          if (userId) formData.append("user_id", userId);
-          if (token) {
-            authHeaders = { Authorization: `Bearer ${token}` };
-          }
-        }
-      } catch (_) {
-        // ignore
+
+      let authHeader = "";
+      if (supabase) {
+        const { data } = await supabase.auth.getSession();
+        const token = data.session?.access_token;
+        if (token) authHeader = `Bearer ${token}`;
       }
 
-      const res = await fetch("http://127.0.0.1:8000/api/templates/upload", {
-        method: "POST",
-        headers: authHeaders,
-        body: formData,
+      const { data } = await axios.post("http://127.0.0.1:8000/api/templates/upload", formData, {
+        headers: {
+          ...(authHeader ? { Authorization: authHeader } : {}),
+          "Content-Type": "multipart/form-data",
+        },
       });
 
-      if (!res.ok) {
-        const errText = await res.text();
-        throw new Error(`Upload failed: ${res.status} ${errText}`);
-      }
-
-      const data = await res.json();
-      setUploadedTemplateName(file.name);
-      setLayoutSaveStatus("Template uploaded successfully. Save Layout to make it the active workspace template.");
-
-      setWorkspaceTemplate({
-        id: data.template_id ?? data.template?.id,
+      const nextTemplate = {
+        id: data.template_id,
+        file_url: data.file_url ?? data.preview_url ?? null,
+        image_url: data.preview_url ?? data.file_url ?? null,
         title: data.template?.title ?? file.name,
-        file_url: data.preview_url ?? data.template?.image_url ?? data.file_url,
         is_custom: true,
-      });
+      };
+
+      setWorkspaceTemplate(nextTemplate);
+      setSelectedTemplateId(nextTemplate.id);
       setIsGallerySelected(false);
-      writeActiveTemplateSession({
-        templateId: data.template_id ?? data.template?.id,
-        fileUrl: data.preview_url ?? data.template?.image_url ?? data.file_url ?? null,
-        title: data.template?.title ?? file.name,
-        isCustom: true,
-        layoutConfig,
-      });
-      addSessionActivity("template_uploaded", file.name, {
-        templateId: data.template_id ?? data.template?.id ?? null,
-      });
-    } catch (error) {
-      console.error("Template upload failed:", error);
-      setLayoutSaveStatus(`Upload error: ${error instanceof Error ? error.message : String(error)}`);
+      setUploadStatus("Template uploaded and selected");
+      addSessionActivity("template_uploaded", `${nextTemplate.title} uploaded`, { templateId: nextTemplate.id });
+    } catch (err: any) {
+      setUploadStatus(err?.response?.data?.detail ?? "Upload failed");
     }
   };
 
-  const handleDrop = async (event: DragEvent<HTMLDivElement>) => {
-    event.preventDefault();
-    setDragActive(false);
-    const file = event.dataTransfer.files[0];
-    if (file) {
-      await uploadTemplate(file);
+  const onUploadFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) {
+      return;
     }
+    void uploadTemplate(file);
+    event.currentTarget.value = "";
+  };
+
+  const onDropUpload = (event: DragEvent<HTMLDivElement>) => {
+    event.preventDefault();
+    setIsDraggingUpload(false);
+    const file = event.dataTransfer.files?.[0];
+    if (!file) {
+      return;
+    }
+    void uploadTemplate(file);
   };
 
   return (
@@ -392,9 +352,11 @@ const Templates = () => {
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <h1 className="text-3xl font-heading font-bold text-foreground">Template Library & Workspace</h1>
-          <p className="text-muted-foreground mt-1">Browse official locked templates and manage custom uploaded layouts in separate workspaces.</p>
+          <p className="text-muted-foreground mt-1">Browse official templates, preview them, and save your workspace layout for generation.</p>
         </div>
-        <Badge variant="secondary" className="text-xs">Connected to backend</Badge>
+        <Button size="sm" className="gold-gradient text-accent-foreground gap-2" onClick={() => (window.location.href = "/generate") }>
+          Generate Certificates <ArrowRight className="w-4 h-4" />
+        </Button>
       </div>
 
       <div className="grid grid-cols-1 xl:grid-cols-5 gap-6">
@@ -407,107 +369,63 @@ const Templates = () => {
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
-              <div className="flex flex-wrap gap-2">
-                <Badge className="bg-accent/10 text-accent border border-accent/20">Official Template</Badge>
-                <Badge variant="outline">Brand Locked</Badge>
-              </div>
-
-              <div className="flex flex-wrap gap-2">
-                {categories.map((category) => (
-                  <Button
-                    key={category}
-                    variant={selectedCategory === category ? "default" : "outline"}
-                    size="sm"
-                    className={`transition-all duration-200 ${selectedCategory === category
-                      ? "gold-gradient text-accent-foreground shadow-sm"
-                      : "hover:border-accent/50 hover:bg-accent/5"
-                      }`}
-                    onClick={() => setSelectedCategory(category)}
-                  >
-                    {category}
-                  </Button>
-                ))}
-              </div>
-
-              <div className="flex items-center justify-between text-xs text-muted-foreground border-b border-border pb-3">
-                <p>Showing {paginatedTemplates.length} of {filteredTemplates.length} templates</p>
-              </div>
-
-              {loading ? (
-                <div className="h-[500px] rounded-lg border border-dashed border-border flex items-center justify-center text-muted-foreground text-sm">
-                  <Loader2 className="w-6 h-6 mr-2 animate-spin text-accent" /> Loading template library...
+              <div className="relative overflow-hidden rounded-[28px] border border-[#b88a56]/20 bg-[linear-gradient(135deg,#fff9f1_0%,#f4e4ce_42%,#e3ccb2_100%)] px-6 py-12 shadow-[0_24px_60px_rgba(113,74,39,0.14)]">
+                <div className="pointer-events-none absolute inset-0">
+                  <div className="absolute inset-x-10 top-6 h-px bg-gradient-to-r from-transparent via-[#b88a56]/45 to-transparent animate-[galleryShimmer_6s_linear_infinite]" />
+                  <div className="absolute inset-y-0 left-[-10%] w-32 bg-[radial-gradient(circle,rgba(184,138,86,0.14),transparent_70%)] blur-3xl animate-[galleryGlow_7.6s_ease-in-out_infinite]" />
+                  <div className="absolute right-10 top-10 h-24 w-24 rounded-full bg-[radial-gradient(circle,rgba(255,248,236,0.9),rgba(226,197,160,0.18))] blur-2xl" />
                 </div>
-              ) : (
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
-                  {paginatedTemplates.map((template) => (
+
+                <div className="relative z-10 flex min-h-[320px] items-center justify-center rounded-[22px] border border-white/55 bg-white/30 px-6 py-10 text-center backdrop-blur-md">
+                  <h2 className="bg-gradient-to-r from-[#7a5330] via-[#b1824f] to-[#d8b38a] bg-clip-text text-5xl font-heading font-bold tracking-[0.12em] text-transparent drop-shadow-[0_10px_24px_rgba(122,83,48,0.12)] md:text-6xl animate-[galleryBounce_3.6s_ease-in-out_infinite]">
+                    Coming Soon
+                  </h2>
+                </div>
+
+                <style>{`
+                  @keyframes galleryBounce {
+                    0%, 100% { transform: translateY(0px) scale(1); }
+                    50% { transform: translateY(-8px) scale(1.015); }
+                  }
+
+                  @keyframes galleryShimmer {
+                    0% { transform: translateX(-35%); opacity: 0; }
+                    22% { opacity: 0.45; }
+                    50% { opacity: 0.8; }
+                    100% { transform: translateX(135%); opacity: 0; }
+                  }
+
+                  @keyframes galleryGlow {
+                    0%, 100% { transform: translate3d(0, 0, 0) scale(1); opacity: 0.35; }
+                    50% { transform: translate3d(12%, -5%, 0) scale(1.18); opacity: 0.58; }
+                  }
+                `}</style>
+              </div>
+
+              <div className="rounded-[28px] border border-[#d9c0a2] bg-[linear-gradient(180deg,rgba(255,251,245,0.96)_0%,rgba(250,241,229,0.98)_100%)] p-5 shadow-[0_18px_40px_rgba(113,74,39,0.08)]">
+                <div className="mb-5 flex items-end justify-between gap-3">
+                  <div>
+                    <p className="text-xs font-semibold uppercase tracking-[0.28em] text-[#b1824f]">Our upcoming Certificate Library</p>
+                    <h3 className="mt-2 text-2xl font-heading font-semibold text-[#684422]">Preview the style of certificate collections customers will see</h3>
+                  </div>
+
+                </div>
+
+                <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                  {upcomingLibraryCertificates.map((item) => (
                     <div
-                      key={template.id}
-                      className={`rounded-2xl border p-4 flex flex-col transition-all duration-300 cursor-pointer group hover:-translate-y-1 ${selectedTemplateId === template.id
-                        ? "border-accent bg-accent/5 shadow-md"
-                        : "border-border bg-card hover:border-accent/40 hover:shadow-lg"
-                        }`}
+                      key={item.title}
+                      className="group overflow-hidden rounded-[22px] border border-[#e0c6a8] bg-white shadow-[0_16px_36px_rgba(113,74,39,0.12)] transition-transform duration-500 hover:-translate-y-1"
                     >
-                      <div className="aspect-[1.414/1] rounded-xl border border-border bg-white p-2 relative overflow-hidden group-hover:scale-[1.01] transition-transform duration-300 shadow-inner">
-                        <CertificateTemplate
-                          styleType={template.styleType}
-                          draft={draftByTemplate[template.id] ?? normalizeDraft({}, template.title)}
-                          organizationName={template.category === "Corporate" ? "CertifyPro Corporate" : "CertifyPro Institution"}
-                          previewScale="sm"
-                        />
-                      </div>
-
-                      <div className="flex-1 flex flex-col justify-between mt-4">
-                        <div className="space-y-2">
-                          <div className="flex items-start justify-between gap-2">
-                            <p className="text-sm font-bold text-foreground line-clamp-1" title={template.title}>{template.title}</p>
-                            <Badge variant="outline" className="text-[10px] px-1.5 h-5 shrink-0">{template.category}</Badge>
-                          </div>
-                          <div className="flex flex-wrap gap-1.5">
-                            <Badge className="bg-accent/10 text-accent border border-accent/20 text-[10px] px-1.5 h-5">Official</Badge>
-                            <Badge variant="outline" className="text-[10px] px-1.5 h-5">Locked</Badge>
-                          </div>
-                        </div>
-
-                        <div className="flex items-center gap-2 mt-4">
-                          <Button variant="outline" size="sm" className="h-8 text-xs flex-1 gap-1.5 hover:bg-accent/10 hover:border-accent/50 transition-colors" onClick={() => handleWorkspacePreview(template)}>
-                            <Eye className="w-3.5 h-3.5" /> Preview
-                          </Button>
-                          <Button size="sm" className="h-8 text-xs flex-1 gap-1.5 gold-gradient text-accent-foreground hover:opacity-90 transition-opacity" onClick={() => openOfficialTemplate(template, "edit")}>
-                            <Pencil className="w-3.5 h-3.5" /> Edit
-                          </Button>
-                        </div>
-                      </div>
+                      <img
+                        src={item.imageUrl}
+                        alt={item.title}
+                        className="w-full object-contain"
+                        loading="lazy"
+                      />
                     </div>
                   ))}
-
-                  {paginatedTemplates.length === 0 && (
-                    <div className="col-span-full h-40 flex flex-col items-center justify-center text-muted-foreground border-2 border-dashed border-border rounded-xl">
-                      <LayoutGrid className="w-8 h-8 opacity-20 mb-2" />
-                      <p>No templates found in this category.</p>
-                    </div>
-                  )}
                 </div>
-              )}
-
-              {/* Pagination Footer */}
-              <div className="flex justify-center gap-4 mt-6">
-                <button
-                  disabled={currentPage === 1}
-                  onClick={() => setCurrentPage(prev => prev - 1)}
-                  className="px-4 py-2 text-sm border border-border rounded-md hover:bg-accent/10 disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  Previous
-                </button>
-                <span className="px-4 py-2 text-sm font-medium">
-                  Page {currentPage}
-                </span>
-                <button
-                  disabled={indexOfLastTemplate >= filteredTemplates.length}
-                  onClick={() => setCurrentPage(prev => prev + 1)}
-                  className="px-4 py-2 text-sm border border-border rounded-md hover:bg-accent/10 disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  Next
-                </button>
               </div>
             </CardContent>
           </Card>
@@ -516,57 +434,13 @@ const Templates = () => {
         <div className="xl:col-span-2 space-y-4">
           <Card className="card-shadow overflow-hidden">
             <CardHeader className="pb-3">
-              <CardTitle className="text-base font-heading">Template Upload & Live Preview</CardTitle>
+              <CardTitle className="text-base font-heading">Template Live Preview & Layout Editor</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
-              {!isGallerySelected && (
-                <>
-              <div className="flex flex-wrap gap-2">
-                <Badge className="bg-primary/10 text-primary border border-primary/20">Custom Template</Badge>
-                <Badge variant="outline">Editable Layout</Badge>
-              </div>
-
-              <div
-                className={`border-2 border-dashed rounded-lg p-5 text-center transition-colors ${dragActive ? "border-accent bg-accent/10" : "border-border hover:border-accent/50"}`}
-                onDragOver={(event) => {
-                  event.preventDefault();
-                  setDragActive(true);
-                }}
-                onDragLeave={() => setDragActive(false)}
-                onDrop={handleDrop}
-              >
-                <Upload className="w-8 h-8 mx-auto text-muted-foreground mb-2" />
-                <p className="text-sm font-medium text-foreground">Drag & drop template file</p>
-                <p className="text-xs text-muted-foreground mt-1">PDF, PNG, DOCX</p>
-                <input
-                  type="file"
-                  accept=".pdf,image/*,.docx"
-                  className="mt-3"
-                  onChange={async (event) => {
-                    const file = event.target.files?.[0];
-                    if (file) {
-                      await uploadTemplate(file);
-                    }
-                  }}
-                />
-              </div>
-
-              <div className="rounded-md bg-muted/50 border border-border px-3 py-2 text-xs text-muted-foreground">
-                Active uploaded file: <span className="font-medium text-foreground">{uploadedTemplateName || "None"}</span>
-              </div>
-                </>
-              )}
-
               {isGallerySelected && workspaceTemplate && (
                 <div className="rounded-md bg-accent/10 border border-accent/20 px-3 py-2 text-xs text-accent-foreground">
                   Gallery template selected: <span className="font-medium">{workspaceTemplate.title || "Official Template"}</span>
                   <Button variant="ghost" size="sm" className="ml-2 h-5 text-[10px] px-1" onClick={() => { setIsGallerySelected(false); setWorkspaceTemplate(null); }}>Clear</Button>
-                </div>
-              )}
-
-              {!isGallerySelected && workspaceTemplate && (
-                <div className="rounded-md bg-primary/10 border border-primary/20 px-3 py-2 text-xs text-primary">
-                  Custom workspace template selected: <span className="font-medium">{workspaceTemplate.title || uploadedTemplateName}</span>
                 </div>
               )}
 
@@ -575,6 +449,27 @@ const Templates = () => {
                   Please , Select or Uplaod template
                 </div>
               )}
+
+              <div
+                onDragOver={(event) => {
+                  event.preventDefault();
+                  setIsDraggingUpload(true);
+                }}
+                onDragLeave={() => setIsDraggingUpload(false)}
+                onDrop={onDropUpload}
+                className={`rounded-xl border-2 border-dashed px-4 py-5 text-center transition-colors ${isDraggingUpload ? "border-accent bg-accent/5" : "border-border bg-muted/20"}`}
+              >
+                <Upload className="w-5 h-5 mx-auto mb-2 text-muted-foreground" />
+                <p className="text-sm text-foreground">Upload custom template image</p>
+                <p className="text-xs text-muted-foreground mt-1">PNG/JPG supported. This becomes your workspace template.</p>
+                <label className="inline-block mt-3">
+                  <input type="file" accept="image/*" className="hidden" onChange={onUploadFileChange} />
+                  <span className="inline-flex items-center rounded-md border border-input bg-background px-3 py-1.5 text-xs hover:bg-accent/5 cursor-pointer">
+                    Choose file
+                  </span>
+                </label>
+                <p className="text-xs text-muted-foreground mt-2">{uploadStatus}</p>
+              </div>
 
               <div className="space-y-3">
                 <div className="flex items-center justify-between rounded-md border border-border bg-muted/30 px-3 py-2">

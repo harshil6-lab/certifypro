@@ -60,8 +60,6 @@ class StudentIn(BaseModel):
 class GenerateRequest(BaseModel):
     template_id: str
     students: list[StudentIn]
-    layout_config: dict[str, Any] | None = None
-    template_url: str | None = None
 
 
 class CertificateOut(BaseModel):
@@ -151,9 +149,6 @@ def _normalize_layout_config(layout_config: Any) -> dict[str, Any]:
 def _resolve_template_render_context(
     template_id: str,
     user_id: str | None,
-    *,
-    layout_override: dict[str, Any] | None = None,
-    template_url_override: str | None = None,
 ) -> tuple[dict[str, Any], dict[str, Any], str | None]:
     try:
         resp = (
@@ -180,12 +175,6 @@ def _resolve_template_render_context(
             workspace_layout = _normalize_layout_config(workspace_rows[0].get("layout_config") or {})
             layout_config = {**layout_config, **workspace_layout}
             file_url = workspace_rows[0].get("custom_template_url") or file_url
-
-    if layout_override:
-        layout_config = {**layout_config, **_normalize_layout_config(layout_override)}
-
-    if template_url_override:
-        file_url = template_url_override
 
     return template, layout_config, file_url
 
@@ -572,8 +561,6 @@ def post_generate_certificates(body: GenerateRequest, request: Request) -> Gener
     template, layout_config, file_url = _resolve_template_render_context(
         body.template_id,
         user_id,
-        layout_override=body.layout_config,
-        template_url_override=body.template_url,
     )
 
     # --- 2. Load template background ---
@@ -653,8 +640,6 @@ def post_generate_certificates(body: GenerateRequest, request: Request) -> Gener
 
 class BulkGenerateRequest(BaseModel):
     template_id: str
-    layout_config: dict[str, Any] | None = None
-    template_url: str | None = None
 
 
 @router.post("/all", response_model=GenerateResponse)
@@ -724,8 +709,6 @@ def post_generate_all_ready(body: BulkGenerateRequest, request: Request) -> Gene
     template, layout_config, file_url = _resolve_template_render_context(
         body.template_id,
         user_id,
-        layout_override=body.layout_config,
-        template_url_override=body.template_url,
     )
 
     if not file_url:

@@ -58,7 +58,7 @@ export const LayoutPreview = ({ templateUrl, templateTitle, layoutConfig }: Layo
           <img
             src={templateUrl}
             alt={templateTitle ?? "certificate template"}
-            className="preview-background-image absolute inset-0 w-full h-full object-fill"
+            className="preview-background-image absolute w-full h-full object-cover"
             style={{ zIndex: 0 }}
           />
         </div>
@@ -98,7 +98,7 @@ export const LayoutPreview = ({ templateUrl, templateTitle, layoutConfig }: Layo
             left: `${layoutConfig.idX}%`,
             top: `${layoutConfig.idY}%`,
             transform: "translate(-50%, -50%)",
-            zIndex: 20,
+            zIndex: 10,
           }}
         >
           <span className="text-[10px] px-2 py-1 rounded bg-muted text-muted-foreground shadow whitespace-nowrap">
@@ -115,7 +115,7 @@ export const LayoutPreview = ({ templateUrl, templateTitle, layoutConfig }: Layo
             left: `${layoutConfig.qrX}%`,
             top: `${layoutConfig.qrY}%`,
             transform: "translate(-50%, -50%)",
-            zIndex: 30,
+            zIndex: 10,
           }}
         >
           <QrCode className="w-7 h-7 text-accent" />
