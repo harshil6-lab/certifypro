@@ -1,3 +1,4 @@
+// Dynamically sets the app favicon and initializes the React root to render the main App component.
 import { createRoot } from "react-dom/client";
 import App from "./App.tsx";
 import "./index.css";
