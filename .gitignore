@@ -88,3 +88,11 @@ storage/
 tmp/
 temp/
 *.pid
+
+# Workspace-local backend/frontend artifacts
+/backend/.env
+/frontend/.env
+/.venv/
+/backend/uploads/
+/frontend/dist/
+/frontend/node_modules/

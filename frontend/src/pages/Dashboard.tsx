@@ -17,37 +17,63 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { ProfileOnboardingModal } from "@/components/ProfileOnboardingModal";
 import { useAdminOnboarding, type OnboardingProfile } from "@/hooks/useAdminOnboarding";
-
-const stats = [
-  { label: "Certificates Issued", value: "0", icon: Award, change: "+0 this month" },
-  { label: "Pending Tasks", value: "0", icon: Clock, change: "0 urgent" },
-  { label: "Recent Verifications", value: "0", icon: CheckCircle2, change: "Last 7 days" },
-  { label: "Active Templates", value: "0", icon: FileText, change: "0 drafts" },
-];
-
-const workflowSteps = [
-  { step: 1, title: "Upload Template", desc: "Design your certificate template", icon: Upload, link: "/templates", done: true },
-  { step: 2, title: "Import Students", desc: "Upload student data via Excel", icon: Users, link: "/import", done: true },
-  { step: 3, title: "Generate Certificates", desc: "Batch generate with QR codes", icon: Printer, link: "/generate", done: false },
-  { step: 4, title: "Verify & Distribute", desc: "Public verification portal", icon: Search, link: "/registry", done: false },
-];
-
-const recentActivity = [
-  { action: "Certificate batch generated", count: "250 certificates", time: "2 hours ago", type: "generate" },
-  { action: "Template updated", count: "B.Sc. Computer Science", time: "5 hours ago", type: "template" },
-  { action: "Student data imported", count: "180 records", time: "1 day ago", type: "import" },
-  { action: "Verification request", count: "CERT-2024-0892", time: "1 day ago", type: "verify" },
-];
+import { API_BASE, getAuthHeaders } from "@/services/apiService";
+import {
+  getSessionActivities,
+  subscribeToSessionActivities,
+  type SessionActivityItem,
+} from "@/services/sessionActivity";
 
 const Dashboard = () => {
   const { isCompleted, isLoading, profile, completeOnboarding, skipOnboarding } = useAdminOnboarding();
   const [showOnboarding, setShowOnboarding] = useState(false);
+  const [stats, setStats] = useState({
+    certificates: 0,
+    templates: 0,
+    students: 0,
+    admins: 0
+  });
+  const [recentActivity, setRecentActivity] = useState<SessionActivityItem[]>([]);
+
+  const hasActivity = (action: SessionActivityItem["action"]) =>
+    recentActivity.some((item) => item.action === action);
+
+  const workflowSteps = [
+    { step: 1, title: "Upload Template", desc: "Design your certificate template", icon: Upload, link: "/templates", done: stats.templates > 0 || hasActivity("template_uploaded") || hasActivity("workspace_layout_saved") },
+    { step: 2, title: "Import Students", desc: "Upload student data via Excel", icon: Users, link: "/import", done: stats.students > 0 || hasActivity("students_imported") },
+    { step: 3, title: "Generate Certificates", desc: "Batch generate with QR codes", icon: Printer, link: "/generate", done: stats.certificates > 0 || hasActivity("certificates_generated") },
+    { step: 4, title: "Verify & Distribute", desc: "Public verification portal", icon: Search, link: "/registry", done: hasActivity("certificate_verified") || hasActivity("certificate_downloaded") },
+  ];
 
   useEffect(() => {
     if (!isLoading && !isCompleted) {
       setShowOnboarding(true);
     }
   }, [isLoading, isCompleted]);
+
+  useEffect(() => {
+    // Fetch dashboard stats
+    const fetchStats = async () => {
+      try {
+        const headers = await getAuthHeaders();
+        const res = await fetch(`${API_BASE}/dashboard/stats`, { headers });
+        if (res.ok) {
+          const data = await res.json();
+          setStats(data);
+        } else {
+          console.error("Failed to fetch dashboard stats:", res.status, await res.text());
+        }
+      } catch (err) {
+        console.error("Failed to fetch stats:", err);
+      }
+    };
+    fetchStats();
+  }, []);
+
+  useEffect(() => {
+    setRecentActivity(getSessionActivities());
+    return subscribeToSessionActivities(setRecentActivity);
+  }, []);
 
   const handleOnboardingComplete = (data: Omit<OnboardingProfile, "completedAt">) => {
     completeOnboarding(data);
@@ -58,6 +84,13 @@ const Dashboard = () => {
     skipOnboarding();
     setShowOnboarding(false);
   };
+
+  const statsData = [
+    { label: "Certificates Issued", value: stats.certificates.toString(), icon: Award, change: stats.certificates > 0 ? `${stats.certificates} available` : "No certificates yet" },
+    { label: "Active Templates", value: stats.templates.toString(), icon: FileText, change: stats.templates > 0 ? `${stats.templates} connected` : "No template yet" },
+    { label: "Total Students", value: stats.students.toString(), icon: Users, change: stats.students > 0 ? `${stats.students} imported` : "0 pending" },
+    { label: "System Admins", value: stats.admins.toString(), icon: CheckCircle2, change: "Active" },
+  ];
 
   return (
     <>
@@ -87,7 +120,7 @@ const Dashboard = () => {
 
         {/* Stats */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5">
-          {stats.map((stat) => (
+          {statsData.map((stat) => (
             <Card key={stat.label} className="card-shadow hover:shadow-lg transition-all duration-300 hover:-translate-y-1 hover:border-accent/40 cursor-default bg-card/60 backdrop-blur-sm">
               <CardContent className="p-6">
                 <div className="flex items-start justify-between">
@@ -155,22 +188,53 @@ const Dashboard = () => {
         {/* Recent Activity */}
         <Card className="card-shadow">
           <CardHeader className="pb-4">
-            <CardTitle className="text-lg font-heading">Recent Activity</CardTitle>
+            <div className="flex items-center justify-between gap-3">
+              <CardTitle className="text-lg font-heading">Recent Activity</CardTitle>
+              <span className="text-xs text-muted-foreground">Current browser session only</span>
+            </div>
           </CardHeader>
           <CardContent>
             <div className="space-y-3">
-              {recentActivity.map((item, i) => (
-                <div key={i} className="flex items-center justify-between py-3 border-b last:border-0 rounded-lg px-2 transition-colors hover:bg-accent/5 cursor-default">
-                  <div className="flex items-center gap-3">
-                    <div className="w-2 h-2 rounded-full bg-accent" />
-                    <div>
-                      <p className="text-sm font-medium text-foreground">{item.action}</p>
-                      <p className="text-xs text-muted-foreground">{item.count}</p>
+              {recentActivity.length > 0 ? (
+                recentActivity.map((item, i) => {
+                  // Parse activity based on action type
+                  let activityText = "";
+                  if (item.action === "template_uploaded") {
+                    activityText = `Template uploaded -> ${item.detail}`;
+                  } else if (item.action === "workspace_layout_saved") {
+                    activityText = `Workspace updated -> ${item.detail}`;
+                  } else if (item.action === "students_imported") {
+                    activityText = `Students imported -> ${item.detail}`;
+                  } else if (item.action === "certificates_generated") {
+                    activityText = `Certificates generated -> ${item.detail}`;
+                  } else if (item.action === "certificate_downloaded") {
+                    activityText = `Certificate downloaded -> ${item.detail}`;
+                  } else if (item.action === "certificate_verified") {
+                    activityText = `Verification opened -> ${item.detail}`;
+                  } else {
+                    activityText = item.detail || "Activity";
+                  }
+
+                  return (
+                    <div key={i} className="flex items-center justify-between py-3 border-b last:border-0 rounded-lg px-2 transition-colors hover:bg-accent/5 cursor-default">
+                      <div className="flex items-center gap-3">
+                        <div className="w-2 h-2 rounded-full bg-accent" />
+                        <div>
+                          <p className="text-sm font-medium text-foreground">{activityText}</p>
+                        </div>
+                      </div>
+                      <span className="text-xs text-muted-foreground">
+                        {item.created_at ? new Date(item.created_at).toLocaleString() : "Recently"}
+                      </span>
                     </div>
-                  </div>
-                  <span className="text-xs text-muted-foreground">{item.time}</span>
+                  );
+                })
+              ) : (
+                <div className="text-center py-8 text-muted-foreground">
+                  <p>No recent activity</p>
+                  <p className="text-xs mt-2">This list resets automatically when the browser session ends.</p>
                 </div>
-              ))}
+              )}
             </div>
           </CardContent>
         </Card>

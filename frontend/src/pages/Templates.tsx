@@ -1,23 +1,24 @@
-import { useEffect, useMemo, useState, type DragEvent } from "react";
-import { Upload, QrCode, Info, Move, Loader2, Sparkles, WandSparkles, Eye, Pencil, ChevronLeft, ChevronRight, LayoutGrid } from "lucide-react";
+import { useEffect, useState, type DragEvent } from "react";
+import axios from "axios";
+import { Sparkles, WandSparkles, Eye, Pencil, LayoutGrid, Upload, ArrowRight } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { useSearchParams } from "react-router-dom";
-import { CertificateTemplate } from "@/components/certificates/CertificateTemplate";
+import { supabase } from "@/lib/supabaseClient";
 import { CertificateEditorModal } from "@/components/certificates/CertificateEditorModal";
 import {
   CertificateDraft,
   CertificateTemplateMeta,
-  GalleryCategory,
 } from "@/components/certificates/types";
+import { LayoutPreview } from "@/components/LayoutPreview";
+import { addSessionActivity } from "@/services/sessionActivity";
 import { getTemplates } from "@/services/apiService";
-
-const categories: Array<"All" | GalleryCategory> = ["All", "Academic", "Corporate", "Internship", "Event", "Compliance", "Training"];
-
-// start empty; we'll fetch from backend
-const officialTemplatesInit: CertificateTemplateMeta[] = [];
+import {
+  defaultLayoutConfig,
+  normalizeLayoutConfig,
+} from "@/lib/layoutConfig";
 
 const emptyDraft: CertificateDraft = {
   recipientName: "Alex Morgan",
@@ -45,31 +46,99 @@ const normalizeDraft = (draft: Partial<CertificateDraft>, fallbackTitle: string)
   logoPreviewUrl: draft.logoPreviewUrl ?? "",
 });
 
+type WorkspaceTemplateState = {
+  id: string;
+  file_url: string | null;
+  title?: string;
+  is_custom?: boolean;
+  image_url?: string | null;
+  layout_config?: any;
+};
+
+const upcomingLibraryCertificates = [
+  { title: "Academic Excellence", imageUrl: "/assets/CERT1.png.png" },
+  { title: "Professional Achievement", imageUrl: "/assets/CERT2.png.png" },
+  { title: "Internship Completion", imageUrl: "/assets/CERT3.png.png" },
+  { title: "Training Programs", imageUrl: "/assets/CERT4.png.png" },
+  { title: "Events & Summits", imageUrl: "/assets/CERT5.png.png" },
+  { title: "Compliance & Skills", imageUrl: "/assets/CERT6.png.png" },
+];
+
 const Templates = () => {
   const [searchParams] = useSearchParams();
-  const [selectedCategory, setSelectedCategory] = useState<"All" | GalleryCategory>("All");
-  const [templates, setTemplates] = useState<CertificateTemplateMeta[]>(officialTemplatesInit);
+  const [templates, setTemplates] = useState<CertificateTemplateMeta[]>([]);
+  const [loadingTemplates, setLoadingTemplates] = useState(true);
   const [selectedTemplateId, setSelectedTemplateId] = useState<string>("");
   const [selectedTemplate, setSelectedTemplate] = useState<CertificateTemplateMeta | null>(null);
   const [modalMode, setModalMode] = useState<"preview" | "edit">("preview");
   const [draftByTemplate, setDraftByTemplate] = useState<Record<string, CertificateDraft>>({});
-  const [loading, setLoading] = useState(true);
-  const [currentPage, setCurrentPage] = useState(1);
-  const itemsPerPage = 6;
+  const [isDraggingUpload, setIsDraggingUpload] = useState(false);
+  const [uploadStatus, setUploadStatus] = useState("Upload custom background image");
 
-  const [dragActive, setDragActive] = useState(false);
-  const [uploadedTemplateName, setUploadedTemplateName] = useState("sample-certificate-layout.pdf");
-  const [showPlaceholder, setShowPlaceholder] = useState(true);
-  const [showQrPlaceholder, setShowQrPlaceholder] = useState(true);
-  const [placeholderField, setPlaceholderField] = useState("STUDENT_NAME");
-  const [placeholderX, setPlaceholderX] = useState(40);
-  const [placeholderY, setPlaceholderY] = useState(36);
-  const [qrX, setQrX] = useState(82);
-  const [qrY, setQrY] = useState(76);
+  const [layoutSaveStatus, setLayoutSaveStatus] = useState("Ready");
+
+  const [layoutConfig, setLayoutConfig] = useState(defaultLayoutConfig);
+
+  const [workspaceTemplate, setWorkspaceTemplate] = useState<WorkspaceTemplateState | null>(null);
+  const [isGallerySelected, setIsGallerySelected] = useState(false);
 
   useEffect(() => {
-    const load = async () => {
-      setLoading(true);
+    const loadOfficialTemplates = async () => {
+      setLoadingTemplates(true);
+      try {
+        const result = await getTemplates({ official: true });
+        setTemplates(Array.isArray(result) ? result : []);
+      } catch {
+        setTemplates([]);
+      } finally {
+        setLoadingTemplates(false);
+      }
+    };
+
+    void loadOfficialTemplates();
+  }, []);
+
+  useEffect(() => {
+    const loadWorkspaceTemplate = async () => {
+      try {
+        let authHeader = "";
+        if (supabase) {
+          const { data } = await supabase.auth.getSession();
+          const token = data.session?.access_token;
+          if (token) authHeader = `Bearer ${token}`;
+        }
+
+        const { data } = await axios.get("http://127.0.0.1:8000/api/workspace-template", {
+          headers: authHeader ? { Authorization: authHeader } : {},
+        });
+
+        if (!data?.template_id) {
+          return;
+        }
+
+        setWorkspaceTemplate({
+          id: data.template_id,
+          file_url: data.file_url ?? data.template_url ?? null,
+          image_url: data.file_url ?? data.template_url ?? null,
+          title: data.title,
+          is_custom: !Boolean(data.is_official),
+          layout_config: data.layout_config ?? null,
+        });
+        setSelectedTemplateId(data.template_id);
+        setIsGallerySelected(true);
+        if (data.layout_config) {
+          setLayoutConfig(normalizeLayoutConfig(data.layout_config));
+        }
+      } catch {
+        // keep page functional without workspace template
+      }
+    };
+
+    void loadWorkspaceTemplate();
+  }, []);
+
+  useEffect(() => {
+    const loadDrafts = async () => {
       try {
         const raw = localStorage.getItem("certifypro-official-template-drafts");
         if (raw) {
@@ -84,23 +153,9 @@ const Templates = () => {
       } catch {
         setDraftByTemplate({});
       }
-
-      // fetch templates from backend
-      try {
-        const t = await getTemplates();
-        setTemplates(t as CertificateTemplateMeta[]);
-        if (!selectedTemplateId && t?.length) {
-          setSelectedTemplateId(t[0].id);
-        }
-      } catch (err) {
-        // keep existing behavior; show empty state
-        console.error("Failed to load templates", err);
-      }
-
-      setLoading(false);
     };
 
-    load();
+    loadDrafts();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -122,24 +177,6 @@ const Templates = () => {
     setSelectedTemplate(target);
     setModalMode(mode === "edit" ? "edit" : "preview");
   }, [searchParams, templates]);
-
-  const filteredTemplates = useMemo(() => {
-    if (selectedCategory === "All") {
-      return templates;
-    }
-    return templates.filter((template) => template.category === selectedCategory);
-  }, [selectedCategory, templates]);
-
-  // Reset to page 1 when category changes
-  useEffect(() => {
-    setCurrentPage(1);
-  }, [selectedCategory]);
-
-  const totalPages = Math.ceil(filteredTemplates.length / itemsPerPage);
-  const paginatedTemplates = filteredTemplates.slice(
-    (currentPage - 1) * itemsPerPage,
-    currentPage * itemsPerPage
-  );
 
   const currentDraft = selectedTemplate
     ? draftByTemplate[selectedTemplate.id] ?? normalizeDraft({}, selectedTemplate.title)
@@ -173,19 +210,141 @@ const Templates = () => {
     localStorage.setItem("certifypro-official-template-drafts", JSON.stringify(next));
   };
 
-  const openOfficialTemplate = (template: CertificateTemplateMeta, mode: "preview" | "edit") => {
-    setSelectedTemplate(template);
-    setSelectedTemplateId(template.id);
-    setModalMode(mode);
+  const saveLayout = () => {
+    if (!workspaceTemplate?.id) {
+      setLayoutSaveStatus("Please , Select or Uplaod template");
+      return;
+    }
+
+    const save = async () => {
+      try {
+        const normalizedLayout = normalizeLayoutConfig(layoutConfig);
+        let authHeader = "";
+        if (supabase) {
+          const { data } = await supabase.auth.getSession();
+          const token = data.session?.access_token;
+          if (token) authHeader = `Bearer ${token}`;
+        }
+
+        await axios.post(
+          "http://127.0.0.1:8000/api/save-layout",
+          {
+            template_id: workspaceTemplate.id,
+            layout_config: normalizedLayout,
+            custom_template_url: workspaceTemplate.is_custom ? workspaceTemplate.file_url : null,
+          },
+          { headers: authHeader ? { Authorization: authHeader } : {} },
+        );
+
+        setLayoutSaveStatus("Layout saved to workspace");
+        addSessionActivity(
+          "workspace_layout_saved",
+          `${workspaceTemplate.title ?? "Workspace template"} layout saved`,
+          { templateId: workspaceTemplate.id },
+        );
+      } catch (err: any) {
+        setLayoutSaveStatus(err?.response?.data?.detail ?? "Failed to save layout");
+      }
+    };
+
+    void save();
   };
 
-  const handleDrop = (event: DragEvent<HTMLDivElement>) => {
-    event.preventDefault();
-    setDragActive(false);
-    const droppedName = event.dataTransfer.files[0]?.name;
-    if (droppedName) {
-      setUploadedTemplateName(droppedName);
+  const openOfficialTemplate = (template: CertificateTemplateMeta, mode: "preview" | "edit") => {
+    setSelectedTemplate({
+      id: template.id,
+      file_url: template.file_url ?? template.image_url,
+      image_url: template.image_url ?? template.file_url,
+      title: template.title,
+      category: template.category,
+      styleType: template.styleType,
+      editableFields: template.editableFields,
+    } as CertificateTemplateMeta);
+    setSelectedTemplateId(template.id);
+    setModalMode(mode);
+
+    // If template has saved layout, apply to preview controls
+    try {
+      const cfg = (template as any).layout_config;
+      if (cfg) {
+        setLayoutConfig((prev) => ({ ...prev, ...normalizeLayoutConfig(cfg) }));
+      }
+    } catch {
+      // ignore
     }
+  };
+
+  const handleWorkspacePreview = (template: CertificateTemplateMeta) => {
+    const nextTemplate = {
+      file_url: template.file_url ?? template.image_url ?? null,
+      image_url: template.image_url ?? template.file_url ?? null,
+      title: template.title,
+      id: template.id,
+      is_custom: false,
+      layout_config: template.layout_config,
+    };
+    setWorkspaceTemplate(nextTemplate);
+    setIsGallerySelected(true);
+    if (template.layout_config) {
+      setLayoutConfig(normalizeLayoutConfig(template.layout_config));
+    }
+  };
+
+  const uploadTemplate = async (file: File) => {
+    setUploadStatus("Uploading template...");
+    try {
+      const formData = new FormData();
+      formData.append("file", file);
+
+      let authHeader = "";
+      if (supabase) {
+        const { data } = await supabase.auth.getSession();
+        const token = data.session?.access_token;
+        if (token) authHeader = `Bearer ${token}`;
+      }
+
+      const { data } = await axios.post("http://127.0.0.1:8000/api/templates/upload", formData, {
+        headers: {
+          ...(authHeader ? { Authorization: authHeader } : {}),
+          "Content-Type": "multipart/form-data",
+        },
+      });
+
+      const nextTemplate = {
+        id: data.template_id,
+        file_url: data.file_url ?? data.preview_url ?? null,
+        image_url: data.preview_url ?? data.file_url ?? null,
+        title: data.template?.title ?? file.name,
+        is_custom: true,
+      };
+
+      setWorkspaceTemplate(nextTemplate);
+      setSelectedTemplateId(nextTemplate.id);
+      setIsGallerySelected(false);
+      setUploadStatus("Template uploaded and selected");
+      addSessionActivity("template_uploaded", `${nextTemplate.title} uploaded`, { templateId: nextTemplate.id });
+    } catch (err: any) {
+      setUploadStatus(err?.response?.data?.detail ?? "Upload failed");
+    }
+  };
+
+  const onUploadFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) {
+      return;
+    }
+    void uploadTemplate(file);
+    event.currentTarget.value = "";
+  };
+
+  const onDropUpload = (event: DragEvent<HTMLDivElement>) => {
+    event.preventDefault();
+    setIsDraggingUpload(false);
+    const file = event.dataTransfer.files?.[0];
+    if (!file) {
+      return;
+    }
+    void uploadTemplate(file);
   };
 
   return (
@@ -193,9 +352,11 @@ const Templates = () => {
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <h1 className="text-3xl font-heading font-bold text-foreground">Template Library & Workspace</h1>
-          <p className="text-muted-foreground mt-1">Browse official locked templates and manage custom uploaded layouts in separate workspaces.</p>
+          <p className="text-muted-foreground mt-1">Browse official templates, preview them, and save your workspace layout for generation.</p>
         </div>
-        <Badge variant="secondary" className="text-xs">Mock API Mode • Backend-ready</Badge>
+        <Button size="sm" className="gold-gradient text-accent-foreground gap-2" onClick={() => (window.location.href = "/generate") }>
+          Generate Certificates <ArrowRight className="w-4 h-4" />
+        </Button>
       </div>
 
       <div className="grid grid-cols-1 xl:grid-cols-5 gap-6">
@@ -208,140 +369,63 @@ const Templates = () => {
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
-              <div className="flex flex-wrap gap-2">
-                <Badge className="bg-accent/10 text-accent border border-accent/20">Official Template</Badge>
-                <Badge variant="outline">Brand Locked</Badge>
-              </div>
-
-              <div className="flex flex-wrap gap-2">
-                {categories.map((category) => (
-                  <Button
-                    key={category}
-                    variant={selectedCategory === category ? "default" : "outline"}
-                    size="sm"
-                    className={`transition-all duration-200 ${selectedCategory === category
-                      ? "gold-gradient text-accent-foreground shadow-sm"
-                      : "hover:border-accent/50 hover:bg-accent/5"
-                      }`}
-                    onClick={() => setSelectedCategory(category)}
-                  >
-                    {category}
-                  </Button>
-                ))}
-              </div>
-
-              <div className="flex items-center justify-between text-xs text-muted-foreground border-b border-border pb-3">
-                <p>Showing {paginatedTemplates.length} of {filteredTemplates.length} templates</p>
-                <div className="flex items-center gap-2">
-                  <Button
-                    variant="outline"
-                    size="icon"
-                    className="h-7 w-7"
-                    onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
-                    disabled={currentPage === 1}
-                  >
-                    <ChevronLeft className="h-4 w-4" />
-                  </Button>
-                  <span className="font-medium text-foreground">
-                    Page {currentPage} / {Math.max(1, totalPages)}
-                  </span>
-                  <Button
-                    variant="outline"
-                    size="icon"
-                    className="h-7 w-7"
-                    onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
-                    disabled={currentPage === totalPages || totalPages === 0}
-                  >
-                    <ChevronRight className="h-4 w-4" />
-                  </Button>
+              <div className="relative overflow-hidden rounded-[28px] border border-[#b88a56]/20 bg-[linear-gradient(135deg,#fff9f1_0%,#f4e4ce_42%,#e3ccb2_100%)] px-6 py-12 shadow-[0_24px_60px_rgba(113,74,39,0.14)]">
+                <div className="pointer-events-none absolute inset-0">
+                  <div className="absolute inset-x-10 top-6 h-px bg-gradient-to-r from-transparent via-[#b88a56]/45 to-transparent animate-[galleryShimmer_6s_linear_infinite]" />
+                  <div className="absolute inset-y-0 left-[-10%] w-32 bg-[radial-gradient(circle,rgba(184,138,86,0.14),transparent_70%)] blur-3xl animate-[galleryGlow_7.6s_ease-in-out_infinite]" />
+                  <div className="absolute right-10 top-10 h-24 w-24 rounded-full bg-[radial-gradient(circle,rgba(255,248,236,0.9),rgba(226,197,160,0.18))] blur-2xl" />
                 </div>
+
+                <div className="relative z-10 flex min-h-[320px] items-center justify-center rounded-[22px] border border-white/55 bg-white/30 px-6 py-10 text-center backdrop-blur-md">
+                  <h2 className="bg-gradient-to-r from-[#7a5330] via-[#b1824f] to-[#d8b38a] bg-clip-text text-5xl font-heading font-bold tracking-[0.12em] text-transparent drop-shadow-[0_10px_24px_rgba(122,83,48,0.12)] md:text-6xl animate-[galleryBounce_3.6s_ease-in-out_infinite]">
+                    Coming Soon
+                  </h2>
+                </div>
+
+                <style>{`
+                  @keyframes galleryBounce {
+                    0%, 100% { transform: translateY(0px) scale(1); }
+                    50% { transform: translateY(-8px) scale(1.015); }
+                  }
+
+                  @keyframes galleryShimmer {
+                    0% { transform: translateX(-35%); opacity: 0; }
+                    22% { opacity: 0.45; }
+                    50% { opacity: 0.8; }
+                    100% { transform: translateX(135%); opacity: 0; }
+                  }
+
+                  @keyframes galleryGlow {
+                    0%, 100% { transform: translate3d(0, 0, 0) scale(1); opacity: 0.35; }
+                    50% { transform: translate3d(12%, -5%, 0) scale(1.18); opacity: 0.58; }
+                  }
+                `}</style>
               </div>
 
-              {loading ? (
-                <div className="h-[500px] rounded-lg border border-dashed border-border flex items-center justify-center text-muted-foreground text-sm">
-                  <Loader2 className="w-6 h-6 mr-2 animate-spin text-accent" /> Loading template library...
+              <div className="rounded-[28px] border border-[#d9c0a2] bg-[linear-gradient(180deg,rgba(255,251,245,0.96)_0%,rgba(250,241,229,0.98)_100%)] p-5 shadow-[0_18px_40px_rgba(113,74,39,0.08)]">
+                <div className="mb-5 flex items-end justify-between gap-3">
+                  <div>
+                    <p className="text-xs font-semibold uppercase tracking-[0.28em] text-[#b1824f]">Our upcoming Certificate Library</p>
+                    <h3 className="mt-2 text-2xl font-heading font-semibold text-[#684422]">Preview the style of certificate collections customers will see</h3>
+                  </div>
+
                 </div>
-              ) : (
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
-                  {paginatedTemplates.map((template) => (
+
+                <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                  {upcomingLibraryCertificates.map((item) => (
                     <div
-                      key={template.id}
-                      className={`rounded-2xl border p-4 flex flex-col transition-all duration-300 cursor-pointer group hover:-translate-y-1 ${selectedTemplateId === template.id
-                        ? "border-accent bg-accent/5 shadow-md"
-                        : "border-border bg-card hover:border-accent/40 hover:shadow-lg"
-                        }`}
+                      key={item.title}
+                      className="group overflow-hidden rounded-[22px] border border-[#e0c6a8] bg-white shadow-[0_16px_36px_rgba(113,74,39,0.12)] transition-transform duration-500 hover:-translate-y-1"
                     >
-                      <div className="aspect-[1.414/1] rounded-xl border border-border bg-white p-2 relative overflow-hidden group-hover:scale-[1.01] transition-transform duration-300 shadow-inner">
-                        <CertificateTemplate
-                          styleType={template.styleType}
-                          draft={draftByTemplate[template.id] ?? normalizeDraft({}, template.title)}
-                          organizationName={template.category === "Corporate" ? "CertifyPro Corporate" : "CertifyPro Institution"}
-                          previewScale="sm"
-                        />
-                      </div>
-
-                      <div className="flex-1 flex flex-col justify-between mt-4">
-                        <div className="space-y-2">
-                          <div className="flex items-start justify-between gap-2">
-                            <p className="text-sm font-bold text-foreground line-clamp-1" title={template.title}>{template.title}</p>
-                            <Badge variant="outline" className="text-[10px] px-1.5 h-5 shrink-0">{template.category}</Badge>
-                          </div>
-                          <div className="flex flex-wrap gap-1.5">
-                            <Badge className="bg-accent/10 text-accent border border-accent/20 text-[10px] px-1.5 h-5">Official</Badge>
-                            <Badge variant="outline" className="text-[10px] px-1.5 h-5">Locked</Badge>
-                          </div>
-                        </div>
-
-                        <div className="flex items-center gap-2 mt-4">
-                          <Button variant="outline" size="sm" className="h-8 text-xs flex-1 gap-1.5 hover:bg-accent/10 hover:border-accent/50 transition-colors" onClick={() => openOfficialTemplate(template, "preview")}>
-                            <Eye className="w-3.5 h-3.5" /> Preview
-                          </Button>
-                          <Button size="sm" className="h-8 text-xs flex-1 gap-1.5 gold-gradient text-accent-foreground hover:opacity-90 transition-opacity" onClick={() => openOfficialTemplate(template, "edit")}>
-                            <Pencil className="w-3.5 h-3.5" /> Edit
-                          </Button>
-                        </div>
-                      </div>
+                      <img
+                        src={item.imageUrl}
+                        alt={item.title}
+                        className="w-full object-contain"
+                        loading="lazy"
+                      />
                     </div>
                   ))}
-
-                  {paginatedTemplates.length === 0 && (
-                    <div className="col-span-full h-40 flex flex-col items-center justify-center text-muted-foreground border-2 border-dashed border-border rounded-xl">
-                      <LayoutGrid className="w-8 h-8 opacity-20 mb-2" />
-                      <p>No templates found in this category.</p>
-                    </div>
-                  )}
                 </div>
-              )}
-
-              {/* Pagination Footer */}
-              <div className="flex items-center justify-center pt-2 gap-4">
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="gap-2"
-                  onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
-                  disabled={currentPage === 1}
-                >
-                  <ChevronLeft className="w-4 h-4" /> Previous
-                </Button>
-                <div className="flex gap-1.5">
-                  {Array.from({ length: totalPages }).map((_, i) => (
-                    <button
-                      key={i}
-                      className={`w-2 h-2 rounded-full transition-all ${currentPage === i + 1 ? "bg-accent w-4" : "bg-muted-foreground/30 hover:bg-muted-foreground/50"}`}
-                      onClick={() => setCurrentPage(i + 1)}
-                    />
-                  ))}
-                </div>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="gap-2"
-                  onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
-                  disabled={currentPage === totalPages || totalPages === 0}
-                >
-                  Next <ChevronRight className="w-4 h-4" />
-                </Button>
               </div>
             </CardContent>
           </Card>
@@ -350,127 +434,111 @@ const Templates = () => {
         <div className="xl:col-span-2 space-y-4">
           <Card className="card-shadow overflow-hidden">
             <CardHeader className="pb-3">
-              <CardTitle className="text-base font-heading">Template Upload & Live Preview</CardTitle>
+              <CardTitle className="text-base font-heading">Template Live Preview & Layout Editor</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
-              <div className="flex flex-wrap gap-2">
-                <Badge className="bg-primary/10 text-primary border border-primary/20">Custom Template</Badge>
-                <Badge variant="outline">Editable Layout</Badge>
-              </div>
+              {isGallerySelected && workspaceTemplate && (
+                <div className="rounded-md bg-accent/10 border border-accent/20 px-3 py-2 text-xs text-accent-foreground">
+                  Gallery template selected: <span className="font-medium">{workspaceTemplate.title || "Official Template"}</span>
+                  <Button variant="ghost" size="sm" className="ml-2 h-5 text-[10px] px-1" onClick={() => { setIsGallerySelected(false); setWorkspaceTemplate(null); }}>Clear</Button>
+                </div>
+              )}
+
+              {!workspaceTemplate && (
+                <div className="rounded-md border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-800">
+                  Please , Select or Uplaod template
+                </div>
+              )}
 
               <div
-                className={`border-2 border-dashed rounded-lg p-5 text-center transition-colors ${dragActive ? "border-accent bg-accent/10" : "border-border hover:border-accent/50"}`}
                 onDragOver={(event) => {
                   event.preventDefault();
-                  setDragActive(true);
+                  setIsDraggingUpload(true);
                 }}
-                onDragLeave={() => setDragActive(false)}
-                onDrop={handleDrop}
+                onDragLeave={() => setIsDraggingUpload(false)}
+                onDrop={onDropUpload}
+                className={`rounded-xl border-2 border-dashed px-4 py-5 text-center transition-colors ${isDraggingUpload ? "border-accent bg-accent/5" : "border-border bg-muted/20"}`}
               >
-                <Upload className="w-8 h-8 mx-auto text-muted-foreground mb-2" />
-                <p className="text-sm font-medium text-foreground">Drag & drop template file</p>
-                <p className="text-xs text-muted-foreground mt-1">PDF, PNG, DOCX • UI simulation only</p>
-              </div>
-
-              <div className="rounded-md bg-muted/50 border border-border px-3 py-2 text-xs text-muted-foreground">
-                Active uploaded file: <span className="font-medium text-foreground">{uploadedTemplateName}</span>
+                <Upload className="w-5 h-5 mx-auto mb-2 text-muted-foreground" />
+                <p className="text-sm text-foreground">Upload custom template image</p>
+                <p className="text-xs text-muted-foreground mt-1">PNG/JPG supported. This becomes your workspace template.</p>
+                <label className="inline-block mt-3">
+                  <input type="file" accept="image/*" className="hidden" onChange={onUploadFileChange} />
+                  <span className="inline-flex items-center rounded-md border border-input bg-background px-3 py-1.5 text-xs hover:bg-accent/5 cursor-pointer">
+                    Choose file
+                  </span>
+                </label>
+                <p className="text-xs text-muted-foreground mt-2">{uploadStatus}</p>
               </div>
 
               <div className="space-y-3">
                 <div className="flex items-center justify-between rounded-md border border-border bg-muted/30 px-3 py-2">
                   <label className="text-xs text-muted-foreground">Student Name placeholder visibility</label>
-                  <input type="checkbox" checked={showPlaceholder} onChange={(event) => setShowPlaceholder(event.target.checked)} />
+                  <input type="checkbox" checked={layoutConfig.showStudentName} onChange={(event) => setLayoutConfig((prev) => ({ ...prev, showStudentName: event.target.checked }))} />
                 </div>
 
                 <div className="flex items-center justify-between rounded-md border border-border bg-muted/30 px-3 py-2">
                   <label className="text-xs text-muted-foreground">QR placeholder visibility</label>
-                  <input type="checkbox" checked={showQrPlaceholder} onChange={(event) => setShowQrPlaceholder(event.target.checked)} />
+                  <input type="checkbox" checked={layoutConfig.showQR} onChange={(event) => setLayoutConfig((prev) => ({ ...prev, showQR: event.target.checked }))} />
+                </div>
+
+                <div className="flex items-center justify-between rounded-md border border-border bg-muted/30 px-3 py-2">
+                  <label className="text-xs text-muted-foreground">Certificate ID visibility</label>
+                  <input type="checkbox" checked={layoutConfig.showID} onChange={(event) => setLayoutConfig((prev) => ({ ...prev, showID: event.target.checked }))} />
                 </div>
 
                 <div>
                   <label className="text-xs text-muted-foreground">Placeholder Label</label>
-                  <Input value={placeholderField} onChange={(event) => setPlaceholderField(event.target.value.toUpperCase())} />
+                  <Input value={layoutConfig.placeholderField} onChange={(event) => setLayoutConfig((prev) => ({ ...prev, placeholderField: event.target.value.toUpperCase() }))} />
                 </div>
 
                 <div>
-                  <label className="text-xs text-muted-foreground">Placeholder X Position ({placeholderX}%)</label>
-                  <input type="range" min={10} max={90} value={placeholderX} onChange={(event) => setPlaceholderX(Number(event.target.value))} className="w-full" />
+                  <label className="text-xs text-muted-foreground">Placeholder X Position ({layoutConfig.placeholderX}%)</label>
+                  <input type="range" min={10} max={90} value={layoutConfig.placeholderX} onChange={(event) => setLayoutConfig((prev) => ({ ...prev, placeholderX: Number(event.target.value) }))} className="w-full" />
                 </div>
 
                 <div>
-                  <label className="text-xs text-muted-foreground">Placeholder Y Position ({placeholderY}%)</label>
-                  <input type="range" min={12} max={86} value={placeholderY} onChange={(event) => setPlaceholderY(Number(event.target.value))} className="w-full" />
+                  <label className="text-xs text-muted-foreground">Placeholder Y Position ({layoutConfig.placeholderY}%)</label>
+                  <input type="range" min={12} max={86} value={layoutConfig.placeholderY} onChange={(event) => setLayoutConfig((prev) => ({ ...prev, placeholderY: Number(event.target.value) }))} className="w-full" />
                 </div>
 
                 <div>
-                  <label className="text-xs text-muted-foreground">QR X Position ({qrX}%)</label>
-                  <input type="range" min={10} max={90} value={qrX} onChange={(event) => setQrX(Number(event.target.value))} className="w-full" />
+                  <label className="text-xs text-muted-foreground">QR X Position ({layoutConfig.qrX}%)</label>
+                  <input type="range" min={10} max={90} value={layoutConfig.qrX} onChange={(event) => setLayoutConfig((prev) => ({ ...prev, qrX: Number(event.target.value) }))} className="w-full" />
                 </div>
 
                 <div>
-                  <label className="text-xs text-muted-foreground">QR Y Position ({qrY}%)</label>
-                  <input type="range" min={10} max={90} value={qrY} onChange={(event) => setQrY(Number(event.target.value))} className="w-full" />
+                  <label className="text-xs text-muted-foreground">QR Y Position ({layoutConfig.qrY}%)</label>
+                  <input type="range" min={10} max={90} value={layoutConfig.qrY} onChange={(event) => setLayoutConfig((prev) => ({ ...prev, qrY: Number(event.target.value) }))} className="w-full" />
+                </div>
+
+                <div>
+                  <label className="text-xs text-muted-foreground">ID X Position ({layoutConfig.idX}%)</label>
+                  <input type="range" min={5} max={90} value={layoutConfig.idX} onChange={(event) => setLayoutConfig((prev) => ({ ...prev, idX: Number(event.target.value) }))} className="w-full" />
+                </div>
+
+                <div>
+                  <label className="text-xs text-muted-foreground">ID Y Position ({layoutConfig.idY}%)</label>
+                  <input type="range" min={5} max={95} value={layoutConfig.idY} onChange={(event) => setLayoutConfig((prev) => ({ ...prev, idY: Number(event.target.value) }))} className="w-full" />
                 </div>
               </div>
 
-              <div className="aspect-[1.414/1] bg-muted/40 rounded-lg border border-dashed border-border relative overflow-hidden seal-pattern">
-                <div className="absolute inset-0 p-4 sm:p-6 flex flex-col justify-between">
-                  <div className="text-center space-y-1">
-                    <p className="text-[11px] uppercase tracking-wider text-muted-foreground">Live Preview (Mock Rendering)</p>
-                    <p className="font-heading text-base font-bold text-foreground">{selectedTemplate?.title ?? "No Template Selected"}</p>
-                  </div>
+              <LayoutPreview
+                templateUrl={workspaceTemplate?.file_url ?? null}
+                templateTitle={workspaceTemplate?.title}
+                layoutConfig={layoutConfig}
+              />
 
-                  {showPlaceholder && (
-                    <div className="absolute" style={{ left: `${placeholderX}%`, top: `${placeholderY}%`, transform: "translate(-50%, -50%)" }}>
-                      <span className="text-[10px] px-2 py-1 rounded bg-primary text-primary-foreground shadow">
-                        {`{{${placeholderField || "FIELD"}}}`}
-                      </span>
-                    </div>
-                  )}
-
-                  {showQrPlaceholder && (
-                    <div
-                      className="absolute w-14 h-14 rounded-md border-2 border-dashed border-accent bg-accent/10 flex items-center justify-center"
-                      style={{ left: `${qrX}%`, top: `${qrY}%`, transform: "translate(-50%, -50%)" }}
-                    >
-                      <QrCode className="w-7 h-7 text-accent" />
-                      <span className="absolute -top-2 -right-2 w-5 h-5 rounded-full bg-accent flex items-center justify-center">
-                        <Move className="w-3 h-3 text-accent-foreground" />
-                      </span>
-                    </div>
-                  )}
-
-                  <div className="flex justify-between items-end text-[10px] text-muted-foreground">
-                    <span>Date: {"{{DATE}}"}</span>
-                    <span>Signature: Registrar</span>
-                  </div>
-                </div>
-              </div>
-
-              <div className="flex gap-2">
-                <Button className="flex-1 gold-gradient text-accent-foreground gap-2">
+              <div className="flex flex-col gap-2">
+                <Button className="flex-1 gold-gradient text-accent-foreground gap-2" onClick={saveLayout}>
                   <WandSparkles className="w-4 h-4" /> Save Layout
                 </Button>
+                <p className="text-xs text-muted-foreground">{layoutSaveStatus}</p>
               </div>
             </CardContent>
           </Card>
 
-          <Card className="card-shadow">
-            <CardContent className="p-4">
-              <div className="flex items-start gap-3">
-                <Info className="w-4 h-4 text-accent mt-0.5 shrink-0" />
-                <div className="text-xs text-muted-foreground space-y-1">
-                  <p className="font-medium text-foreground">Implementation Notes</p>
-                  <ul className="space-y-1 list-disc list-inside">
-                    <li>Official templates are brand-locked with field-only editing in modal.</li>
-                    <li>Custom upload workspace supports placeholder visibility and position controls.</li>
-                    <li>Drag-drop and layout save are frontend-only UI simulation.</li>
-                    <li>Ready for future backend connection without routing changes.</li>
-                  </ul>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
+
         </div>
       </div>
 

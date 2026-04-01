@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input";
 import { isSupabaseConfigured, supabase } from "@/lib/supabaseClient";
 
 const MIN_PASSWORD_LENGTH = 8;
+const RECOVERY_TYPES = new Set(["recovery", "invite"]);
 
 const getRecoveryTypeFromUrl = (): string | null => {
   if (typeof window === "undefined") {
@@ -72,7 +73,7 @@ const ResetPassword = () => {
   useEffect(() => {
     let mounted = true;
 
-    const initialRecoveryIntent = getRecoveryTypeFromUrl() === "recovery";
+    const initialRecoveryIntent = RECOVERY_TYPES.has(getRecoveryTypeFromUrl() || "");
 
     const boot = async () => {
       if (!isSupabaseConfigured || !supabase) {

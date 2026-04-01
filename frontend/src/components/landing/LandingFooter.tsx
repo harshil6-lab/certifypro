@@ -52,7 +52,13 @@ export function LandingFooter() {
             <p className="text-sm font-semibold text-foreground">Resources</p>
             <ul className="space-y-2.5 text-sm">
               <li>
-                <Link to="/login" className="block text-slate-600 hover:text-foreground transition-colors duration-200">Request Access</Link>
+                <a href="#" className="block text-muted-foreground hover:text-foreground transition-colors duration-200">Documentation</a>
+              </li>
+              <li>
+                <Link to="/faq" className="block text-muted-foreground hover:text-foreground transition-colors duration-200">FAQs</Link>
+              </li>
+              <li>
+                <Link to="/login" className="block text-muted-foreground hover:text-foreground transition-colors duration-200">Request Access</Link>
               </li>
             </ul>
           </div>
