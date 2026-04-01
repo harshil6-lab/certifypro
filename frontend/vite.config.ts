@@ -8,6 +8,7 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 // https://vitejs.dev/config/
 export default defineConfig(({ mode }: { mode: string }) => ({
+  envDir: "..",
   server: {
     host: "::",
     port: 8080,

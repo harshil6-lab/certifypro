@@ -12,6 +12,13 @@ dist
 dist-ssr
 *.local
 
+# Environment variables
+.env
+.env.local
+.env.*.local
+.env.*
+!.env.example
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json
@@ -32,3 +39,60 @@ PRODUCTION_*.md
 *_MIGRATION.md
 DEV_*.md
 DEVELOPMENT_*.md
+
+# Secrets / credentials / private keys
+*.pem
+*.key
+*.p8
+*.p12
+*.pfx
+*.crt
+*.cer
+*.jks
+*.keystore
+*.ovpn
+id_rsa
+id_rsa.pub
+id_ed25519
+id_ed25519.pub
+
+# Cloud/service credential files
+service-account*.json
+google-credentials.json
+firebase-service-account*.json
+azureauth.json
+
+# Local data / database artifacts
+*.sqlite
+*.sqlite3
+*.db
+*.db-journal
+*.sql.gz
+*.dump
+*.bak
+
+# Python runtime / virtual environments
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.tox/
+.venv/
+venv/
+env/
+
+# Runtime / uploads / temp
+uploads/
+storage/
+tmp/
+temp/
+*.pid
+
+# Workspace-local backend/frontend artifacts
+/backend/.env
+/frontend/.env
+/.venv/
+/backend/uploads/
+/frontend/dist/
+/frontend/node_modules/

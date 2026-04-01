@@ -27,6 +27,25 @@ dist-ssr
 .env
 .env.local
 .env.*.local
+.env.*
+!.env.example
+
+# Secrets / credentials / private keys
+*.pem
+*.key
+*.p8
+*.p12
+*.pfx
+*.crt
+*.cer
+*.jks
+*.keystore
+
+# Local data / temp artifacts
+*.sqlite
+*.sqlite3
+*.db
+*.pid
 
 # Build artifacts
 build/

@@ -1,5 +1,7 @@
 import { useState } from "react";
-import { Search, QrCode, ShieldCheck } from "lucide-react";
+import { useNavigate } from "react-router-dom";
+import { Search, QrCode, ShieldCheck, CheckCircle2, XCircle } from "lucide-react";
+import { verifyCertificate } from "@/services/apiService";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { PublicNavbar } from "@/components/landing/PublicNavbar";
@@ -7,18 +9,30 @@ import { LandingFooter } from "@/components/landing/LandingFooter";
 import { Card, CardContent } from "@/components/ui/card";
 
 const Verify = () => {
+  const navigate = useNavigate();
   const [certId, setCertId] = useState("");
   const [result, setResult] = useState<"idle" | "verified" | "not-found">("idle");
+  const [loading, setLoading] = useState(false);
+  const [details, setDetails] = useState<any | null>(null);
 
   const handleVerify = () => {
-    if (!certId.trim()) {
-      return;
-    }
-    if (certId.trim().toUpperCase().startsWith("CERT-")) {
-      setResult("verified");
-      return;
-    }
-    setResult("not-found");
+    if (!certId.trim()) return;
+    setLoading(true);
+    setDetails(null);
+    verifyCertificate(certId.trim())
+      .then((data) => {
+        if (data && data.valid) {
+          setResult("verified");
+          setDetails(data);
+          navigate(`/verify/${encodeURIComponent(data.external_id || certId.trim())}`);
+        } else {
+          setResult("not-found");
+        }
+      })
+      .catch(() => {
+        setResult("not-found");
+      })
+      .finally(() => setLoading(false));
   };
 
   return (
@@ -38,55 +52,67 @@ const Verify = () => {
           </p>
         </div>
 
-        <Card className="rounded-2xl card-shadow border-border/60 max-w-xl mx-auto">
+        <Card className="rounded-2xl card-shadow border-border/60 max-w-xl mx-auto hover:card-shadow-lg transition-shadow">
           <CardContent className="p-6 space-y-5">
-          <div className="relative">
-            <Search className="absolute left-4 top-3.5 w-5 h-5 text-muted-foreground" />
-            <Input
-              placeholder="Enter Certificate ID (e.g. CERT-2024-0001)"
-              className="pl-12 h-12 text-base"
-              value={certId}
-              onChange={(e) => setCertId(e.target.value)}
-            />
-          </div>
+            <div className="relative">
+              <Search className="absolute left-4 top-3.5 w-5 h-5 text-muted-foreground" />
+              <Input
+                placeholder="Enter Certificate ID (e.g. CERT-2024-0001)"
+                className="pl-12 h-12 text-base focus:ring-2 focus:ring-accent/20 transition-all"
+                value={certId}
+                onChange={(e) => setCertId(e.target.value)}
+              />
+            </div>
 
             <Button
-              className="w-full h-12 text-base gold-gradient text-accent-foreground hover:opacity-90 gap-2"
+              className="w-full h-12 text-base gold-gradient text-accent-foreground hover:opacity-90 transition-opacity gap-2 shadow-md"
               disabled={!certId}
               onClick={handleVerify}
             >
               <ShieldCheck className="w-5 h-5" /> Verify Certificate
             </Button>
 
-            <div className="rounded-xl border border-border bg-card px-4 py-4 text-left">
+            <div className="rounded-xl border border-border bg-card px-4 py-4 text-left transition-colors hover:border-accent/30">
               <p className="text-xs uppercase tracking-wide text-muted-foreground mb-2">Verification Result</p>
               {result === "idle" ? (
                 <p className="text-sm text-muted-foreground">Result will appear here after verification.</p>
               ) : null}
               {result === "verified" ? (
-                <p className="text-sm text-success">Certificate is valid. (Frontend mock result)</p>
+                  <div className="flex items-start gap-3">
+                    <CheckCircle2 className="w-4 h-4 text-success mt-1" />
+                    <div>
+                      <p className="text-sm text-success font-medium">Certificate is valid.</p>
+                      <p className="text-xs text-muted-foreground mt-1">Redirecting to full verification details...</p>
+                      {details && (
+                        <p className="text-xs text-muted-foreground mt-1">Recipient: {details.full_name}</p>
+                      )}
+                    </div>
+                  </div>
               ) : null}
               {result === "not-found" ? (
-                <p className="text-sm text-destructive">Certificate not found. (Frontend mock result)</p>
+                <div className="flex items-center gap-2">
+                  <XCircle className="w-4 h-4 text-destructive" />
+                  <p className="text-sm text-destructive font-medium">Certificate not found in the registry.</p>
+                </div>
               ) : null}
             </div>
           </CardContent>
         </Card>
 
-          <div className="relative py-4">
-            <div className="absolute inset-0 flex items-center">
-              <span className="w-full border-t" />
-            </div>
-            <div className="relative flex justify-center text-xs uppercase">
-              <span className="bg-background px-3 text-muted-foreground">or</span>
-            </div>
+        <div className="relative py-4">
+          <div className="absolute inset-0 flex items-center">
+            <span className="w-full border-t" />
           </div>
+          <div className="relative flex justify-center text-xs uppercase">
+            <span className="bg-background px-3 text-muted-foreground">or</span>
+          </div>
+        </div>
 
-          <div className="border-2 border-dashed border-border rounded-xl p-8 hover:border-accent/50 transition-colors cursor-pointer">
-            <QrCode className="w-12 h-12 text-muted-foreground/40 mx-auto mb-3" />
-            <p className="text-sm text-muted-foreground">Scan QR code from certificate</p>
-            <p className="text-xs text-muted-foreground/60 mt-1">Camera access required</p>
-          </div>
+        <div className="border-2 border-dashed border-border rounded-xl p-8 hover:border-accent/50 transition-all duration-300 cursor-pointer hover:bg-accent/5">
+          <QrCode className="w-12 h-12 text-muted-foreground/40 mx-auto mb-3" />
+          <p className="text-sm text-muted-foreground">Scan QR code from certificate</p>
+          <p className="text-xs text-muted-foreground/60 mt-1">A scanned QR should open the dedicated verification details page</p>
+        </div>
 
         <p className="text-xs text-muted-foreground">
           This portal verifies certificates issued through the CertifyPro system.

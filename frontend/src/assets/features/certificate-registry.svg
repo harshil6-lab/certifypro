@@ -1,0 +1,41 @@
+<svg width="640" height="320" viewBox="0 0 640 320" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="title desc">
+  <title id="title">Certificate Registry Illustration</title>
+  <desc id="desc">Structured blocks and layered registry for certificate data management.</desc>
+  <defs>
+    <linearGradient id="bg" x1="40" y1="20" x2="600" y2="300" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#0D1B3A" stop-opacity="0.05"/>
+      <stop offset="1" stop-color="#D9A938" stop-opacity="0.12"/>
+    </linearGradient>
+    <filter id="shadow" x="80" y="70" width="490" height="210" filterUnits="userSpaceOnUse" color-interpolation-filters="sRGB">
+      <feDropShadow dx="0" dy="10" stdDeviation="10" flood-color="#0D1B3A" flood-opacity="0.14"/>
+    </filter>
+  </defs>
+
+  <rect x="0" y="0" width="640" height="320" rx="24" fill="url(#bg)"/>
+  <rect x="24" y="24" width="592" height="272" rx="20" fill="#FFFFFF" fill-opacity="0.7"/>
+
+  <g filter="url(#shadow)">
+    <rect x="106" y="206" width="434" height="44" rx="12" fill="#D1DEFF"/>
+    <rect x="132" y="170" width="382" height="44" rx="12" fill="#E1E9FF"/>
+    <rect x="160" y="132" width="326" height="44" rx="12" fill="#EDF2FF"/>
+  </g>
+
+  <rect x="188" y="96" width="82" height="28" rx="8" fill="#0D1B3A" fill-opacity="0.15"/>
+  <rect x="280" y="96" width="82" height="28" rx="8" fill="#D9A938" fill-opacity="0.3"/>
+  <rect x="372" y="96" width="82" height="28" rx="8" fill="#0D1B3A" fill-opacity="0.15"/>
+
+  <rect x="190" y="144" width="62" height="8" rx="4" fill="#0D1B3A" fill-opacity="0.22"/>
+  <rect x="264" y="144" width="92" height="8" rx="4" fill="#0D1B3A" fill-opacity="0.15"/>
+  <rect x="368" y="144" width="92" height="8" rx="4" fill="#0D1B3A" fill-opacity="0.15"/>
+
+  <rect x="162" y="182" width="88" height="8" rx="4" fill="#0D1B3A" fill-opacity="0.2"/>
+  <rect x="262" y="182" width="102" height="8" rx="4" fill="#0D1B3A" fill-opacity="0.14"/>
+  <rect x="376" y="182" width="120" height="8" rx="4" fill="#0D1B3A" fill-opacity="0.14"/>
+
+  <rect x="134" y="218" width="90" height="8" rx="4" fill="#0D1B3A" fill-opacity="0.19"/>
+  <rect x="236" y="218" width="108" height="8" rx="4" fill="#0D1B3A" fill-opacity="0.13"/>
+  <rect x="356" y="218" width="152" height="8" rx="4" fill="#0D1B3A" fill-opacity="0.13"/>
+
+  <circle cx="530" cy="86" r="14" fill="#D9A938" fill-opacity="0.5"/>
+  <circle cx="560" cy="116" r="8" fill="#0D1B3A" fill-opacity="0.2"/>
+</svg>

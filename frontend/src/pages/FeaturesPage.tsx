@@ -64,9 +64,9 @@ const FeaturesPage = () => {
 
         <section className="grid grid-cols-1 md:grid-cols-2 gap-5">
           {features.map((feature) => (
-            <Card key={feature.title} className="rounded-2xl card-shadow border-border/60 transition-all duration-300 hover:-translate-y-1 hover:card-shadow-lg">
+            <Card key={feature.title} className="rounded-2xl card-shadow border-border/60 transition-all duration-300 hover:-translate-y-1 hover:card-shadow-lg hover:border-accent/30">
               <CardContent className="p-5 space-y-3">
-                <div className="w-10 h-10 rounded-lg bg-accent/10 flex items-center justify-center">
+                <div className="w-10 h-10 rounded-lg bg-accent/10 flex items-center justify-center transition-colors hover:bg-accent/20">
                   <feature.icon className="w-5 h-5 text-accent" />
                 </div>
                 <p className="text-lg font-semibold text-foreground">{feature.title}</p>
@@ -80,7 +80,7 @@ const FeaturesPage = () => {
           <h2 className="text-2xl md:text-3xl font-heading font-bold text-foreground">User Stories</h2>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {userStories.map((story) => (
-              <Card key={story.role} className="rounded-2xl card-shadow border-border/60">
+              <Card key={story.role} className="rounded-2xl card-shadow border-border/60 hover:card-shadow-lg hover:-translate-y-0.5 transition-all duration-300">
                 <CardContent className="p-5 space-y-3">
                   <div className="flex items-center gap-2">
                     <story.icon className="w-4 h-4 text-accent" />
