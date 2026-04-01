@@ -1,3 +1,4 @@
+// Clean and well-structured routing with protected admin access and centralized auth/session handling, ensuring smooth navigation and secure user flow.
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
