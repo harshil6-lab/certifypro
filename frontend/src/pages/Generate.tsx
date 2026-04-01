@@ -20,12 +20,11 @@ import { supabase } from "@/lib/supabaseClient";
 import { LayoutPreview } from "@/components/LayoutPreview";
 import { addSessionActivity } from "@/services/sessionActivity";
 import {
-  clearLegacyTemplateCache,
   defaultLayoutConfig,
   normalizeLayoutConfig,
-  readActiveTemplateSession,
   type LayoutConfig,
 } from "@/lib/layoutConfig";
+import { getTemplates } from "@/services/apiService";
 
 type WorkspaceTemplate = {
   template_id: string;
@@ -33,7 +32,7 @@ type WorkspaceTemplate = {
   layout_config: Partial<LayoutConfig> | null;
 };
 
-type WorkspaceTemplateSource = "workspace" | "session" | "none";
+type WorkspaceTemplateSource = "workspace" | "gallery" | "none";
 
 type StudentRecord = {
   id: string;
@@ -67,34 +66,12 @@ const Generate = () => {
   const [generateError, setGenerateError] = useState("");
 
   const selectedStudentRecords = students.filter((student) => selectedStudentIds.includes(student.id));
-  const resolvedLayoutConfig: LayoutConfig = {
-    ...defaultLayoutConfig,
-    ...normalizeLayoutConfig(workspaceTemplate?.layout_config ?? {}),
-  };
+  const resolvedLayoutConfig: LayoutConfig = workspaceTemplate?.layout_config
+    ? normalizeLayoutConfig(workspaceTemplate.layout_config)
+    : normalizeLayoutConfig(defaultLayoutConfig);
 
   useEffect(() => {
-    clearLegacyTemplateCache();
-    const activeSession = readActiveTemplateSession();
-    if (!activeSession) {
-      return;
-    }
-
-    setSelectedTemplate(activeSession.templateId);
-    setWorkspaceTemplate({
-      template_id: activeSession.templateId,
-      file_url: activeSession.fileUrl,
-      layout_config: activeSession.layoutConfig ?? null,
-    });
-    setWorkspaceTemplateSource("session");
-  }, []);
-
-  useEffect(() => {
-    const loadWorkspaceTemplate = async () => {
-      const activeSession = readActiveTemplateSession();
-      if (!activeSession?.templateId) {
-        return;
-      }
-
+    const loadTemplateContext = async () => {
       try {
         let authHeader = "";
         if (supabase) {
@@ -102,24 +79,41 @@ const Generate = () => {
           const token = data.session?.access_token;
           if (token) authHeader = `Bearer ${token}`;
         }
-        const res = await axios.get("http://127.0.0.1:8000/api/workspace-template", {
+
+        const workspace = await axios.get("http://127.0.0.1:8000/api/workspace-template", {
           headers: authHeader ? { Authorization: authHeader } : {},
         });
-        const templateId = res.data.template_id || res.data.template;
-        if (templateId && templateId === activeSession.templateId) {
-          setSelectedTemplate(templateId);
+
+        if (workspace.data?.template_id) {
+          setSelectedTemplate(workspace.data.template_id);
           setWorkspaceTemplate({
-            template_id: templateId,
-            file_url: res.data.file_url ?? null,
-            layout_config: res.data.layout_config ? normalizeLayoutConfig(res.data.layout_config) : null,
+            template_id: workspace.data.template_id,
+            file_url: workspace.data.file_url ?? workspace.data.template_url ?? null,
+            layout_config: workspace.data.layout_config ?? null,
           });
           setWorkspaceTemplateSource("workspace");
+          return;
         }
+
+        const fallbackTemplates = await getTemplates({ official: true });
+        const fallback = Array.isArray(fallbackTemplates) ? fallbackTemplates[0] : null;
+        if (!fallback?.id) {
+          return;
+        }
+
+        setSelectedTemplate(fallback.id);
+        setWorkspaceTemplate({
+          template_id: fallback.id,
+          file_url: fallback.file_url ?? fallback.image_url ?? null,
+          layout_config: fallback.layout_config ?? null,
+        });
+        setWorkspaceTemplateSource("gallery");
       } catch {
-        // Keep current session state only.
+        setWorkspaceTemplateSource("none");
       }
     };
-    loadWorkspaceTemplate();
+
+    void loadTemplateContext();
   }, []);
 
   // Load students on mount from dedicated ready-endpoint
@@ -200,8 +194,6 @@ const Generate = () => {
       setProgress(30);
       const renderContext = {
         template_id: selectedTemplate,
-        template_url: workspaceTemplate?.file_url ?? null,
-        layout_config: resolvedLayoutConfig,
       };
 
       const request = selectAllStudents
@@ -249,10 +241,10 @@ const Generate = () => {
 
   const workspaceTemplateSourceBadge =
     workspaceTemplateSource === "workspace"
-      ? { label: "Using workspace template", variant: "secondary" as const }
-      : workspaceTemplateSource === "session"
-        ? { label: "Using current session template", variant: "outline" as const }
-          : null;
+      ? { label: "Using workspace template", variant: "outline" as const }
+      : workspaceTemplateSource === "gallery"
+      ? { label: "Using gallery fallback", variant: "secondary" as const }
+      : null;
 
   return (
     <div className="p-8 max-w-[1200px] mx-auto space-y-6 animate-fade-in">
