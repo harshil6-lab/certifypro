@@ -14,6 +14,20 @@ export type CertificateStyleType =
   | "trainingCertification"
   | "eventCertificate";
 
+export type TemplateLayoutConfig = Partial<{
+  showStudentName: boolean;
+  showQR: boolean;
+  showID: boolean;
+  placeholderField: string;
+  placeholderX: number;
+  placeholderY: number;
+  qrX: number;
+  qrY: number;
+  idX: number;
+  idY: number;
+}> &
+  Record<string, unknown>;
+
 export interface CertificateTemplateMeta {
   id: string;
   category: GalleryCategory;
@@ -24,7 +38,8 @@ export interface CertificateTemplateMeta {
   file_url?: string;
   image_url?: string;
   preview_url?: string;
-  layout_config?: any;
+  layout_config?: TemplateLayoutConfig;
+  isBuiltin?: boolean;
 }
 
 export interface CertificateDraft {

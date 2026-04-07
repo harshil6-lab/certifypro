@@ -62,7 +62,7 @@ const Generate = () => {
   const [selectedStudentIds, setSelectedStudentIds] = useState<string[]>([]);
   const [selectAllStudents, setSelectAllStudents] = useState(false);
   const [zipUrl, setZipUrl] = useState("");
-  const [generatedCerts, setGeneratedCerts] = useState<any[]>([]);
+  const [generatedCerts, setGeneratedCerts] = useState<Array<Record<string, unknown>>>([]);
   const [generateError, setGenerateError] = useState("");
 
   const selectedStudentRecords = students.filter((student) => selectedStudentIds.includes(student.id));
@@ -228,11 +228,19 @@ const Generate = () => {
           templateId: selectedTemplate,
         },
       );
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error("Error generating certificate:", err);
+      const detail =
+        typeof err === "object" && err && "response" in err
+          ? // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            (err as any)?.response?.data?.detail
+          : null;
       setGenerateError(
-        err?.response?.data?.detail ??
-        (err instanceof Error ? err.message : "Certificate generation failed."),
+        typeof detail === "string"
+          ? detail
+          : err instanceof Error
+            ? err.message
+            : "Certificate generation failed.",
       );
     } finally {
       setGenerating(false);

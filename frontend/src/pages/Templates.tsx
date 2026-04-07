@@ -1,6 +1,6 @@
 import { useEffect, useState, type DragEvent } from "react";
 import axios from "axios";
-import { Sparkles, WandSparkles, Eye, Pencil, LayoutGrid, Upload, ArrowRight } from "lucide-react";
+import { Sparkles, WandSparkles, Eye, LayoutGrid, Upload, ArrowRight } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -8,9 +8,11 @@ import { Input } from "@/components/ui/input";
 import { useSearchParams } from "react-router-dom";
 import { supabase } from "@/lib/supabaseClient";
 import { CertificateEditorModal } from "@/components/certificates/CertificateEditorModal";
+import { CertificateTemplate } from "@/components/certificates/CertificateTemplate";
 import {
   CertificateDraft,
   CertificateTemplateMeta,
+  TemplateLayoutConfig,
 } from "@/components/certificates/types";
 import { LayoutPreview } from "@/components/LayoutPreview";
 import { addSessionActivity } from "@/services/sessionActivity";
@@ -19,6 +21,76 @@ import {
   defaultLayoutConfig,
   normalizeLayoutConfig,
 } from "@/lib/layoutConfig";
+
+const BUILTIN_TEMPLATES: CertificateTemplateMeta[] = [
+  {
+    id: "builtin-academic",
+    category: "Academic",
+    title: "Academic Excellence",
+    styleType: "academicFormal",
+    editableFields: ["recipientName", "certificateTitle", "description", "issuerName", "authorityName", "issuedDate"],
+    image_url: undefined,
+    file_url: undefined,
+  },
+  {
+    id: "builtin-corporate",
+    category: "Corporate",
+    title: "Corporate Achievement",
+    styleType: "corporateMinimal",
+    editableFields: ["recipientName", "certificateTitle", "description", "issuerName", "authorityName", "issuedDate"],
+    image_url: undefined,
+    file_url: undefined,
+  },
+  {
+    id: "builtin-internship",
+    category: "Internship",
+    title: "Internship Completion",
+    styleType: "modernGradient",
+    editableFields: ["recipientName", "certificateTitle", "description", "issuerName", "authorityName", "issuedDate"],
+    image_url: undefined,
+    file_url: undefined,
+  },
+  {
+    id: "builtin-event",
+    category: "Event",
+    title: "Event Participation",
+    styleType: "eventCertificate",
+    editableFields: ["recipientName", "certificateTitle", "description", "issuerName", "authorityName", "issuedDate"],
+    image_url: undefined,
+    file_url: undefined,
+  },
+  {
+    id: "builtin-compliance",
+    category: "Compliance",
+    title: "Compliance Certificate",
+    styleType: "elegantClassic",
+    editableFields: ["recipientName", "certificateTitle", "description", "issuerName", "authorityName", "issuedDate"],
+    image_url: undefined,
+    file_url: undefined,
+  },
+  {
+    id: "builtin-training",
+    category: "Training",
+    title: "Training Certification",
+    styleType: "trainingCertification",
+    editableFields: ["recipientName", "certificateTitle", "description", "issuerName", "authorityName", "issuedDate"],
+    image_url: undefined,
+    file_url: undefined,
+  },
+];
+
+const BUILTIN_PREVIEW_DRAFT: CertificateDraft = {
+  recipientName: "Alex Morgan",
+  certificateTitle: "Certificate of Excellence",
+  description: "For outstanding achievement in the designated program.",
+  issuerSignatureText: "",
+  issuerName: "CertifyPro Institution",
+  authoritySignatureText: "",
+  authorityName: "Program Authority",
+  issuedDate: new Date().toLocaleDateString(),
+  logoName: "",
+  logoPreviewUrl: "",
+};
 
 const emptyDraft: CertificateDraft = {
   recipientName: "Alex Morgan",
@@ -52,17 +124,8 @@ type WorkspaceTemplateState = {
   title?: string;
   is_custom?: boolean;
   image_url?: string | null;
-  layout_config?: any;
+  layout_config?: TemplateLayoutConfig | null;
 };
-
-const upcomingLibraryCertificates = [
-  { title: "Academic Excellence", imageUrl: "/assets/CERT1.png.png" },
-  { title: "Professional Achievement", imageUrl: "/assets/CERT2.png.png" },
-  { title: "Internship Completion", imageUrl: "/assets/CERT3.png.png" },
-  { title: "Training Programs", imageUrl: "/assets/CERT4.png.png" },
-  { title: "Events & Summits", imageUrl: "/assets/CERT5.png.png" },
-  { title: "Compliance & Skills", imageUrl: "/assets/CERT6.png.png" },
-];
 
 const Templates = () => {
   const [searchParams] = useSearchParams();
@@ -121,7 +184,7 @@ const Templates = () => {
           file_url: data.file_url ?? data.template_url ?? null,
           image_url: data.file_url ?? data.template_url ?? null,
           title: data.title,
-          is_custom: !Boolean(data.is_official),
+          is_custom: !data.is_official,
           layout_config: data.layout_config ?? null,
         });
         setSelectedTemplateId(data.template_id);
@@ -242,8 +305,13 @@ const Templates = () => {
           `${workspaceTemplate.title ?? "Workspace template"} layout saved`,
           { templateId: workspaceTemplate.id },
         );
-      } catch (err: any) {
-        setLayoutSaveStatus(err?.response?.data?.detail ?? "Failed to save layout");
+      } catch (err: unknown) {
+        const detail =
+          typeof err === "object" && err && "response" in err
+            ? // eslint-disable-next-line @typescript-eslint/no-explicit-any
+              (err as any)?.response?.data?.detail
+            : null;
+        setLayoutSaveStatus(typeof detail === "string" ? detail : "Failed to save layout");
       }
     };
 
@@ -265,13 +333,42 @@ const Templates = () => {
 
     // If template has saved layout, apply to preview controls
     try {
-      const cfg = (template as any).layout_config;
-      if (cfg) {
-        setLayoutConfig((prev) => ({ ...prev, ...normalizeLayoutConfig(cfg) }));
+      if (template.layout_config) {
+        setLayoutConfig((prev) => ({ ...prev, ...normalizeLayoutConfig(template.layout_config) }));
       }
     } catch {
       // ignore
     }
+  };
+
+  const handleSelectBuiltinTemplate = (template: CertificateTemplateMeta) => {
+    // 1. Set the workspace template state (for layout editor on the right side)
+    setWorkspaceTemplate({
+      id: template.id,
+      file_url: null,
+      image_url: null,
+      title: template.title,
+      is_custom: false,
+      layout_config: null,
+    });
+    setIsGallerySelected(true);
+
+    // 2. Set selectedTemplate — THIS is what opens the modal
+    setSelectedTemplate({
+      id: template.id,
+      file_url: null,
+      image_url: null,
+      title: template.title,
+      category: template.category,
+      styleType: template.styleType,
+      editableFields: template.editableFields,
+    } as CertificateTemplateMeta);
+
+    // 3. Set selected ID (for the card ring highlight)
+    setSelectedTemplateId(template.id);
+
+    // 4. Open in edit mode so the user can customize immediately
+    setModalMode("edit");
   };
 
   const handleWorkspacePreview = (template: CertificateTemplateMeta) => {
@@ -285,6 +382,18 @@ const Templates = () => {
     };
     setWorkspaceTemplate(nextTemplate);
     setIsGallerySelected(true);
+    // Ensure modal opens when user selects from gallery
+    setSelectedTemplate({
+      id: template.id,
+      file_url: template.file_url ?? template.image_url ?? null,
+      image_url: template.image_url ?? template.file_url ?? null,
+      title: template.title,
+      category: template.category,
+      styleType: template.styleType,
+      editableFields: template.editableFields,
+    } as CertificateTemplateMeta);
+    setSelectedTemplateId(template.id);
+    setModalMode("edit");
     if (template.layout_config) {
       setLayoutConfig(normalizeLayoutConfig(template.layout_config));
     }
@@ -323,8 +432,13 @@ const Templates = () => {
       setIsGallerySelected(false);
       setUploadStatus("Template uploaded and selected");
       addSessionActivity("template_uploaded", `${nextTemplate.title} uploaded`, { templateId: nextTemplate.id });
-    } catch (err: any) {
-      setUploadStatus(err?.response?.data?.detail ?? "Upload failed");
+    } catch (err: unknown) {
+      const detail =
+        typeof err === "object" && err && "response" in err
+          ? // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            (err as any)?.response?.data?.detail
+          : null;
+      setUploadStatus(typeof detail === "string" ? detail : "Upload failed");
     }
   };
 
@@ -369,60 +483,68 @@ const Templates = () => {
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
-              <div className="relative overflow-hidden rounded-[28px] border border-[#b88a56]/20 bg-[linear-gradient(135deg,#fff9f1_0%,#f4e4ce_42%,#e3ccb2_100%)] px-6 py-12 shadow-[0_24px_60px_rgba(113,74,39,0.14)]">
-                <div className="pointer-events-none absolute inset-0">
-                  <div className="absolute inset-x-10 top-6 h-px bg-gradient-to-r from-transparent via-[#b88a56]/45 to-transparent animate-[galleryShimmer_6s_linear_infinite]" />
-                  <div className="absolute inset-y-0 left-[-10%] w-32 bg-[radial-gradient(circle,rgba(184,138,86,0.14),transparent_70%)] blur-3xl animate-[galleryGlow_7.6s_ease-in-out_infinite]" />
-                  <div className="absolute right-10 top-10 h-24 w-24 rounded-full bg-[radial-gradient(circle,rgba(255,248,236,0.9),rgba(226,197,160,0.18))] blur-2xl" />
+              <div className="space-y-4">
+                <div className="space-y-1">
+                  <h3 className="text-lg font-semibold text-foreground flex items-center gap-2">
+                    <LayoutGrid className="w-5 h-5 text-accent" />
+                    CertifyPro Template Library
+                  </h3>
+                  <p className="text-sm text-muted-foreground">
+                    Pick a professionally designed template and customize it to your needs.
+                  </p>
                 </div>
+                <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
+                  {BUILTIN_TEMPLATES.map((template) => (
+                    <div key={template.id} className={`rounded-xl ${selectedTemplateId === template.id ? "ring-2 ring-accent" : ""}`}>
+                      <Card className="card-shadow h-full">
+                        <CardContent className="p-4 space-y-3">
+                          <div
+                            className="relative w-full overflow-hidden rounded-lg border border-border bg-muted/20"
+                            style={{ aspectRatio: "1.414 / 1" }}
+                          >
+                            <div
+                              className="absolute origin-top-left"
+                              style={{
+                                width: "300%",
+                                transform: "scale(0.333)",
+                                transformOrigin: "top left",
+                                pointerEvents: "none",
+                              }}
+                            >
+                              <CertificateTemplate
+                                styleType={template.styleType}
+                                draft={BUILTIN_PREVIEW_DRAFT}
+                                organizationName="CertifyPro"
+                                previewScale="md"
+                                highlightEditableZones={false}
+                              />
+                            </div>
+                          </div>
 
-                <div className="relative z-10 flex min-h-[320px] items-center justify-center rounded-[22px] border border-white/55 bg-white/30 px-6 py-10 text-center backdrop-blur-md">
-                  <h2 className="bg-gradient-to-r from-[#7a5330] via-[#b1824f] to-[#d8b38a] bg-clip-text text-5xl font-heading font-bold tracking-[0.12em] text-transparent drop-shadow-[0_10px_24px_rgba(122,83,48,0.12)] md:text-6xl animate-[galleryBounce_3.6s_ease-in-out_infinite]">
-                    Coming Soon
-                  </h2>
-                </div>
+                          <div className="space-y-1">
+                            <p className="text-sm font-semibold text-foreground">{template.title}</p>
+                            <Badge variant="outline">{template.category}</Badge>
+                          </div>
 
-                <style>{`
-                  @keyframes galleryBounce {
-                    0%, 100% { transform: translateY(0px) scale(1); }
-                    50% { transform: translateY(-8px) scale(1.015); }
-                  }
-
-                  @keyframes galleryShimmer {
-                    0% { transform: translateX(-35%); opacity: 0; }
-                    22% { opacity: 0.45; }
-                    50% { opacity: 0.8; }
-                    100% { transform: translateX(135%); opacity: 0; }
-                  }
-
-                  @keyframes galleryGlow {
-                    0%, 100% { transform: translate3d(0, 0, 0) scale(1); opacity: 0.35; }
-                    50% { transform: translate3d(12%, -5%, 0) scale(1.18); opacity: 0.58; }
-                  }
-                `}</style>
-              </div>
-
-              <div className="rounded-[28px] border border-[#d9c0a2] bg-[linear-gradient(180deg,rgba(255,251,245,0.96)_0%,rgba(250,241,229,0.98)_100%)] p-5 shadow-[0_18px_40px_rgba(113,74,39,0.08)]">
-                <div className="mb-5 flex items-end justify-between gap-3">
-                  <div>
-                    <p className="text-xs font-semibold uppercase tracking-[0.28em] text-[#b1824f]">Our upcoming Certificate Library</p>
-                    <h3 className="mt-2 text-2xl font-heading font-semibold text-[#684422]">Preview the style of certificate collections customers will see</h3>
-                  </div>
-
-                </div>
-
-                <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-                  {upcomingLibraryCertificates.map((item) => (
-                    <div
-                      key={item.title}
-                      className="group overflow-hidden rounded-[22px] border border-[#e0c6a8] bg-white shadow-[0_16px_36px_rgba(113,74,39,0.12)] transition-transform duration-500 hover:-translate-y-1"
-                    >
-                      <img
-                        src={item.imageUrl}
-                        alt={item.title}
-                        className="w-full object-contain"
-                        loading="lazy"
-                      />
+                          <div className="flex items-center gap-2">
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              className="gap-2"
+                              onClick={() => openOfficialTemplate(template, "preview")}
+                            >
+                              <Eye className="h-4 w-4" /> Preview
+                            </Button>
+                            <Button
+                              size="sm"
+                              className="gold-gradient text-accent-foreground"
+                              onClick={() => handleSelectBuiltinTemplate(template)}
+                            >
+                              Use This
+                            </Button>
+                          </div>
+                        </CardContent>
+                      </Card>
                     </div>
                   ))}
                 </div>

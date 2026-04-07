@@ -161,7 +161,7 @@ export async function submitAccessRequest(
     if (conflict) {
       return {
         success: false,
-        error: `Organization already exists as \"${conflict.name}\" (Org ID: ${conflict.id}). Use the registered organization name exactly.`,
+        error: `Organization already exists as "${conflict.name}" (Org ID: ${conflict.id}). Use the registered organization name exactly.`,
       };
     }
 
