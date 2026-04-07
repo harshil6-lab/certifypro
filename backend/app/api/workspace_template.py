@@ -1,6 +1,6 @@
 from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel
-from typing import Any, Dict
+from typing import Any, Dict, Optional
 from app.core.supabase_client import supabase
 from app.services.auth_service import get_current_user
 
@@ -110,6 +110,20 @@ async def get_workspace_template(request: Request):
                 "layout_config": None,
             }
 
+        # Builtin template selection (no templates table lookup)
+        if not workspace_template_data.get("template_id") and workspace_template_data.get("builtin_template_id"):
+            return {
+                "template": None,
+                "template_id": workspace_template_data.get("builtin_template_id"),
+                "template_url": None,
+                "file_url": None,
+                "title": workspace_template_data.get("builtin_title"),
+                "is_official": True,
+                "is_builtin": True,
+                "builtin_style": workspace_template_data.get("builtin_style"),
+                "layout_config": _normalize_layout_config(workspace_template_data.get("layout_config")),
+            }
+
         template = (
             supabase.table("templates")
             .select("*")
@@ -150,6 +164,9 @@ class _SaveLayoutPayload(BaseModel):
     template_id: str
     layout_config: Dict[str, Any]
     custom_template_url: str | None = None
+    is_builtin: bool | None = None
+    builtin_style: str | None = None
+    title: str | None = None
 
 
 @router.post("/save-layout")
@@ -174,9 +191,10 @@ async def save_layout(payload: _SaveLayoutPayload, request: Request):
         # Step 1: deactivate all previous active layouts for this user
         supabase.table("workspace_templates").update({"is_active": False}).eq("user_id", user_id).execute()
 
+        is_builtin = bool(payload.is_builtin) or str(payload.template_id or "").startswith("builtin-")
         base_payload = {
             "user_id": user_id,
-            "template_id": payload.template_id,
+            "template_id": None if is_builtin else payload.template_id,
             "layout_config": normalized_layout_config,
             "is_active": True,
         }
@@ -187,7 +205,10 @@ async def save_layout(payload: _SaveLayoutPayload, request: Request):
             supabase.table("workspace_templates").upsert(
                 {
                     **base_payload,
-                    "custom_template_url": payload.custom_template_url,
+                    "custom_template_url": None if is_builtin else payload.custom_template_url,
+                    "builtin_template_id": payload.template_id if is_builtin else None,
+                    "builtin_style": payload.builtin_style,
+                    "builtin_title": payload.title,
                 }
             ).execute()
         except Exception as exc:
@@ -196,5 +217,64 @@ async def save_layout(payload: _SaveLayoutPayload, request: Request):
             supabase.table("workspace_templates").upsert(base_payload).execute()
 
         return {"message": "Layout saved successfully."}
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=str(exc))
+
+
+# ---------------------------------------------------------------------------
+# Save active workspace template
+# ---------------------------------------------------------------------------
+
+class _WorkspaceTemplatePayload(BaseModel):
+    template_id: str
+    layout_config: Dict[str, Any] | None = None
+    is_builtin: bool | None = None
+    builtin_style: str | None = None
+    title: str | None = None
+
+
+@router.post("/workspace-template")
+async def set_workspace_template(payload: _WorkspaceTemplatePayload, request: Request):
+    """Set the active workspace template for the authenticated user.
+
+    - For DB templates: template_id is a UUID in templates table.
+    - For builtin templates: template_id is a stable string id starting with 'builtin-'.
+    """
+    auth_header = request.headers.get("Authorization", "")
+    token = auth_header.split(" ", 1)[1] if auth_header.lower().startswith("bearer ") else None
+    user = get_current_user(token) if token else None
+    user_id = _extract_user_id(user)
+
+    if not user_id:
+        raise HTTPException(status_code=401, detail="Unauthorized")
+
+    is_builtin = bool(payload.is_builtin) or str(payload.template_id or "").startswith("builtin-")
+    normalized_layout = _normalize_layout_config(payload.layout_config or {})
+
+    try:
+        supabase.table("workspace_templates").update({"is_active": False}).eq("user_id", user_id).execute()
+
+        if not is_builtin:
+            # Ensure template exists for non-builtin IDs
+            template = supabase.table("templates").select("id,title,is_official,file_url,image_url").eq("id", payload.template_id).single().execute()
+            template_data = getattr(template, "data", None)
+            if not template_data:
+                raise HTTPException(status_code=404, detail="Template not found.")
+
+        upsert_payload = {
+            "user_id": user_id,
+            "template_id": None if is_builtin else payload.template_id,
+            "custom_template_url": None,
+            "layout_config": normalized_layout,
+            "is_active": True,
+            "builtin_template_id": payload.template_id if is_builtin else None,
+            "builtin_style": payload.builtin_style if is_builtin else None,
+            "builtin_title": payload.title if is_builtin else None,
+        }
+
+        supabase.table("workspace_templates").upsert(upsert_payload).execute()
+        return {"ok": True}
+    except HTTPException:
+        raise
     except Exception as exc:
         raise HTTPException(status_code=500, detail=str(exc))
