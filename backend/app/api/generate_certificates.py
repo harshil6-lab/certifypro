@@ -19,6 +19,8 @@ import io
 import os
 import uuid
 import zipfile
+import json
+import base64
 from typing import Any
 
 import httpx
@@ -26,6 +28,7 @@ import qrcode
 from fastapi import APIRouter, HTTPException, Request
 from PIL import Image, ImageDraw, ImageFont
 from pydantic import BaseModel, Field
+from datetime import datetime
 
 from app.core.supabase_client import supabase
 from app.services.auth_service import get_current_user
@@ -150,6 +153,42 @@ def _resolve_template_render_context(
     template_id: str,
     user_id: str | None,
 ) -> tuple[dict[str, Any], dict[str, Any], str | None]:
+    # Builtin templates are frontend-rendered styles (no templates table UUID).
+    # For generation we synthesize a background and use workspace layout_config.
+    if str(template_id or "").startswith("builtin-"):
+        layout_config: dict[str, Any] = _normalize_layout_config({})
+        builtin_style: str | None = None
+        builtin_title: str | None = None
+
+        if user_id:
+            try:
+                workspace_resp = (
+                    supabase.table("workspace_templates")
+                    .select("builtin_style, builtin_title, layout_config")
+                    .eq("user_id", user_id)
+                    .eq("builtin_template_id", template_id)
+                    .eq("is_active", True)
+                    .limit(1)
+                    .execute()
+                )
+                rows = workspace_resp.data if hasattr(workspace_resp, "data") and workspace_resp.data else []
+                if rows:
+                    workspace_layout = _normalize_layout_config(rows[0].get("layout_config") or {})
+                    layout_config = {**layout_config, **workspace_layout}
+                    builtin_style = rows[0].get("builtin_style")
+                    builtin_title = rows[0].get("builtin_title")
+            except Exception:
+                # If schema isn't migrated yet, fallback to defaults and let generation continue.
+                pass
+
+        template = {
+            "id": None,
+            "title": builtin_title or "Builtin Template",
+            "style_type": builtin_style or "academicFormal",
+            "is_official": True,
+        }
+        return template, layout_config, None
+
     try:
         resp = (
             supabase.table("templates")
@@ -177,6 +216,112 @@ def _resolve_template_render_context(
             file_url = workspace_rows[0].get("custom_template_url") or file_url
 
     return template, layout_config, file_url
+
+
+def _safe_font(size: int, bold: bool = False) -> ImageFont.FreeTypeFont | ImageFont.ImageFont:
+    """Load a reasonably nice font with fallback to default."""
+    candidates = []
+    if os.name == "nt":
+        candidates = [
+            r"C:\Windows\Fonts\arialbd.ttf" if bold else r"C:\Windows\Fonts\arial.ttf",
+            r"C:\Windows\Fonts\calibri.ttf",
+        ]
+    else:
+        candidates = [
+            "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf" if bold else "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf",
+        ]
+    for path in candidates:
+        try:
+            return ImageFont.truetype(path, size=size)
+        except Exception:
+            continue
+    return ImageFont.load_default()
+
+
+def _draw_centered(
+    draw: ImageDraw.ImageDraw,
+    text: str,
+    *,
+    y: int,
+    font: ImageFont.FreeTypeFont | ImageFont.ImageFont,
+    fill: tuple[int, int, int] = (17, 24, 39),
+    canvas_width: int,
+) -> None:
+    bbox = draw.textbbox((0, 0), text, font=font)
+    w = bbox[2] - bbox[0]
+    x = (canvas_width - w) // 2
+    draw.text((x, y), text, font=font, fill=fill)
+
+
+def _render_builtin_with_pillow(
+    *,
+    recipient_name: str,
+    course_name: str,
+    cert_id: str,
+    issue_date: str,
+    qr_image: Image.Image,
+    style: str,
+) -> Image.Image:
+    """Pure Pillow renderer for builtin templates (no headless browser)."""
+    # A4 landscape at ~96dpi: 1123 x 794
+    width, height = 1123, 794
+    img = Image.new("RGB", (width, height), (255, 255, 255))
+    draw = ImageDraw.Draw(img)
+
+    palette = {
+        "classic": {"band": (31, 42, 68), "accent": (227, 176, 75)},
+        "modern": {"band": (13, 148, 136), "accent": (15, 118, 110)},
+        "elegant": {"band": (184, 138, 86), "accent": (31, 42, 68)},
+    }
+    # Map style_type values into classic/modern/elegant buckets
+    normalized = style or "classic"
+    if normalized in {"modernGradient", "eventCertificate"}:
+        normalized = "modern"
+    elif normalized in {"elegantClassic", "trainingCertification"}:
+        normalized = "elegant"
+    elif normalized in {"academicFormal", "corporateMinimal"}:
+        normalized = "classic"
+    colors = palette.get(normalized, palette["classic"])
+
+    band = colors["band"]
+    accent = colors["accent"]
+
+    # Header / footer bands
+    draw.rectangle([0, 0, width, 70], fill=band)
+    draw.rectangle([0, height - 50, width, height], fill=band)
+
+    # Outer + inner border
+    draw.rectangle([18, 18, width - 18, height - 18], outline=band, width=4)
+    draw.rectangle([36, 36, width - 36, height - 36], outline=accent, width=2)
+
+    # Typography
+    title_font = _safe_font(42, bold=True)
+    subtitle_font = _safe_font(20, bold=False)
+    name_font = _safe_font(54, bold=True)
+    body_font = _safe_font(22, bold=False)
+    small_font = _safe_font(16, bold=False)
+
+    _draw_centered(draw, "Certificate of Completion", y=120, font=title_font, fill=(255, 255, 255), canvas_width=width)
+    _draw_centered(draw, "This is to certify that", y=210, font=subtitle_font, fill=(55, 65, 81), canvas_width=width)
+    _draw_centered(draw, recipient_name or " ", y=260, font=name_font, fill=(17, 24, 39), canvas_width=width)
+
+    _draw_centered(draw, "has successfully completed", y=340, font=subtitle_font, fill=(55, 65, 81), canvas_width=width)
+    _draw_centered(draw, course_name or "Program / Course", y=380, font=body_font, fill=(17, 24, 39), canvas_width=width)
+
+    # Meta (date + id)
+    meta_y = height - 120
+    draw.text((60, meta_y), f"Issued: {issue_date}", font=small_font, fill=(55, 65, 81))
+    draw.text((60, meta_y + 24), f"Certificate ID: {cert_id}", font=small_font, fill=(55, 65, 81))
+
+    # QR bottom-right
+    qr_size = 140
+    qr_img = qr_image.convert("RGB").resize((qr_size, qr_size))
+    qr_x = width - 60 - qr_size
+    qr_y = height - 60 - qr_size
+    img.paste(qr_img, (qr_x, qr_y))
+    draw.rectangle([qr_x - 6, qr_y - 6, qr_x + qr_size + 6, qr_y + qr_size + 6], outline=accent, width=2)
+
+    return img
 
 
 # ---------------------------------------------------------------------------
@@ -382,7 +527,7 @@ def _workspace_template_rows(user_id: str, template_id: str) -> list[dict[str, A
 
 def _upsert_generated_certificate(
     *,
-    template_id: str,
+    template_id: str | None,
     student_id: str | None,
     created_by: str | None,
     certificate_id: str,
@@ -537,7 +682,7 @@ def _render_certificate(
     return bg
 
 @router.post("", response_model=GenerateResponse)
-def post_generate_certificates(body: GenerateRequest, request: Request) -> GenerateResponse:
+async def post_generate_certificates(body: GenerateRequest, request: Request) -> GenerateResponse:
     """Generate PNG certificates for the provided student list.
 
     1. Loads template background image and layout_config from Supabase.
@@ -563,20 +708,7 @@ def post_generate_certificates(body: GenerateRequest, request: Request) -> Gener
         user_id,
     )
 
-    # --- 2. Load template background ---
-    if not file_url:
-        raise HTTPException(
-            status_code=422,
-            detail="Template has no file_url or image_url. Upload a background image first.",
-        )
-
-    img_bytes = _download_image(file_url)
-    try:
-        background = Image.open(io.BytesIO(img_bytes))
-    except Exception as exc:
-        raise HTTPException(status_code=422, detail=f"Could not open template image: {exc}")
-
-    width, height = background.size
+    is_builtin = str(body.template_id or "").startswith("builtin-")
 
     # --- 4. Generate one certificate per student ---
     results: list[CertificateOut] = []
@@ -589,12 +721,37 @@ def post_generate_certificates(body: GenerateRequest, request: Request) -> Gener
         email = student.email.strip()
         qr_url = f"{QR_VERIFY_BASE}/{cert_id}"
 
-        rendered = _render_certificate(background, student_name, cert_id, layout_config)
-
-        # Save as RGB PNG
         out_name = f"{cert_id}.png"
         out_path = os.path.join(GENERATED_DIR, out_name)
-        rendered.convert("RGB").save(out_path, "PNG")
+
+        if is_builtin:
+            # Pure Pillow renderer for builtin templates (no browser rendering).
+            qr_img = _make_qr(qr_url, size=_mm_to_px(_QR_MM))
+            issued_date = datetime.now().strftime("%d/%m/%Y")
+            rendered = _render_builtin_with_pillow(
+                recipient_name=student_name,
+                course_name=str(template.get("title") or "Program"),
+                cert_id=cert_id,
+                issue_date=issued_date,
+                qr_image=qr_img,
+                style=str(template.get("style_type") or "classic"),
+            )
+            rendered.convert("RGB").save(out_path, "PNG")
+        else:
+            # --- 2. Load template background ---
+            if not file_url:
+                raise HTTPException(
+                    status_code=422,
+                    detail="Template has no file_url or image_url. Upload a background image first.",
+                )
+            img_bytes = _download_image(file_url)
+            try:
+                background = Image.open(io.BytesIO(img_bytes))
+            except Exception as exc:
+                raise HTTPException(status_code=422, detail=f"Could not open template image: {exc}")
+
+            rendered = _render_certificate(background, student_name, cert_id, layout_config)
+            rendered.convert("RGB").save(out_path, "PNG")
         generated_paths.append(out_path)
 
         generated_path = f"{API_BASE_URL}/uploads/generated/{out_name}"
@@ -602,7 +759,7 @@ def post_generate_certificates(body: GenerateRequest, request: Request) -> Gener
         # Persist generated certificate metadata in the generated_certificates table.
         try:
             _upsert_generated_certificate(
-                template_id=template.get("id") or body.template_id,
+                template_id=template.get("id") if not is_builtin else None,
                 student_id=student_id,
                 created_by=user_id,
                 certificate_id=cert_id,
@@ -643,7 +800,7 @@ class BulkGenerateRequest(BaseModel):
 
 
 @router.post("/all", response_model=GenerateResponse)
-def post_generate_all_ready(body: BulkGenerateRequest, request: Request) -> GenerateResponse:
+async def post_generate_all_ready(body: BulkGenerateRequest, request: Request) -> GenerateResponse:
     """Generate certificates for every imported student owned by the caller.
 
     1. Authenticates the caller and fetches all imported students for that user.
@@ -711,17 +868,7 @@ def post_generate_all_ready(body: BulkGenerateRequest, request: Request) -> Gene
         user_id,
     )
 
-    if not file_url:
-        raise HTTPException(
-            status_code=422,
-            detail="Template has no file_url or image_url. Upload a background image first.",
-        )
-
-    img_bytes = _download_image(file_url)
-    try:
-        background = Image.open(io.BytesIO(img_bytes))
-    except Exception as exc:
-        raise HTTPException(status_code=422, detail=f"Could not open template image: {exc}")
+    is_builtin = str(body.template_id or "").startswith("builtin-")
 
     # --- 3. Render a certificate for each imported student ---
     results: list[CertificateOut] = []
@@ -734,11 +881,34 @@ def post_generate_all_ready(body: BulkGenerateRequest, request: Request) -> Gene
         cert_id: str = (student.get("external_id") or "").strip()
         qr_url = f"{QR_VERIFY_BASE}/{cert_id}"
 
-        rendered = _render_certificate(background, student_name, cert_id, layout_config)
-
         out_name = f"{cert_id}.png"
         out_path = os.path.join(GENERATED_DIR, out_name)
-        rendered.convert("RGB").save(out_path, "PNG")
+        if is_builtin:
+            qr_img = _make_qr(qr_url, size=_mm_to_px(_QR_MM))
+            issued_date = datetime.now().strftime("%d/%m/%Y")
+            rendered = _render_builtin_with_pillow(
+                recipient_name=student_name,
+                course_name=str(template.get("title") or "Program"),
+                cert_id=cert_id,
+                issue_date=issued_date,
+                qr_image=qr_img,
+                style=str(template.get("style_type") or "classic"),
+            )
+            rendered.convert("RGB").save(out_path, "PNG")
+        else:
+            if not file_url:
+                raise HTTPException(
+                    status_code=422,
+                    detail="Template has no file_url or image_url. Upload a background image first.",
+                )
+            img_bytes = _download_image(file_url)
+            try:
+                background = Image.open(io.BytesIO(img_bytes))
+            except Exception as exc:
+                raise HTTPException(status_code=422, detail=f"Could not open template image: {exc}")
+
+            rendered = _render_certificate(background, student_name, cert_id, layout_config)
+            rendered.convert("RGB").save(out_path, "PNG")
         generated_files.append(out_path)
 
         generated_path = f"{API_BASE_URL}/uploads/generated/{out_name}"
@@ -746,7 +916,7 @@ def post_generate_all_ready(body: BulkGenerateRequest, request: Request) -> Gene
         # Persist generated certificate metadata in the generated_certificates table.
         try:
             _upsert_generated_certificate(
-                template_id=template.get("id") or body.template_id,
+                template_id=template.get("id") if not is_builtin else None,
                 student_id=student_id,
                 created_by=user_id,
                 certificate_id=cert_id,

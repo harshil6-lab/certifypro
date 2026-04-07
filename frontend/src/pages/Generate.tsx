@@ -10,6 +10,8 @@ import {
   ArrowLeft,
   Loader2,
   AlertCircle,
+  QrCode,
+  Move,
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -18,6 +20,8 @@ import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
 import { supabase } from "@/lib/supabaseClient";
 import { LayoutPreview } from "@/components/LayoutPreview";
+import { CertificateTemplate } from "@/components/certificates/CertificateTemplate";
+import type { CertificateStyleType } from "@/components/certificates/types";
 import { addSessionActivity } from "@/services/sessionActivity";
 import {
   defaultLayoutConfig,
@@ -30,6 +34,8 @@ type WorkspaceTemplate = {
   template_id: string;
   file_url: string | null;
   layout_config: Partial<LayoutConfig> | null;
+  is_builtin?: boolean;
+  builtin_style?: CertificateStyleType | null;
 };
 
 type WorkspaceTemplateSource = "workspace" | "gallery" | "none";
@@ -80,7 +86,7 @@ const Generate = () => {
           if (token) authHeader = `Bearer ${token}`;
         }
 
-        const workspace = await axios.get("http://127.0.0.1:8000/api/workspace-template", {
+        const workspace = await axios.get("/api/workspace-template", {
           headers: authHeader ? { Authorization: authHeader } : {},
         });
 
@@ -90,6 +96,8 @@ const Generate = () => {
             template_id: workspace.data.template_id,
             file_url: workspace.data.file_url ?? workspace.data.template_url ?? null,
             layout_config: workspace.data.layout_config ?? null,
+            is_builtin: Boolean(workspace.data.is_builtin),
+            builtin_style: (workspace.data.builtin_style ?? null) as CertificateStyleType | null,
           });
           setWorkspaceTemplateSource("workspace");
           return;
@@ -128,7 +136,7 @@ const Generate = () => {
           if (token) authHeader = `Bearer ${token}`;
         }
 
-        const res = await axios.get("http://127.0.0.1:8000/api/students-ready", {
+        const res = await axios.get("/api/students-ready", {
           headers: authHeader ? { Authorization: authHeader } : {},
         });
         setStudents(Array.isArray(res.data) ? res.data : []);
@@ -198,12 +206,12 @@ const Generate = () => {
 
       const request = selectAllStudents
         ? axios.post(
-            "http://127.0.0.1:8000/api/generate-certificates/all",
+            "/api/generate-certificates/all",
             renderContext,
             { headers: authHeader ? { Authorization: authHeader } : {} },
           )
         : axios.post(
-            "http://127.0.0.1:8000/api/generate-certificates",
+            "/api/generate-certificates",
             {
               ...renderContext,
               students: selectedStudentRecords.map((student) => ({
@@ -255,7 +263,7 @@ const Generate = () => {
       : null;
 
   return (
-    <div className="p-8 max-w-[1200px] mx-auto space-y-6 animate-fade-in">
+    <div className="p-6 max-w-[1100px] mx-auto space-y-5 animate-fade-in">
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-heading font-bold text-foreground">Generate Certificates</h1>
@@ -292,10 +300,10 @@ const Generate = () => {
       </div>
 
       {/* Step Content */}
-      <Card className="card-shadow border-t-4 border-t-accent min-h-[400px]">
-        <CardContent className="p-8">
+      <Card className="card-shadow border-t-4 border-t-accent min-h-[360px]">
+        <CardContent className="p-6 sm:p-7">
           {currentStep === 1 && (
-            <div className="space-y-6 max-w-2xl">
+            <div className="space-y-6 max-w-3xl">
               <div>
                 <h3 className="text-2xl font-heading font-bold text-foreground">Select Certificate Template</h3>
                 <p className="text-base text-muted-foreground mt-2">
@@ -321,11 +329,103 @@ const Generate = () => {
                   <div className="space-y-3">
                     <p className="text-sm font-medium text-foreground">Workspace Template Preview</p>
                     <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_280px] items-start">
-                      <LayoutPreview
-                        templateUrl={workspaceTemplate?.file_url ?? null}
-                        templateTitle="workspace template"
-                        layoutConfig={resolvedLayoutConfig}
-                      />
+                      {workspaceTemplate?.file_url ? (
+                        <LayoutPreview
+                          templateUrl={workspaceTemplate.file_url}
+                          templateTitle="workspace template"
+                          layoutConfig={resolvedLayoutConfig}
+                        />
+                      ) : workspaceTemplate?.is_builtin && workspaceTemplate?.builtin_style ? (
+                        <div
+                          className="w-full rounded-lg border border-dashed border-border relative overflow-hidden seal-pattern bg-muted/40"
+                          style={{ aspectRatio: "1.414 / 1" }}
+                        >
+                          <div className="absolute inset-0">
+                            <div
+                              className="absolute origin-top-left"
+                              style={{
+                                width: "300%",
+                                height: "300%",
+                                transform: "scale(0.333)",
+                                transformOrigin: "top left",
+                                pointerEvents: "none",
+                              }}
+                            >
+                              <CertificateTemplate
+                                styleType={workspaceTemplate.builtin_style}
+                                draft={{
+                                  recipientName: "",
+                                  certificateTitle: "Certificate",
+                                  description: "",
+                                  issuerSignatureText: "",
+                                  issuerName: "CertifyPro",
+                                  authoritySignatureText: "",
+                                  authorityName: "",
+                                  issuedDate: new Date().toLocaleDateString(),
+                                  logoName: "",
+                                  logoPreviewUrl: "",
+                                }}
+                                organizationName="CertifyPro"
+                                previewScale="md"
+                                highlightEditableZones={false}
+                              />
+                            </div>
+                          </div>
+                          {/* Overlays (Name / QR / ID) from saved layout */}
+                          {resolvedLayoutConfig.showStudentName && (
+                            <div
+                              className="absolute"
+                              style={{
+                                left: `${resolvedLayoutConfig.placeholderX}%`,
+                                top: `${resolvedLayoutConfig.placeholderY}%`,
+                                transform: "translate(-50%, -50%)",
+                                zIndex: 10,
+                              }}
+                            >
+                              <span className="text-[10px] px-2 py-1 rounded bg-primary text-primary-foreground shadow whitespace-nowrap">
+                                {`{{${resolvedLayoutConfig.placeholderField || "STUDENT_NAME"}}}`}
+                              </span>
+                            </div>
+                          )}
+                          {resolvedLayoutConfig.showID && (
+                            <div
+                              className="absolute"
+                              style={{
+                                left: `${resolvedLayoutConfig.idX}%`,
+                                top: `${resolvedLayoutConfig.idY}%`,
+                                transform: "translate(-50%, -50%)",
+                                zIndex: 10,
+                              }}
+                            >
+                              <span className="text-[10px] px-2 py-1 rounded bg-muted text-muted-foreground shadow whitespace-nowrap">
+                                ID: 123456
+                              </span>
+                            </div>
+                          )}
+                          {resolvedLayoutConfig.showQR && (
+                            <div
+                              className="absolute w-14 h-14 rounded-md border-2 border-dashed border-accent bg-accent/20 flex items-center justify-center"
+                              style={{
+                                left: `${resolvedLayoutConfig.qrX}%`,
+                                top: `${resolvedLayoutConfig.qrY}%`,
+                                transform: "translate(-50%, -50%)",
+                                zIndex: 10,
+                              }}
+                            >
+                              <QrCode className="w-7 h-7 text-accent" />
+                              <span className="absolute -top-2 -right-2 w-5 h-5 rounded-full bg-accent flex items-center justify-center">
+                                <Move className="w-3 h-3 text-accent-foreground" />
+                              </span>
+                            </div>
+                          )}
+                        </div>
+                      ) : (
+                        <LayoutPreview
+                          templateUrl={workspaceTemplate?.file_url ?? null}
+                          templateTitle="workspace template"
+                          layoutConfig={resolvedLayoutConfig}
+                        />
+                      )}
                       <div className="rounded-xl border border-border/60 bg-card p-4 space-y-4">
                         <div>
                           <p className="text-sm font-semibold text-foreground">Saved Layout Coordinates</p>

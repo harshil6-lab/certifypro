@@ -1,6 +1,6 @@
 import { useEffect, useState, type DragEvent } from "react";
 import axios from "axios";
-import { Sparkles, WandSparkles, Eye, LayoutGrid, Upload, ArrowRight } from "lucide-react";
+import { Sparkles, WandSparkles, Eye, LayoutGrid, Upload, ArrowRight, QrCode, Move } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -80,7 +80,8 @@ const BUILTIN_TEMPLATES: CertificateTemplateMeta[] = [
 ];
 
 const BUILTIN_PREVIEW_DRAFT: CertificateDraft = {
-  recipientName: "Alex Morgan",
+  // Avoid showing a real person's name on gallery cards
+  recipientName: "",
   certificateTitle: "Certificate of Excellence",
   description: "For outstanding achievement in the designated program.",
   issuerSignatureText: "",
@@ -144,6 +145,7 @@ const Templates = () => {
 
   const [workspaceTemplate, setWorkspaceTemplate] = useState<WorkspaceTemplateState | null>(null);
   const [isGallerySelected, setIsGallerySelected] = useState(false);
+  const [selectedBuiltinStyleType, setSelectedBuiltinStyleType] = useState<CertificateTemplateMeta["styleType"] | null>(null);
 
   useEffect(() => {
     const loadOfficialTemplates = async () => {
@@ -171,7 +173,7 @@ const Templates = () => {
           if (token) authHeader = `Bearer ${token}`;
         }
 
-        const { data } = await axios.get("http://127.0.0.1:8000/api/workspace-template", {
+        const { data } = await axios.get("/api/workspace-template", {
           headers: authHeader ? { Authorization: authHeader } : {},
         });
 
@@ -290,11 +292,14 @@ const Templates = () => {
         }
 
         await axios.post(
-          "http://127.0.0.1:8000/api/save-layout",
+          "/api/save-layout",
           {
             template_id: workspaceTemplate.id,
             layout_config: normalizedLayout,
             custom_template_url: workspaceTemplate.is_custom ? workspaceTemplate.file_url : null,
+            is_builtin: isGallerySelected && !workspaceTemplate.is_custom,
+            builtin_style: isGallerySelected && !workspaceTemplate.is_custom ? selectedBuiltinStyleType : null,
+            title: workspaceTemplate.title ?? null,
           },
           { headers: authHeader ? { Authorization: authHeader } : {} },
         );
@@ -330,6 +335,7 @@ const Templates = () => {
     } as CertificateTemplateMeta);
     setSelectedTemplateId(template.id);
     setModalMode(mode);
+    setSelectedBuiltinStyleType(null);
 
     // If template has saved layout, apply to preview controls
     try {
@@ -369,6 +375,7 @@ const Templates = () => {
 
     // 4. Open in edit mode so the user can customize immediately
     setModalMode("edit");
+    setSelectedBuiltinStyleType(template.styleType);
   };
 
   const handleWorkspacePreview = (template: CertificateTemplateMeta) => {
@@ -394,6 +401,7 @@ const Templates = () => {
     } as CertificateTemplateMeta);
     setSelectedTemplateId(template.id);
     setModalMode("edit");
+    setSelectedBuiltinStyleType(null);
     if (template.layout_config) {
       setLayoutConfig(normalizeLayoutConfig(template.layout_config));
     }
@@ -412,7 +420,7 @@ const Templates = () => {
         if (token) authHeader = `Bearer ${token}`;
       }
 
-      const { data } = await axios.post("http://127.0.0.1:8000/api/templates/upload", formData, {
+      const { data } = await axios.post("/api/templates/upload", formData, {
         headers: {
           ...(authHeader ? { Authorization: authHeader } : {}),
           "Content-Type": "multipart/form-data",
@@ -506,6 +514,7 @@ const Templates = () => {
                               className="absolute origin-top-left"
                               style={{
                                 width: "300%",
+                                height: "300%",
                                 transform: "scale(0.333)",
                                 transformOrigin: "top left",
                                 pointerEvents: "none",
@@ -645,11 +654,94 @@ const Templates = () => {
                 </div>
               </div>
 
-              <LayoutPreview
-                templateUrl={workspaceTemplate?.file_url ?? null}
-                templateTitle={workspaceTemplate?.title}
-                layoutConfig={layoutConfig}
-              />
+              {workspaceTemplate?.file_url ? (
+                <LayoutPreview
+                  templateUrl={workspaceTemplate.file_url}
+                  templateTitle={workspaceTemplate?.title}
+                  layoutConfig={layoutConfig}
+                />
+              ) : isGallerySelected && workspaceTemplate && selectedBuiltinStyleType ? (
+                <div className="w-full rounded-lg border border-dashed border-border relative overflow-hidden seal-pattern bg-muted/40" style={{ aspectRatio: "1.414 / 1" }}>
+                  {/* Background: live builtin template */}
+                  <div className="absolute inset-0">
+                    <div
+                      className="absolute origin-top-left"
+                      style={{
+                        width: "300%",
+                        height: "300%",
+                        transform: "scale(0.333)",
+                        transformOrigin: "top left",
+                        pointerEvents: "none",
+                      }}
+                    >
+                      <CertificateTemplate
+                        styleType={selectedBuiltinStyleType}
+                        // Keep preview clean; placeholders are shown via overlays below.
+                        draft={{ ...currentDraft, recipientName: "" }}
+                        organizationName="CertifyPro"
+                        previewScale="md"
+                        highlightEditableZones={false}
+                      />
+                    </div>
+                  </div>
+
+                  {/* ── Overlays (Name / QR / ID) ───────────────────────── */}
+                  {layoutConfig.showStudentName && (
+                    <div
+                      className="absolute"
+                      style={{
+                        left: `${layoutConfig.placeholderX}%`,
+                        top: `${layoutConfig.placeholderY}%`,
+                        transform: "translate(-50%, -50%)",
+                        zIndex: 10,
+                      }}
+                    >
+                      <span className="text-[10px] px-2 py-1 rounded bg-primary text-primary-foreground shadow whitespace-nowrap">
+                        {`{{${layoutConfig.placeholderField || "STUDENT_NAME"}}}`}
+                      </span>
+                    </div>
+                  )}
+
+                  {layoutConfig.showID && (
+                    <div
+                      className="absolute"
+                      style={{
+                        left: `${layoutConfig.idX}%`,
+                        top: `${layoutConfig.idY}%`,
+                        transform: "translate(-50%, -50%)",
+                        zIndex: 10,
+                      }}
+                    >
+                      <span className="text-[10px] px-2 py-1 rounded bg-muted text-muted-foreground shadow whitespace-nowrap">
+                        ID: 123456
+                      </span>
+                    </div>
+                  )}
+
+                  {layoutConfig.showQR && (
+                    <div
+                      className="absolute w-14 h-14 rounded-md border-2 border-dashed border-accent bg-accent/20 flex items-center justify-center"
+                      style={{
+                        left: `${layoutConfig.qrX}%`,
+                        top: `${layoutConfig.qrY}%`,
+                        transform: "translate(-50%, -50%)",
+                        zIndex: 10,
+                      }}
+                    >
+                      <QrCode className="w-7 h-7 text-accent" />
+                      <span className="absolute -top-2 -right-2 w-5 h-5 rounded-full bg-accent flex items-center justify-center">
+                        <Move className="w-3 h-3 text-accent-foreground" />
+                      </span>
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <LayoutPreview
+                  templateUrl={workspaceTemplate?.file_url ?? null}
+                  templateTitle={workspaceTemplate?.title}
+                  layoutConfig={layoutConfig}
+                />
+              )}
 
               <div className="flex flex-col gap-2">
                 <Button className="flex-1 gold-gradient text-accent-foreground gap-2" onClick={saveLayout}>

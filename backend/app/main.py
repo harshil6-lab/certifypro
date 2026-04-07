@@ -5,6 +5,8 @@ API routers and registers the AuthMiddleware.
 """
 
 import os
+import sys
+import asyncio
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
@@ -32,6 +34,14 @@ from .services.template_gallery_seed import seed_gallery_templates
 from .services.templates_service import seed_default_templates
 
 app = FastAPI(title="CertifyPro Backend")
+
+# Windows: ensure asyncio subprocess support (required by Playwright/Chromium).
+if sys.platform.startswith("win"):
+    try:
+        asyncio.set_event_loop_policy(asyncio.WindowsProactorEventLoopPolicy())  # type: ignore[attr-defined]
+    except Exception:
+        # If policy is unavailable, keep default.
+        pass
 
 allowed_origins = [
     "http://localhost:5173",
