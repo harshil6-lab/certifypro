@@ -1,4 +1,4 @@
-import { supabase } from "@/lib/supabaseClient";
+import { getSessionSafely, supabase } from "@/lib/supabaseClient";
 
 const API_BASE = "http://127.0.0.1:8000";
 export { API_BASE };
@@ -8,8 +8,8 @@ export { API_BASE };
  */
 async function getAuthToken(): Promise<string | null> {
   if (!supabase) return null;
-  const { data } = await supabase.auth.getSession();
-  return data.session?.access_token ?? null;
+  const session = await getSessionSafely();
+  return session?.access_token ?? null;
 }
 
 /**

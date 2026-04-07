@@ -1,4 +1,4 @@
-import { isSupabaseConfigured, supabase } from "@/lib/supabaseClient";
+import { isSupabaseConfigured, publicSupabase, supabase } from "@/lib/supabaseClient";
 
 export type AccessRequestInput = {
   fullName: string;
@@ -52,7 +52,8 @@ const organizationKey = (value: string): string =>
 const findOrganizationConflict = async (
   submittedOrganization: string,
 ): Promise<{ id: string; name: string } | null> => {
-  if (!supabase) {
+  const client = publicSupabase ?? supabase;
+  if (!client) {
     return null;
   }
 
@@ -63,7 +64,7 @@ const findOrganizationConflict = async (
   }
 
   try {
-    const { data, error } = await supabase
+    const { data, error } = await client
       .from("organizations")
       .select("id, name, organization_key")
       .eq("organization_key", key)
@@ -88,7 +89,7 @@ const findOrganizationConflict = async (
 };
 
 const uploadOrganizationDocument = async (file: File): Promise<string> => {
-  if (!supabase) {
+  if (!publicSupabase) {
     throw new Error("Supabase client is unavailable.");
   }
 
@@ -100,11 +101,11 @@ const uploadOrganizationDocument = async (file: File): Promise<string> => {
   const randomId = createSafeRandomId();
   const path = `requests/${Date.now()}-${randomId}-${sanitizeFileName(file.name)}`;
 
-  const candidateBuckets = ["Org_ids", "org-documents"];
+  const candidateBuckets = ["org-documents", "Org_ids"];
   let uploadError: string | null = null;
 
   for (const bucket of candidateBuckets) {
-    const { error } = await supabase.storage
+    const { error } = await publicSupabase.storage
       .from(bucket)
       .upload(path, file, {
         cacheControl: "3600",
@@ -120,6 +121,28 @@ const uploadOrganizationDocument = async (file: File): Promise<string> => {
   }
 
   throw new Error(uploadError || "Document upload failed.");
+};
+
+const insertAccessRequest = async (payload: {
+  full_name: string;
+  email: string;
+  organization: string;
+  linkedin_url: string | null;
+  org_document_url: string;
+  reason_for_access: string | null;
+  status: "pending";
+  score: number;
+}) => {
+  const client = publicSupabase ?? supabase;
+  if (!client) {
+    throw new Error("Supabase client is unavailable.");
+  }
+
+  return client
+    .from("access_requests")
+    .insert(payload)
+    .select("id, status, score")
+    .single();
 };
 
 export async function submitAccessRequest(
@@ -144,20 +167,16 @@ export async function submitAccessRequest(
 
     const orgDocumentPath = await uploadOrganizationDocument(input.organizationDocument);
 
-    const { data: requestRow, error: insertError } = await supabase
-      .from("access_requests")
-      .insert({
-        full_name: input.fullName.trim(),
-        email: input.email.trim().toLowerCase(),
-        organization: normalizedOrganization,
-        linkedin_url: input.linkedinUrl?.trim() || null,
-        org_document_url: orgDocumentPath,
-        reason_for_access: input.reasonForAccess?.trim() || null,
-        status: "pending",
-        score: 0,
-      })
-      .select("id, status, score")
-      .single();
+    const { data: requestRow, error: insertError } = await insertAccessRequest({
+      full_name: input.fullName.trim(),
+      email: input.email.trim().toLowerCase(),
+      organization: normalizedOrganization,
+      linkedin_url: input.linkedinUrl?.trim() || null,
+      org_document_url: orgDocumentPath,
+      reason_for_access: input.reasonForAccess?.trim() || null,
+      status: "pending",
+      score: 0,
+    });
 
     if (insertError || !requestRow?.id) {
       return {
@@ -169,7 +188,8 @@ export async function submitAccessRequest(
     let processResult: { status?: "pending" | "approved" | "hold" | "rejected"; score?: number } | null = null;
 
     try {
-      const { data, error: invokeError } = await supabase.functions.invoke(
+      const functionsClient = publicSupabase ?? supabase;
+      const { data, error: invokeError } = await functionsClient.functions.invoke(
         "process-access-request",
         {
           body: { request_id: requestRow.id },

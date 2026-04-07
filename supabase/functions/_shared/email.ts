@@ -33,11 +33,12 @@ export async function sendEmail(
   options: EmailOptions
 ): Promise<{ success: boolean; error?: string }> {
   const env = getRuntimeEnv();
-  const smtpHost = env?.get("SMTP_HOST");
-  const smtpPort = env?.get("SMTP_PORT");
-  const smtpUser = env?.get("SMTP_USER");
-  const smtpPassword = env?.get("SMTP_PASSWORD");
-  const smtpFrom = env?.get("SMTP_FROM_EMAIL");
+  const smtpHost = env?.get("SMTP_HOST")?.trim();
+  const smtpPort = env?.get("SMTP_PORT")?.trim();
+  const smtpUser = env?.get("SMTP_USER")?.trim();
+  const smtpPassword = env?.get("SMTP_PASSWORD")?.trim();
+  const smtpFrom = env?.get("SMTP_FROM_EMAIL")?.trim();
+  const smtpSecure = (env?.get("SMTP_SECURE") || "").trim().toLowerCase();
 
   // Validate SMTP configuration before attempting to send
   if (!smtpHost || !smtpPort || !smtpUser || !smtpPassword || !smtpFrom) {
@@ -59,16 +60,26 @@ export async function sendEmail(
   });
 
   const client = new SmtpClient();
+  const port = Number(smtpPort);
+  const useTls = smtpSecure === "true" || port === 465;
 
   try {
     console.info("🔌 Connecting to SMTP server...");
-    await client.connect({
-      hostname: smtpHost,
-      port: Number(smtpPort),
-      username: smtpUser,
-      password: smtpPassword,
-      tls: false, // Required for port 587 (STARTTLS)
-    });
+    if (useTls) {
+      await client.connectTLS({
+        hostname: smtpHost,
+        port,
+        username: smtpUser,
+        password: smtpPassword,
+      });
+    } else {
+      await client.connect({
+        hostname: smtpHost,
+        port,
+        username: smtpUser,
+        password: smtpPassword,
+      });
+    }
 
     console.info("📤 Sending email...");
     await client.send({
@@ -104,7 +115,6 @@ export async function sendEmail(
  * Build welcome email body for approved institutional access requests.
  */
 export function buildWelcomeEmailBody(
-  tempPassword: string,
   loginUrl: string,
   organizationName: string
 ): string {
@@ -130,11 +140,10 @@ export function buildWelcomeEmailBody(
     <div class="content">
       <p>Hello,</p>
       <p>Your institutional access request for <strong>${organizationName}</strong> has been <strong style="color: #4CAF50;">approved</strong>!</p>
-      <p>Your account is now ready to use. Please log in using the temporary credentials below, then change your password immediately on your first login.</p>
-      <h3>Your Temporary Password</h3>
+      <p>Your account is now ready to use. A separate account setup or invite email may arrive from Supabase Auth depending on your account state.</p>
+      <h3>How to Access Your Account</h3>
       <div class="warning">
-        <strong>Temporary Password:</strong> <code>${tempPassword}</code>
-        <p><strong>⚠️ Important:</strong> This password expires after your first login. You will be required to set a new password.</p>
+        <p><strong>Important:</strong> Use the invite or setup email if you receive one. If your account already exists, sign in with your existing credentials.</p>
       </div>
       <p>
         <a href="${loginUrl}" class="cta">Log In to CertifyPro</a>
@@ -142,8 +151,8 @@ export function buildWelcomeEmailBody(
       <h3>Next Steps</h3>
       <ol>
         <li>Click the login link above or visit ${loginUrl}</li>
-        <li>Use your email address and the temporary password provided</li>
-        <li>You will be prompted to create a new password on first login</li>
+        <li>Use your institutional email address to complete setup or sign in</li>
+        <li>If prompted, finish your password setup from the invite email</li>
         <li>Complete your profile setup to start using CertifyPro</li>
       </ol>
       <p>If you have any questions or need assistance, please contact our support team.</p>
