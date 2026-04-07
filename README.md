@@ -1,5 +1,3 @@
-<img width="2000" height="684" alt="image" src="https://github.com/user-attachments/assets/b1d5b6f9-cf76-41e1-9092-87a6e2f6917c" />
-
 # CertifyPro — Certificate Automation & Verification Platform
 
 CertifyPro is a full-stack certificate issuance, verification, and access-management platform for institutions, training organizations, and academic teams. It combines a React admin portal, a FastAPI backend, and Supabase for authentication, database storage, and file storage.
@@ -183,6 +181,7 @@ http://localhost:5173
 
 - `VITE_SUPABASE_URL`
 - `VITE_SUPABASE_ANON_KEY`
+- `VITE_ADOBE_CLIENT_ID` — Get this from Adobe Developer Console > Your Project > Credentials. See `https://developer.adobe.com/console`.
 
 ### Backend
 
