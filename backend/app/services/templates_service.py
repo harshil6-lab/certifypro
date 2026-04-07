@@ -1,4 +1,5 @@
 from typing import Any, Dict, List
+from uuid import uuid4
 from ._supabase_helpers import insert_table, delete_table
 from ..core.supabase_client import supabase
 
@@ -53,6 +54,21 @@ def create_template(payload: Dict[str, Any]) -> Dict[str, Any]:
     if isinstance(data, list) and data:
         return data[0]
     return data
+
+
+def create_template_from_url(image_url: str, title: str, category: str, user_id: str) -> Dict[str, Any]:
+    payload: Dict[str, Any] = {
+        "slug": f"url-{uuid4().hex[:12]}",
+        "title": title.strip() or "External Template",
+        "category": category.strip().title(),
+        "description": f"Externally hosted template for {title.strip() or 'External Template'}",
+        "image_url": image_url.strip(),
+        "style_type": "custom",
+        "editable_fields": [],
+        "is_official": False,
+        "created_by": user_id,
+    }
+    return create_template(payload)
 
 
 def remove_template(template_id: str):

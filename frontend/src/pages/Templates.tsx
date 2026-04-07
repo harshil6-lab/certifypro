@@ -1,6 +1,6 @@
 import { useEffect, useState, type DragEvent } from "react";
 import axios from "axios";
-import { Sparkles, WandSparkles, Eye, LayoutGrid, Upload, ArrowRight, QrCode, Move } from "lucide-react";
+import { Sparkles, WandSparkles, Upload, ArrowRight, Loader2 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -8,7 +8,6 @@ import { Input } from "@/components/ui/input";
 import { useSearchParams } from "react-router-dom";
 import { supabase } from "@/lib/supabaseClient";
 import { CertificateEditorModal } from "@/components/certificates/CertificateEditorModal";
-import { CertificateTemplate } from "@/components/certificates/CertificateTemplate";
 import {
   CertificateDraft,
   CertificateTemplateMeta,
@@ -21,77 +20,7 @@ import {
   defaultLayoutConfig,
   normalizeLayoutConfig,
 } from "@/lib/layoutConfig";
-
-const BUILTIN_TEMPLATES: CertificateTemplateMeta[] = [
-  {
-    id: "builtin-academic",
-    category: "Academic",
-    title: "Academic Excellence",
-    styleType: "academicFormal",
-    editableFields: ["recipientName", "certificateTitle", "description", "issuerName", "authorityName", "issuedDate"],
-    image_url: undefined,
-    file_url: undefined,
-  },
-  {
-    id: "builtin-corporate",
-    category: "Corporate",
-    title: "Corporate Achievement",
-    styleType: "corporateMinimal",
-    editableFields: ["recipientName", "certificateTitle", "description", "issuerName", "authorityName", "issuedDate"],
-    image_url: undefined,
-    file_url: undefined,
-  },
-  {
-    id: "builtin-internship",
-    category: "Internship",
-    title: "Internship Completion",
-    styleType: "modernGradient",
-    editableFields: ["recipientName", "certificateTitle", "description", "issuerName", "authorityName", "issuedDate"],
-    image_url: undefined,
-    file_url: undefined,
-  },
-  {
-    id: "builtin-event",
-    category: "Event",
-    title: "Event Participation",
-    styleType: "eventCertificate",
-    editableFields: ["recipientName", "certificateTitle", "description", "issuerName", "authorityName", "issuedDate"],
-    image_url: undefined,
-    file_url: undefined,
-  },
-  {
-    id: "builtin-compliance",
-    category: "Compliance",
-    title: "Compliance Certificate",
-    styleType: "elegantClassic",
-    editableFields: ["recipientName", "certificateTitle", "description", "issuerName", "authorityName", "issuedDate"],
-    image_url: undefined,
-    file_url: undefined,
-  },
-  {
-    id: "builtin-training",
-    category: "Training",
-    title: "Training Certification",
-    styleType: "trainingCertification",
-    editableFields: ["recipientName", "certificateTitle", "description", "issuerName", "authorityName", "issuedDate"],
-    image_url: undefined,
-    file_url: undefined,
-  },
-];
-
-const BUILTIN_PREVIEW_DRAFT: CertificateDraft = {
-  // Avoid showing a real person's name on gallery cards
-  recipientName: "",
-  certificateTitle: "Certificate of Excellence",
-  description: "For outstanding achievement in the designated program.",
-  issuerSignatureText: "",
-  issuerName: "CertifyPro Institution",
-  authoritySignatureText: "",
-  authorityName: "Program Authority",
-  issuedDate: new Date().toLocaleDateString(),
-  logoName: "",
-  logoPreviewUrl: "",
-};
+import { openAdobeTemplateEditor } from "@/services/adobeExpress";
 
 const emptyDraft: CertificateDraft = {
   recipientName: "Alex Morgan",
@@ -145,7 +74,8 @@ const Templates = () => {
 
   const [workspaceTemplate, setWorkspaceTemplate] = useState<WorkspaceTemplateState | null>(null);
   const [isGallerySelected, setIsGallerySelected] = useState(false);
-  const [selectedBuiltinStyleType, setSelectedBuiltinStyleType] = useState<CertificateTemplateMeta["styleType"] | null>(null);
+  const [isOpeningAdobe, setIsOpeningAdobe] = useState(false);
+  const [adobeError, setAdobeError] = useState<string | null>(null);
 
   useEffect(() => {
     const loadOfficialTemplates = async () => {
@@ -335,7 +265,6 @@ const Templates = () => {
     } as CertificateTemplateMeta);
     setSelectedTemplateId(template.id);
     setModalMode(mode);
-    setSelectedBuiltinStyleType(null);
 
     // If template has saved layout, apply to preview controls
     try {
@@ -345,37 +274,6 @@ const Templates = () => {
     } catch {
       // ignore
     }
-  };
-
-  const handleSelectBuiltinTemplate = (template: CertificateTemplateMeta) => {
-    // 1. Set the workspace template state (for layout editor on the right side)
-    setWorkspaceTemplate({
-      id: template.id,
-      file_url: null,
-      image_url: null,
-      title: template.title,
-      is_custom: false,
-      layout_config: null,
-    });
-    setIsGallerySelected(true);
-
-    // 2. Set selectedTemplate — THIS is what opens the modal
-    setSelectedTemplate({
-      id: template.id,
-      file_url: null,
-      image_url: null,
-      title: template.title,
-      category: template.category,
-      styleType: template.styleType,
-      editableFields: template.editableFields,
-    } as CertificateTemplateMeta);
-
-    // 3. Set selected ID (for the card ring highlight)
-    setSelectedTemplateId(template.id);
-
-    // 4. Open in edit mode so the user can customize immediately
-    setModalMode("edit");
-    setSelectedBuiltinStyleType(template.styleType);
   };
 
   const handleWorkspacePreview = (template: CertificateTemplateMeta) => {
@@ -401,9 +299,59 @@ const Templates = () => {
     } as CertificateTemplateMeta);
     setSelectedTemplateId(template.id);
     setModalMode("edit");
-    setSelectedBuiltinStyleType(null);
     if (template.layout_config) {
       setLayoutConfig(normalizeLayoutConfig(template.layout_config));
+    }
+  };
+
+  const openAdobeDesigner = async () => {
+    setAdobeError(null);
+    setIsOpeningAdobe(true);
+    try {
+      await openAdobeTemplateEditor(async (imageUrl: string, title: string) => {
+        try {
+          const { data: sessionData } = await supabase.auth.getSession();
+          let token = sessionData.session?.access_token;
+          if (!token) {
+            await supabase.auth.refreshSession();
+            const { data: refreshed } = await supabase.auth.getSession();
+            token = refreshed.session?.access_token;
+          }
+          if (!token) {
+            throw new Error("You are not signed in. Please sign in again and retry.");
+          }
+
+          const { data } = await axios.post(
+            "/api/templates/from-url",
+            { image_url: imageUrl, title, category: "Custom" },
+            { withCredentials: true, headers: { Authorization: `Bearer ${token}` } },
+          );
+
+          const nextTemplate = {
+            id: data.template_id,
+            file_url: data.file_url ?? data.preview_url ?? imageUrl ?? null,
+            image_url: data.preview_url ?? data.file_url ?? imageUrl ?? null,
+            title: data.template?.title ?? title ?? "Adobe Certificate",
+            is_custom: true,
+          };
+
+          setWorkspaceTemplate(nextTemplate);
+          setSelectedTemplateId(nextTemplate.id);
+          setIsGallerySelected(false);
+          setUploadStatus("Adobe template imported and selected");
+          addSessionActivity("template_uploaded", `${nextTemplate.title} imported`, { templateId: nextTemplate.id });
+        } catch (err: unknown) {
+          if (err instanceof Error && err.message.includes("not signed in")) {
+            setUploadStatus(err.message);
+          } else {
+            setUploadStatus("Failed to import Adobe template");
+          }
+        }
+      });
+    } catch (err: unknown) {
+      setAdobeError(err instanceof Error ? err.message : "Failed to open Adobe Express.");
+    } finally {
+      setIsOpeningAdobe(false);
     }
   };
 
@@ -413,16 +361,22 @@ const Templates = () => {
       const formData = new FormData();
       formData.append("file", file);
 
-      let authHeader = "";
-      if (supabase) {
-        const { data } = await supabase.auth.getSession();
-        const token = data.session?.access_token;
-        if (token) authHeader = `Bearer ${token}`;
+      const { data: sessionData } = await supabase.auth.getSession();
+      let token = sessionData.session?.access_token;
+      if (!token) {
+        await supabase.auth.refreshSession();
+        const { data: refreshed } = await supabase.auth.getSession();
+        token = refreshed.session?.access_token;
       }
+      if (!token) {
+        throw new Error("You are not signed in. Please sign in again and retry.");
+      }
+      console.log("Upload token:", token);
 
       const { data } = await axios.post("/api/templates/upload", formData, {
+        withCredentials: true,
         headers: {
-          ...(authHeader ? { Authorization: authHeader } : {}),
+          Authorization: `Bearer ${token}`,
           "Content-Type": "multipart/form-data",
         },
       });
@@ -441,6 +395,10 @@ const Templates = () => {
       setUploadStatus("Template uploaded and selected");
       addSessionActivity("template_uploaded", `${nextTemplate.title} uploaded`, { templateId: nextTemplate.id });
     } catch (err: unknown) {
+      if (err instanceof Error && err.message.includes("not signed in")) {
+        setUploadStatus(err.message);
+        return;
+      }
       const detail =
         typeof err === "object" && err && "response" in err
           ? // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -481,88 +439,41 @@ const Templates = () => {
         </Button>
       </div>
 
-      <div className="grid grid-cols-1 xl:grid-cols-5 gap-6">
-        <div className="xl:col-span-3 space-y-4">
-          <Card className="card-shadow">
+      <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
+        <div className="xl:col-span-1 space-y-4">
+          <Card className="card-shadow h-full">
             <CardHeader className="pb-3">
               <CardTitle className="text-base font-heading flex items-center gap-2">
                 <Sparkles className="w-4 h-4 text-accent" />
-                CertifyPro Official Template Gallery
+                Adobe Express Template Library
               </CardTitle>
             </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="space-y-4">
-                <div className="space-y-1">
-                  <h3 className="text-lg font-semibold text-foreground flex items-center gap-2">
-                    <LayoutGrid className="w-5 h-5 text-accent" />
-                    CertifyPro Template Library
-                  </h3>
-                  <p className="text-sm text-muted-foreground">
-                    Pick a professionally designed template and customize it to your needs.
-                  </p>
-                </div>
-                <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
-                  {BUILTIN_TEMPLATES.map((template) => (
-                    <div key={template.id} className={`rounded-xl ${selectedTemplateId === template.id ? "ring-2 ring-accent" : ""}`}>
-                      <Card className="card-shadow h-full">
-                        <CardContent className="p-4 space-y-3">
-                          <div
-                            className="relative w-full overflow-hidden rounded-lg border border-border bg-muted/20"
-                            style={{ aspectRatio: "1.414 / 1" }}
-                          >
-                            <div
-                              className="absolute origin-top-left"
-                              style={{
-                                width: "300%",
-                                height: "300%",
-                                transform: "scale(0.333)",
-                                transformOrigin: "top left",
-                                pointerEvents: "none",
-                              }}
-                            >
-                              <CertificateTemplate
-                                styleType={template.styleType}
-                                draft={BUILTIN_PREVIEW_DRAFT}
-                                organizationName="CertifyPro"
-                                previewScale="md"
-                                highlightEditableZones={false}
-                              />
-                            </div>
-                          </div>
+            <CardContent className="flex flex-col items-center justify-center gap-6 py-12 text-center">
+              <p className="text-sm text-muted-foreground max-w-lg">
+                Design your certificate using Adobe Express — thousands of professional templates, fully customizable.
+              </p>
 
-                          <div className="space-y-1">
-                            <p className="text-sm font-semibold text-foreground">{template.title}</p>
-                            <Badge variant="outline">{template.category}</Badge>
-                          </div>
-
-                          <div className="flex items-center gap-2">
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              className="gap-2"
-                              onClick={() => openOfficialTemplate(template, "preview")}
-                            >
-                              <Eye className="h-4 w-4" /> Preview
-                            </Button>
-                            <Button
-                              size="sm"
-                              className="gold-gradient text-accent-foreground"
-                              onClick={() => handleSelectBuiltinTemplate(template)}
-                            >
-                              Use This
-                            </Button>
-                          </div>
-                        </CardContent>
-                      </Card>
-                    </div>
-                  ))}
-                </div>
+              <div className="flex flex-col items-center gap-3">
+                <Button
+                  size="lg"
+                  className="gold-gradient text-accent-foreground gap-2 px-8"
+                  onClick={openAdobeDesigner}
+                  disabled={isOpeningAdobe}
+                >
+                  {isOpeningAdobe ? <Loader2 className="w-4 h-4 animate-spin" /> : <WandSparkles className="w-4 h-4" />}
+                  Open Adobe Express Designer
+                </Button>
+                <p className="text-xs text-muted-foreground">
+                  Your designed template will be automatically imported and selected as your workspace template.
+                </p>
+                {adobeError ? <p className="text-xs text-destructive">{adobeError}</p> : null}
+                {isOpeningAdobe ? <p className="text-xs text-muted-foreground">Opening Adobe Express...</p> : null}
               </div>
             </CardContent>
           </Card>
         </div>
 
-        <div className="xl:col-span-2 space-y-4">
+        <div className="xl:col-span-1 space-y-4">
           <Card className="card-shadow overflow-hidden">
             <CardHeader className="pb-3">
               <CardTitle className="text-base font-heading">Template Live Preview & Layout Editor</CardTitle>
@@ -654,94 +565,11 @@ const Templates = () => {
                 </div>
               </div>
 
-              {workspaceTemplate?.file_url ? (
-                <LayoutPreview
-                  templateUrl={workspaceTemplate.file_url}
-                  templateTitle={workspaceTemplate?.title}
-                  layoutConfig={layoutConfig}
-                />
-              ) : isGallerySelected && workspaceTemplate && selectedBuiltinStyleType ? (
-                <div className="w-full rounded-lg border border-dashed border-border relative overflow-hidden seal-pattern bg-muted/40" style={{ aspectRatio: "1.414 / 1" }}>
-                  {/* Background: live builtin template */}
-                  <div className="absolute inset-0">
-                    <div
-                      className="absolute origin-top-left"
-                      style={{
-                        width: "300%",
-                        height: "300%",
-                        transform: "scale(0.333)",
-                        transformOrigin: "top left",
-                        pointerEvents: "none",
-                      }}
-                    >
-                      <CertificateTemplate
-                        styleType={selectedBuiltinStyleType}
-                        // Keep preview clean; placeholders are shown via overlays below.
-                        draft={{ ...currentDraft, recipientName: "" }}
-                        organizationName="CertifyPro"
-                        previewScale="md"
-                        highlightEditableZones={false}
-                      />
-                    </div>
-                  </div>
-
-                  {/* ── Overlays (Name / QR / ID) ───────────────────────── */}
-                  {layoutConfig.showStudentName && (
-                    <div
-                      className="absolute"
-                      style={{
-                        left: `${layoutConfig.placeholderX}%`,
-                        top: `${layoutConfig.placeholderY}%`,
-                        transform: "translate(-50%, -50%)",
-                        zIndex: 10,
-                      }}
-                    >
-                      <span className="text-[10px] px-2 py-1 rounded bg-primary text-primary-foreground shadow whitespace-nowrap">
-                        {`{{${layoutConfig.placeholderField || "STUDENT_NAME"}}}`}
-                      </span>
-                    </div>
-                  )}
-
-                  {layoutConfig.showID && (
-                    <div
-                      className="absolute"
-                      style={{
-                        left: `${layoutConfig.idX}%`,
-                        top: `${layoutConfig.idY}%`,
-                        transform: "translate(-50%, -50%)",
-                        zIndex: 10,
-                      }}
-                    >
-                      <span className="text-[10px] px-2 py-1 rounded bg-muted text-muted-foreground shadow whitespace-nowrap">
-                        ID: 123456
-                      </span>
-                    </div>
-                  )}
-
-                  {layoutConfig.showQR && (
-                    <div
-                      className="absolute w-14 h-14 rounded-md border-2 border-dashed border-accent bg-accent/20 flex items-center justify-center"
-                      style={{
-                        left: `${layoutConfig.qrX}%`,
-                        top: `${layoutConfig.qrY}%`,
-                        transform: "translate(-50%, -50%)",
-                        zIndex: 10,
-                      }}
-                    >
-                      <QrCode className="w-7 h-7 text-accent" />
-                      <span className="absolute -top-2 -right-2 w-5 h-5 rounded-full bg-accent flex items-center justify-center">
-                        <Move className="w-3 h-3 text-accent-foreground" />
-                      </span>
-                    </div>
-                  )}
-                </div>
-              ) : (
-                <LayoutPreview
-                  templateUrl={workspaceTemplate?.file_url ?? null}
-                  templateTitle={workspaceTemplate?.title}
-                  layoutConfig={layoutConfig}
-                />
-              )}
+              <LayoutPreview
+                templateUrl={workspaceTemplate?.file_url ?? null}
+                templateTitle={workspaceTemplate?.title}
+                layoutConfig={layoutConfig}
+              />
 
               <div className="flex flex-col gap-2">
                 <Button className="flex-1 gold-gradient text-accent-foreground gap-2" onClick={saveLayout}>

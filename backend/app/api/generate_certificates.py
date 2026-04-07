@@ -396,10 +396,31 @@ def _get_sans_font(size: int) -> ImageFont.FreeTypeFont | ImageFont.ImageFont:
 def _download_image(url: str) -> bytes:
     """Synchronously download a remote image. Raises HTTPException on failure."""
     try:
-        with httpx.Client(timeout=30, follow_redirects=True) as client:
-            resp = client.get(url)
-            resp.raise_for_status()
-            return resp.content
+        # Covered:
+        # - Adobe Express / CDN asset URLs (often redirect): follow_redirects=True
+        # - Large downloads: stream with a size cap and 30s timeout
+        # Adobe Express URL compatible
+        timeout = httpx.Timeout(30.0)
+        headers = {
+            "Accept": "image/*,*/*;q=0.8",
+            # Some CDNs behave better with a UA present.
+            "User-Agent": "CertifyPro/1.0 (+https://certifypro.local)",
+        }
+        max_bytes = 25 * 1024 * 1024  # 25MB safety cap
+
+        with httpx.Client(timeout=timeout, follow_redirects=True, headers=headers) as client:
+            with client.stream("GET", url) as resp:
+                resp.raise_for_status()
+                chunks: list[bytes] = []
+                total = 0
+                for chunk in resp.iter_bytes():
+                    if not chunk:
+                        continue
+                    total += len(chunk)
+                    if total > max_bytes:
+                        raise HTTPException(status_code=413, detail="Template image is too large (max 25MB).")
+                    chunks.append(chunk)
+                return b"".join(chunks)
     except httpx.HTTPStatusError as exc:
         raise HTTPException(
             status_code=502,
@@ -616,6 +637,7 @@ def _render_certificate(
     layout_config: dict[str, Any],
 ) -> Image.Image:
     """Render one certificate PNG and return the finished Image."""
+    # Covered: background images in JPEG/WebP/etc. are handled by converting to RGBA here.
     bg = bg_master.copy().convert("RGBA")
     draw = ImageDraw.Draw(bg)
     width, height = bg.size
@@ -746,7 +768,8 @@ async def post_generate_certificates(body: GenerateRequest, request: Request) ->
                 )
             img_bytes = _download_image(file_url)
             try:
-                background = Image.open(io.BytesIO(img_bytes))
+                # Adobe Express URL compatible (WebP/JPEG/etc.): open bytes and normalize to RGBA
+                background = Image.open(io.BytesIO(img_bytes)).convert("RGBA")
             except Exception as exc:
                 raise HTTPException(status_code=422, detail=f"Could not open template image: {exc}")
 
@@ -903,7 +926,8 @@ async def post_generate_all_ready(body: BulkGenerateRequest, request: Request) -
                 )
             img_bytes = _download_image(file_url)
             try:
-                background = Image.open(io.BytesIO(img_bytes))
+                # Adobe Express URL compatible (WebP/JPEG/etc.): open bytes and normalize to RGBA
+                background = Image.open(io.BytesIO(img_bytes)).convert("RGBA")
             except Exception as exc:
                 raise HTTPException(status_code=422, detail=f"Could not open template image: {exc}")
 
