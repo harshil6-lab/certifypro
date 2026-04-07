@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
-import { Lock, Mail, ShieldCheck, UserPlus, CheckCircle, ArrowRight, XCircle, Loader2 } from "lucide-react";
+import { Lock, Mail, ShieldCheck, UserPlus, CheckCircle, ArrowRight, XCircle, Loader2, Eye, EyeOff } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import loginBg from "@/assets/login-bg.jpg";
@@ -20,6 +20,7 @@ const Login = () => {
   const [verificationModalOpen, setVerificationModalOpen] = useState(false);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
   const [isSigningIn, setIsSigningIn] = useState(false);
   const [authError, setAuthError] = useState("");
   const [resetMessage, setResetMessage] = useState("");
@@ -172,11 +173,19 @@ const Login = () => {
                 <Input
                   value={password}
                   onChange={(event) => setPassword(event.target.value)}
-                  type="password"
+                  type={showPassword ? "text" : "password"}
                   placeholder="Password"
                   autoComplete="current-password"
-                  className="pl-12 h-14 border-2 border-border bg-background/50 focus:bg-background focus:border-accent/50 focus:ring-1 focus:ring-accent/20 transition-all duration-300 placeholder:text-muted-foreground/50 font-body text-base"
+                  className="pl-12 pr-12 h-14 border-2 border-border bg-background/50 focus:bg-background focus:border-accent/50 focus:ring-1 focus:ring-accent/20 transition-all duration-300 placeholder:text-muted-foreground/50 font-body text-base"
                 />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword((previous) => !previous)}
+                  aria-label={showPassword ? "Hide password" : "Show password"}
+                  className="absolute right-4 top-1/2 -translate-y-1/2 text-muted-foreground/70 hover:text-accent focus-visible:outline-none focus-visible:text-accent transition-colors"
+                >
+                  {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                </button>
               </div>
               <div className="flex justify-between items-center px-1">
                 <div className="flex items-center gap-2">
