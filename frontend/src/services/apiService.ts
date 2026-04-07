@@ -1,7 +1,9 @@
 import { getSessionSafely, supabase } from "@/lib/supabaseClient";
 import type { CertificateStyleType, CertificateTemplateMeta } from "@/components/certificates/types";
 
-const API_BASE = "http://127.0.0.1:8000";
+// Use Vite dev proxy in development (same-origin).
+// In production, this should be the deployed backend origin (or same-origin behind a reverse proxy).
+const API_BASE = (import.meta as unknown as { env?: Record<string, string> }).env?.VITE_API_BASE_URL || "";
 export { API_BASE };
 
 /**

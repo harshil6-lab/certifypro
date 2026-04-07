@@ -8,7 +8,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 
-const API_BASE = "http://127.0.0.1:8000";
+const API_BASE = "";
 const supportDestination = {
   label: "ElevateX Support Desk",
   email: "certifyprocare@gmail.com",

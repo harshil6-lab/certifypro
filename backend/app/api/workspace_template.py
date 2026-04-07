@@ -218,6 +218,8 @@ async def save_layout(payload: _SaveLayoutPayload, request: Request):
 
         return {"message": "Layout saved successfully."}
     except Exception as exc:
+        import traceback
+        traceback.print_exc()
         raise HTTPException(status_code=500, detail=str(exc))
 
 

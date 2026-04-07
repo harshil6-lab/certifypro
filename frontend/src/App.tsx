@@ -30,6 +30,8 @@ import CompleteProfile from "./pages/CompleteProfile";
 import ResetPassword from "./pages/ResetPassword";
 import NotFound from "./pages/NotFound";
 import Faq from "./pages/Faq";
+import RenderCertificate from "./pages/RenderCertificate";
+import PrivacyPolicy from "./pages/PrivacyPolicy";
 
 const queryClient = new QueryClient();
 
@@ -38,7 +40,12 @@ const App = () => (
     <TooltipProvider>
       <Toaster />
       <Sonner />
-      <BrowserRouter>
+      <BrowserRouter
+        future={{
+          v7_startTransition: true,
+          v7_relativeSplatPath: true,
+        }}
+      >
         <Routes>
           <Route path="/" element={<Index />} />
           <Route path="/about" element={<About />} />
@@ -47,8 +54,11 @@ const App = () => (
           <Route path="/login" element={<Login />} />
           <Route path="/verify" element={<Verify />} />
           <Route path="/verify/:certId" element={<VerifyResult />} />
+          <Route path="/__render/certificate" element={<RenderCertificate />} />
+          <Route path="/privacy-policy" element={<PrivacyPolicy />} />
           <Route element={<AdminLayout />}>
             <Route path="/dashboard" element={<Dashboard />} />
+            <Route path="/dashboard/profile" element={<Profile />} />
             <Route path="/templates" element={<Templates />} />
             <Route path="/import" element={<ImportStudents />} />
             <Route path="/generate" element={<Generate />} />
