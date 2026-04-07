@@ -19,7 +19,10 @@ declare const Deno: {
 
 const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
 const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-const resetPasswordRedirectUrl = Deno.env.get("APP_RESET_PASSWORD_URL");
+const resetPasswordRedirectUrl =
+  Deno.env.get("APP_RESET_PASSWORD_URL") ||
+  Deno.env.get("ACCESS_INVITE_REDIRECT_URL") ||
+  Deno.env.get("APP_LOGIN_URL");
 const appLoginUrl = Deno.env.get("APP_LOGIN_URL") || "https://certifypro.com/login";
 
 if (!supabaseUrl || !serviceRoleKey) {
@@ -51,6 +54,67 @@ const normalize = (v:string) =>
 
 const normalizeOrganization = (v:string) =>
   v.trim().replace(/\s+/g, " ");
+
+const normalizeTokens = (value: string) =>
+  value
+    .toLowerCase()
+    .split(/[^a-z0-9]+/)
+    .filter((token) => token.length >= 3);
+
+const isValidLinkedInUrl = (value: string | null | undefined) => {
+  if (!value) {
+    return false;
+  }
+
+  try {
+    const url = new URL(value);
+    return /(^|\.)linkedin\.com$/i.test(url.hostname);
+  } catch {
+    return false;
+  }
+};
+
+const hasMeaningfulReason = (value: string | null | undefined) =>
+  Boolean(value && value.trim().length >= 24);
+
+const hasValidFullName = (value: string | null | undefined) => {
+  if (!value) {
+    return false;
+  }
+
+  const tokens = value.trim().split(/\s+/).filter((token) => token.length >= 2);
+  return tokens.length >= 2;
+};
+
+function scoreDomainAlignment(domain: string, organizationName: string) {
+  const domainLabels = normalizeTokens(domain.replace(/\.[a-z]{2,}$/i, ""));
+  const organizationTokens = normalizeTokens(organizationName);
+
+  if (!domainLabels.length || !organizationTokens.length) {
+    return { points: 0, strongMatch: false };
+  }
+
+  const matchedTokens = organizationTokens.filter((token) => domainLabels.includes(token));
+  const strongMatch = matchedTokens.length >= Math.min(2, organizationTokens.length);
+
+  if (strongMatch) {
+    return { points: 25, strongMatch: true };
+  }
+
+  if (matchedTokens.length >= 1) {
+    return { points: 10, strongMatch: false };
+  }
+
+  return { points: 0, strongMatch: false };
+}
+
+const hasValidEmailFormat = (value: string | null | undefined) =>
+  Boolean(value && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value.trim()));
+
+const hasInstitutionalEmail = (value: string | null | undefined) => {
+  const domain = getDomain(value ?? "");
+  return Boolean(domain && !corporateFreeDomains.includes(domain));
+};
 
 async function resolveOrCreateOrganization(organizationName: string) {
   const normalizedName = normalizeOrganization(organizationName);
@@ -115,8 +179,19 @@ async function resolveOrCreateOrganization(organizationName: string) {
   };
 }
 
-const statusFromScore = (s:number) =>
-  s >= 70 ? "approved" : s >= 40 ? "hold" : "rejected";
+function statusFromScore(
+  score: number,
+) {
+  if (score >= 50) {
+    return "approved";
+  }
+
+  if (score <= 35) {
+    return "rejected";
+  }
+
+  return "hold";
+}
 
 /* ------------------------------------------------ */
 /* STORAGE CHECK */
@@ -127,7 +202,7 @@ async function documentExists(path:string|null){
 
   const clean = path.replace(/^\/+/,"");
 
-  for(const bucket of ["Org_ids","org-documents"]){
+  for(const bucket of ["org-documents","Org_ids"]){
     const { data,error } =
       await admin.storage.from(bucket).download(clean);
 
@@ -202,30 +277,76 @@ async function processRequest(requestId: string) {
   let score = 0;
 
   try {
-    /* EMAIL CHECK */
     const domain = getDomain(row.email);
-    if (domain && !corporateFreeDomains.includes(domain)) {
-      score += 25;
-      console.log("  ✓ Corporate email domain detected (+25)");
+    const domainAlignment = scoreDomainAlignment(domain, organizationName);
+
+    /* FULL NAME */
+    if (hasValidFullName(row.full_name)) {
+      score += 10;
+      console.log("  ✓ Full name provided (+10)");
+    } else {
+      notes.push("Applicant name is incomplete");
+      console.log("  ⚠ Applicant name is incomplete");
+    }
+
+    /* EMAIL FORMAT */
+    if (hasValidEmailFormat(row.email)) {
+      score += 10;
+      console.log("  ✓ Valid email format (+10)");
+    } else {
+      notes.push("Email format is invalid");
+      console.log("  ⚠ Email format is invalid");
+    }
+
+    /* INSTITUTIONAL EMAIL */
+    if (hasInstitutionalEmail(row.email)) {
+      score += 10;
+      console.log("  ✓ Institutional email detected (+10)");
     } else {
       notes.push("Free email domain");
       console.log("  ⚠ Free email domain detected (no points)");
     }
 
-    /* ORG MATCH */
-    if (normalize(domain).includes(organizationKey)) {
-      score += 20;
-      console.log("  ✓ Organization domain matches (+20)");
+    /* ORGANIZATION NAME */
+    if (normalizeTokens(organizationName).length >= 1) {
+      score += 10;
+      console.log("  ✓ Organization name provided (+10)");
     } else {
-      notes.push("Org mismatch");
-      console.log("  ⚠ Organization domain mismatch");
+      notes.push("Organization name is too weak for verification");
+      console.log("  ⚠ Organization name is too weak for verification");
+    }
+
+    if (domainAlignment.points === 0 && hasInstitutionalEmail(row.email)) {
+      notes.push("Institutional email domain does not closely match organization");
+      console.log("  ⚠ Institutional email domain does not closely match organization");
+    }
+
+    /* LINKEDIN */
+    if (isValidLinkedInUrl(row.linkedin_url)) {
+      score += 10;
+      console.log("  ✓ LinkedIn profile provided (+10)");
+    } else if (row.linkedin_url) {
+      notes.push("LinkedIn URL is invalid");
+      console.log("  ⚠ LinkedIn profile URL is invalid");
+    } else {
+      notes.push("LinkedIn profile is missing");
+      console.log("  ⚠ No LinkedIn profile provided");
+    }
+
+    /* ACCESS JUSTIFICATION */
+    if (hasMeaningfulReason(row.reason_for_access)) {
+      score += 10;
+      console.log("  ✓ Access justification provided (+10)");
+    } else {
+      notes.push("Access justification is too short");
+      console.log("  ⚠ Access justification is too short");
     }
 
     /* DOCUMENT */
     try {
       if (await documentExists(row.org_document_url)) {
-        score += 20;
-        console.log("  ✓ Document exists and is accessible (+20)");
+        score += 10;
+        console.log("  ✓ Organizational ID document uploaded (+10)");
       } else {
         notes.push("Document missing or inaccessible");
         console.log("  ⚠ Document missing or inaccessible");
@@ -238,29 +359,6 @@ async function processRequest(requestId: string) {
         "  ❌ Document check error:",
         docErr instanceof Error ? docErr.message : String(docErr)
       );
-    }
-
-    /* LINKEDIN */
-    if (row.linkedin_url) {
-      score += 10;
-      console.log("  ✓ LinkedIn profile provided (+10)");
-    } else {
-      console.log("  ⚠ No LinkedIn profile provided");
-    }
-
-    /* BASIC FORMAT */
-    if (row.email.includes("@")) {
-      score += 15;
-      console.log("  ✓ Valid email format (+15)");
-    } else {
-      notes.push("Invalid email format");
-      console.log("  ⚠ Invalid email format");
-    }
-
-    /* OCR placeholder */
-    if (row.org_document_url) {
-      score += 10;
-      console.log("  ✓ Document provided - OCR check placeholder (+10)");
     }
 
     console.log(`✅ [STEP 2 OK] Score calculated: ${score}`);
@@ -408,7 +506,6 @@ async function processRequest(requestId: string) {
     if (status === "approved") {
       emailSubject = `Welcome to CertifyPro - Access Approved`;
       emailBody = buildWelcomeEmailBody(
-        "temporary-password",
         appLoginUrl,
         organizationName
       );

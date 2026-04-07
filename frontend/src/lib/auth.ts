@@ -1,5 +1,10 @@
 import type { AuthChangeEvent, Session } from "@supabase/supabase-js";
-import { isSupabaseConfigured, supabase } from "@/lib/supabaseClient";
+import {
+  clearStoredSupabaseSession,
+  getSessionSafely,
+  isSupabaseConfigured,
+  supabase,
+} from "@/lib/supabaseClient";
 import { API_BASE } from "@/services/apiService";
 
 const AUTH_KEY = "certifypro_auth";
@@ -53,18 +58,18 @@ export async function initializeAuthSession(): Promise<SessionSnapshot> {
   }
 
   try {
-    const { data, error } = await supabase.auth.getSession();
-    if (error) {
+    const session = await getSessionSafely();
+    if (!session) {
       setAuthFlag(false);
       return { authenticated: false, firstLoginRequired: false };
     }
 
-    const verified = isEmailVerified(data.session ?? null);
+    const verified = isEmailVerified(session);
     setAuthFlag(verified);
 
     return {
       authenticated: verified,
-      firstLoginRequired: verified ? isFirstLoginRequired(data.session ?? null) : false,
+      firstLoginRequired: verified ? isFirstLoginRequired(session) : false,
     };
   } catch {
     setAuthFlag(false);
@@ -180,16 +185,7 @@ export async function completeFirstLoginReset(): Promise<AuthResult> {
 
 export async function signOutUser(): Promise<void> {
   setAuthFlag(false);
-
-  if (!supabase) {
-    return;
-  }
-
-  try {
-    await supabase.auth.signOut();
-  } catch {
-    return;
-  }
+  await clearStoredSupabaseSession();
 }
 
 export async function sendPasswordResetEmail(email: string): Promise<AuthResult> {
@@ -294,14 +290,14 @@ export async function getCurrentUserProfile(): Promise<UserProfile | null> {
   }
 
   try {
-    const { data: sessionData } = await supabase.auth.getSession();
-    if (!sessionData.session?.user?.id) {
+    const session = await getSessionSafely();
+    if (!session?.user?.id) {
       console.warn("No authenticated user");
       return null;
     }
 
     // Get the user's auth token for protected routes
-    const token = sessionData.session.access_token;
+    const token = session.access_token;
     if (!token) {
       console.warn("No access token available");
       return null;
@@ -374,8 +370,8 @@ export async function markFirstLoginComplete(): Promise<AuthResult> {
   }
 
   try {
-    const { data: sessionData } = await supabase.auth.getSession();
-    const token = sessionData.session?.access_token;
+    const session = await getSessionSafely();
+    const token = session?.access_token;
 
     if (!token) {
       return {
