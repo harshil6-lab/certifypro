@@ -43,16 +43,17 @@ if sys.platform.startswith("win"):
         # If policy is unavailable, keep default.
         pass
 
-allowed_origins = [
+allowed_origins_env = os.getenv("FRONTEND_ORIGINS", "")
+allowed_origins = [o.strip() for o in allowed_origins_env.split(",") if o.strip()] or [
     "http://localhost:5173",
     "http://127.0.0.1:5173",
     "http://localhost:8080",
     "http://127.0.0.1:8080",
     "http://localhost:8081",
     "http://127.0.0.1:8081",
-    "http://192.168.56.1:8080",
-    "http://192.168.56.1:8081",
+    "https://certifypro-tau.vercel.app",
 ]
+
 
 # Register auth middleware first, then CORS so cross-origin headers are still
 # attached when protected routes return auth or validation errors.
