@@ -1,0 +1,49 @@
+<svg width="640" height="320" viewBox="0 0 640 320" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="title desc">
+  <title id="title">QR Verification Illustration</title>
+  <desc id="desc">Secure shield and QR verification workflow concept.</desc>
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="640" y2="320" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#0D1B3A" stop-opacity="0.06"/>
+      <stop offset="1" stop-color="#D9A938" stop-opacity="0.13"/>
+    </linearGradient>
+    <linearGradient id="shield" x1="168" y1="78" x2="310" y2="248" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#1D3260"/>
+      <stop offset="1" stop-color="#0D1B3A"/>
+    </linearGradient>
+    <filter id="shadow" x="120" y="56" width="390" height="228" filterUnits="userSpaceOnUse" color-interpolation-filters="sRGB">
+      <feDropShadow dx="0" dy="10" stdDeviation="12" flood-color="#0D1B3A" flood-opacity="0.2"/>
+    </filter>
+  </defs>
+
+  <rect x="0" y="0" width="640" height="320" rx="24" fill="url(#bg)"/>
+  <rect x="24" y="24" width="592" height="272" rx="20" fill="#FFFFFF" fill-opacity="0.7"/>
+
+  <g filter="url(#shadow)">
+    <path d="M236 74C258 90 286 96 310 98V168C310 209 281 236 236 250C191 236 162 209 162 168V98C186 96 214 90 236 74Z" fill="url(#shield)"/>
+    <path d="M210 164L229 183L264 146" stroke="#D9A938" stroke-width="10" stroke-linecap="round" stroke-linejoin="round"/>
+  </g>
+
+  <rect x="362" y="92" width="170" height="170" rx="16" fill="#FFFFFF" stroke="#0D1B3A" stroke-opacity="0.2"/>
+  <rect x="386" y="116" width="24" height="24" fill="#0D1B3A"/>
+  <rect x="418" y="116" width="24" height="24" fill="#0D1B3A"/>
+  <rect x="450" y="116" width="24" height="24" fill="#D9A938"/>
+  <rect x="482" y="116" width="24" height="24" fill="#0D1B3A"/>
+
+  <rect x="386" y="148" width="24" height="24" fill="#D9A938"/>
+  <rect x="418" y="148" width="24" height="24" fill="#0D1B3A"/>
+  <rect x="450" y="148" width="24" height="24" fill="#0D1B3A"/>
+  <rect x="482" y="148" width="24" height="24" fill="#D9A938"/>
+
+  <rect x="386" y="180" width="24" height="24" fill="#0D1B3A"/>
+  <rect x="418" y="180" width="24" height="24" fill="#D9A938"/>
+  <rect x="450" y="180" width="24" height="24" fill="#0D1B3A"/>
+  <rect x="482" y="180" width="24" height="24" fill="#0D1B3A"/>
+
+  <rect x="386" y="212" width="24" height="24" fill="#0D1B3A"/>
+  <rect x="418" y="212" width="24" height="24" fill="#0D1B3A"/>
+  <rect x="450" y="212" width="24" height="24" fill="#D9A938"/>
+  <rect x="482" y="212" width="24" height="24" fill="#0D1B3A"/>
+
+  <path d="M318 160H350" stroke="#0D1B3A" stroke-opacity="0.35" stroke-width="5" stroke-linecap="round"/>
+  <circle cx="352" cy="160" r="8" fill="#D9A938"/>
+</svg>

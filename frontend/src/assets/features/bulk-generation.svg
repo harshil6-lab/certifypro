@@ -1,0 +1,38 @@
+<svg width="640" height="320" viewBox="0 0 640 320" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="title desc">
+  <title id="title">Bulk Generation Illustration</title>
+  <desc id="desc">Stair-step automation flow showing batch certificate generation.</desc>
+  <defs>
+    <linearGradient id="bg" x1="50" y1="20" x2="590" y2="300" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#0D1B3A" stop-opacity="0.06"/>
+      <stop offset="1" stop-color="#D9A938" stop-opacity="0.14"/>
+    </linearGradient>
+    <filter id="shadow" x="48" y="70" width="548" height="200" filterUnits="userSpaceOnUse" color-interpolation-filters="sRGB">
+      <feDropShadow dx="0" dy="10" stdDeviation="10" flood-color="#0D1B3A" flood-opacity="0.16"/>
+    </filter>
+    <marker id="arrow" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto">
+      <path d="M0,0 L8,4 L0,8 Z" fill="#0D1B3A" fill-opacity="0.52"/>
+    </marker>
+  </defs>
+
+  <rect x="0" y="0" width="640" height="320" rx="24" fill="url(#bg)"/>
+  <rect x="24" y="24" width="592" height="272" rx="20" fill="#FFFFFF" fill-opacity="0.7"/>
+
+  <g filter="url(#shadow)">
+    <rect x="86" y="194" width="98" height="56" rx="12" fill="#EAF0FF"/>
+    <rect x="196" y="162" width="108" height="88" rx="12" fill="#DFE8FF"/>
+    <rect x="316" y="126" width="124" height="124" rx="12" fill="#D2DEFF"/>
+    <rect x="452" y="88" width="102" height="162" rx="12" fill="#C7D6FF"/>
+  </g>
+
+  <path d="M100 112 C168 88, 220 92, 286 120 C338 142, 392 130, 454 92" stroke="#0D1B3A" stroke-opacity="0.42" stroke-width="5" stroke-linecap="round" fill="none" marker-end="url(#arrow)"/>
+
+  <circle cx="136" cy="112" r="16" fill="#D9A938" fill-opacity="0.9"/>
+  <circle cx="250" cy="106" r="16" fill="#D9A938" fill-opacity="0.75"/>
+  <circle cx="362" cy="122" r="16" fill="#D9A938" fill-opacity="0.6"/>
+  <circle cx="474" cy="94" r="16" fill="#D9A938" fill-opacity="0.5"/>
+
+  <rect x="104" y="208" width="62" height="10" rx="5" fill="#0D1B3A" fill-opacity="0.18"/>
+  <rect x="216" y="178" width="62" height="10" rx="5" fill="#0D1B3A" fill-opacity="0.18"/>
+  <rect x="338" y="144" width="62" height="10" rx="5" fill="#0D1B3A" fill-opacity="0.18"/>
+  <rect x="472" y="106" width="56" height="10" rx="5" fill="#0D1B3A" fill-opacity="0.18"/>
+</svg>

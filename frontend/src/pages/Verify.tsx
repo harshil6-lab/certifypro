@@ -1,29 +1,51 @@
 import { useState } from "react";
-import { Award, Search, QrCode, ShieldCheck } from "lucide-react";
+import { useNavigate } from "react-router-dom";
+import { Search, QrCode, ShieldCheck, CheckCircle2, XCircle } from "lucide-react";
+import { verifyCertificate } from "@/services/apiService";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Link } from "react-router-dom";
+import { PublicNavbar } from "@/components/landing/PublicNavbar";
+import { LandingFooter } from "@/components/landing/LandingFooter";
+import { Card, CardContent } from "@/components/ui/card";
 
 const Verify = () => {
+  const navigate = useNavigate();
   const [certId, setCertId] = useState("");
+  const [result, setResult] = useState<"idle" | "verified" | "not-found">("idle");
+  const [loading, setLoading] = useState(false);
+  const [details, setDetails] = useState<{ valid?: boolean; external_id?: string; full_name?: string } | null>(null);
+
+  const handleVerify = () => {
+    if (!certId.trim()) return;
+    setLoading(true);
+    setDetails(null);
+    verifyCertificate(certId.trim())
+      .then((data) => {
+        const valid = typeof data?.valid === "boolean" ? data.valid : false;
+        if (valid) {
+          setResult("verified");
+          setDetails({
+            valid,
+            external_id: typeof data.external_id === "string" ? data.external_id : undefined,
+            full_name: typeof data.full_name === "string" ? data.full_name : undefined,
+          });
+          const externalId = typeof data.external_id === "string" ? data.external_id : "";
+          navigate(`/verify/${encodeURIComponent(externalId || certId.trim())}`);
+        } else {
+          setResult("not-found");
+        }
+      })
+      .catch(() => {
+        setResult("not-found");
+      })
+      .finally(() => setLoading(false));
+  };
 
   return (
-    <div className="min-h-screen bg-background">
-      {/* Header */}
-      <header className="border-b bg-card">
-        <div className="max-w-4xl mx-auto px-6 py-4 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="w-9 h-9 rounded-lg gold-gradient flex items-center justify-center">
-              <Award className="w-5 h-5 text-accent-foreground" />
-            </div>
-            <span className="text-lg font-heading font-bold text-foreground">CertifyPro</span>
-          </div>
-          <span className="text-sm text-muted-foreground">Public Verification Portal</span>
-        </div>
-      </header>
+    <div className="min-h-screen bg-gradient-to-b from-background via-background to-muted/20">
+      <PublicNavbar />
 
-      {/* Main */}
-      <main className="max-w-2xl mx-auto px-6 py-20 text-center space-y-8 animate-fade-in">
+      <main className="max-w-3xl mx-auto px-4 sm:px-6 py-14 md:py-18 text-center space-y-8 animate-fade-in">
         <div className="space-y-3">
           <div className="w-20 h-20 mx-auto rounded-2xl bg-accent/10 flex items-center justify-center">
             <ShieldCheck className="w-10 h-10 text-accent" />
@@ -36,47 +58,74 @@ const Verify = () => {
           </p>
         </div>
 
-        {/* Input */}
-        <div className="max-w-md mx-auto space-y-4">
-          <div className="relative">
-            <Search className="absolute left-4 top-3.5 w-5 h-5 text-muted-foreground" />
-            <Input
-              placeholder="Enter Certificate ID (e.g. CERT-2024-0001)"
-              className="pl-12 h-12 text-base"
-              value={certId}
-              onChange={(e) => setCertId(e.target.value)}
-            />
-          </div>
+        <Card className="rounded-2xl card-shadow border-border/60 max-w-xl mx-auto hover:card-shadow-lg transition-shadow">
+          <CardContent className="p-6 space-y-5">
+            <div className="relative">
+              <Search className="absolute left-4 top-3.5 w-5 h-5 text-muted-foreground" />
+              <Input
+                placeholder="Enter Certificate ID (e.g. CERT-2024-0001)"
+                className="pl-12 h-12 text-base focus:ring-2 focus:ring-accent/20 transition-all"
+                value={certId}
+                onChange={(e) => setCertId(e.target.value)}
+              />
+            </div>
 
-          <Link to={certId ? `/verify/${certId}` : "#"}>
             <Button
-              className="w-full h-12 text-base gold-gradient text-accent-foreground hover:opacity-90 gap-2"
+              className="w-full h-12 text-base gold-gradient text-accent-foreground hover:opacity-90 transition-opacity gap-2 shadow-md"
               disabled={!certId}
+              onClick={handleVerify}
             >
               <ShieldCheck className="w-5 h-5" /> Verify Certificate
             </Button>
-          </Link>
 
-          <div className="relative py-4">
-            <div className="absolute inset-0 flex items-center">
-              <span className="w-full border-t" />
+            <div className="rounded-xl border border-border bg-card px-4 py-4 text-left transition-colors hover:border-accent/30">
+              <p className="text-xs uppercase tracking-wide text-muted-foreground mb-2">Verification Result</p>
+              {result === "idle" ? (
+                <p className="text-sm text-muted-foreground">Result will appear here after verification.</p>
+              ) : null}
+              {result === "verified" ? (
+                  <div className="flex items-start gap-3">
+                    <CheckCircle2 className="w-4 h-4 text-success mt-1" />
+                    <div>
+                      <p className="text-sm text-success font-medium">Certificate is valid.</p>
+                      <p className="text-xs text-muted-foreground mt-1">Redirecting to full verification details...</p>
+                      {details && (
+                        <p className="text-xs text-muted-foreground mt-1">Recipient: {details.full_name}</p>
+                      )}
+                    </div>
+                  </div>
+              ) : null}
+              {result === "not-found" ? (
+                <div className="flex items-center gap-2">
+                  <XCircle className="w-4 h-4 text-destructive" />
+                  <p className="text-sm text-destructive font-medium">Certificate not found in the registry.</p>
+                </div>
+              ) : null}
             </div>
-            <div className="relative flex justify-center text-xs uppercase">
-              <span className="bg-background px-3 text-muted-foreground">or</span>
-            </div>
-          </div>
+          </CardContent>
+        </Card>
 
-          <div className="border-2 border-dashed border-border rounded-xl p-8 hover:border-accent/50 transition-colors cursor-pointer">
-            <QrCode className="w-12 h-12 text-muted-foreground/40 mx-auto mb-3" />
-            <p className="text-sm text-muted-foreground">Scan QR code from certificate</p>
-            <p className="text-xs text-muted-foreground/60 mt-1">Camera access required</p>
+        <div className="relative py-4">
+          <div className="absolute inset-0 flex items-center">
+            <span className="w-full border-t" />
           </div>
+          <div className="relative flex justify-center text-xs uppercase">
+            <span className="bg-background px-3 text-muted-foreground">or</span>
+          </div>
+        </div>
+
+        <div className="border-2 border-dashed border-border rounded-xl p-8 hover:border-accent/50 transition-all duration-300 cursor-pointer hover:bg-accent/5">
+          <QrCode className="w-12 h-12 text-muted-foreground/40 mx-auto mb-3" />
+          <p className="text-sm text-muted-foreground">Scan QR code from certificate</p>
+          <p className="text-xs text-muted-foreground/60 mt-1">A scanned QR should open the dedicated verification details page</p>
         </div>
 
         <p className="text-xs text-muted-foreground">
           This portal verifies certificates issued through the CertifyPro system.
         </p>
       </main>
+
+      <LandingFooter />
     </div>
   );
 };
