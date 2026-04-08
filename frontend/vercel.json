@@ -1,0 +1,32 @@
+{
+  "rewrites": [
+    {
+      "source": "/api/:path*",
+      "destination": "https://certifypro-backend.onrender.com/api/:path*"
+    },
+    {
+      "source": "/user/:path*",
+      "destination": "https://certifypro-backend.onrender.com/user/:path*"
+    },
+    {
+      "source": "/dashboard/:path*",
+      "destination": "https://certifypro-backend.onrender.com/dashboard/:path*"
+    },
+    {
+      "source": "/students/:path*",
+      "destination": "https://certifypro-backend.onrender.com/students/:path*"
+    },
+    {
+      "source": "/certificates/:path*",
+      "destination": "https://certifypro-backend.onrender.com/certificates/:path*"
+    },
+    {
+      "source": "/verify/:path((?!.*\\..*$).*)",
+      "destination": "https://certifypro-backend.onrender.com/verify/:path*"
+    },
+    {
+      "source": "/(.*)",
+      "destination": "/index.html"
+    }
+  ]
+}
