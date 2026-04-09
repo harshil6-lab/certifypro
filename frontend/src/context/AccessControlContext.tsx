@@ -130,16 +130,24 @@ async function requestJson<T>(path: string, init?: RequestInit): Promise<T> {
   });
 
   const text = await response.text();
-  let body: any = null;
+  let body: unknown = null;
   if (text) {
     try {
-      body = JSON.parse(text);
+      body = JSON.parse(text) as unknown;
     } catch {
-      body = { message: text };
+      body = { message: text } as { message: string };
     }
   }
   if (!response.ok) {
-    throw new Error(body?.detail || body?.message || `Request failed with status ${response.status}`);
+    const detail =
+      typeof body === "object" && body && "detail" in body && typeof (body as { detail?: unknown }).detail === "string"
+        ? (body as { detail: string }).detail
+        : null;
+    const message =
+      typeof body === "object" && body && "message" in body && typeof (body as { message?: unknown }).message === "string"
+        ? (body as { message: string }).message
+        : null;
+    throw new Error(detail || message || `Request failed with status ${response.status}`);
   }
   return body as T;
 }

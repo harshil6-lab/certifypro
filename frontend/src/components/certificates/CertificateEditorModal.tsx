@@ -159,15 +159,30 @@ export function CertificateEditorModal({
             <div className="rounded-xl border border-slate-200 bg-white shadow-xl p-3 sm:p-5 overflow-auto max-h-[80vh]">
               <div className="mx-auto w-full max-w-[980px]">
                 <PreviewErrorBoundary>
-                  {safeTemplate ? (
+                  {/* If the template has a styleType (builtin or official styled), render the live component */}
+                  {safeTemplate?.styleType ? (
                     <CertificateTemplate
                       styleType={safeTemplate.styleType}
                       draft={safeDraft}
-                      organizationName={safeTemplate.category === "Corporate" ? "CertifyPro Corporate" : "CertifyPro Institution"}
+                      organizationName="CertifyPro"
                       previewScale="md"
                       highlightEditableZones={!readOnly && mode === "edit"}
-                      onInlineEdit={readOnly ? undefined : onUpdateField}
+                      onInlineEdit={!readOnly && mode === "edit" ? onUpdateField : undefined}
                     />
+                  ) : safeTemplate?.file_url || safeTemplate?.image_url ? (
+                    /* Fallback: image-backed template (uploaded PNG/JPG) */
+                    <div className="relative aspect-[1.414/1] w-full overflow-hidden rounded-xl border border-border">
+                      <img
+                        src={safeTemplate.file_url ?? safeTemplate.image_url}
+                        alt={safeTemplate.title}
+                        className="h-full w-full object-contain"
+                      />
+                    </div>
+                  ) : safeTemplate ? (
+                    /* No preview available for this template */
+                    <div className="min-h-[300px] rounded-xl border border-dashed border-border bg-muted/30 flex items-center justify-center text-sm text-muted-foreground">
+                      No preview available
+                    </div>
                   ) : (
                     <div className="min-h-[420px] rounded-xl border border-slate-200 bg-white p-6 flex items-center justify-center text-sm text-slate-600">
                       Loading preview...

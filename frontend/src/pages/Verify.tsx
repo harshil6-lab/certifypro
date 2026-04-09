@@ -13,7 +13,7 @@ const Verify = () => {
   const [certId, setCertId] = useState("");
   const [result, setResult] = useState<"idle" | "verified" | "not-found">("idle");
   const [loading, setLoading] = useState(false);
-  const [details, setDetails] = useState<any | null>(null);
+  const [details, setDetails] = useState<{ valid?: boolean; external_id?: string; full_name?: string } | null>(null);
 
   const handleVerify = () => {
     if (!certId.trim()) return;
@@ -21,10 +21,16 @@ const Verify = () => {
     setDetails(null);
     verifyCertificate(certId.trim())
       .then((data) => {
-        if (data && data.valid) {
+        const valid = typeof data?.valid === "boolean" ? data.valid : false;
+        if (valid) {
           setResult("verified");
-          setDetails(data);
-          navigate(`/verify/${encodeURIComponent(data.external_id || certId.trim())}`);
+          setDetails({
+            valid,
+            external_id: typeof data.external_id === "string" ? data.external_id : undefined,
+            full_name: typeof data.full_name === "string" ? data.full_name : undefined,
+          });
+          const externalId = typeof data.external_id === "string" ? data.external_id : "";
+          navigate(`/verify/${encodeURIComponent(externalId || certId.trim())}`);
         } else {
           setResult("not-found");
         }
