@@ -1,6 +1,6 @@
 import { useEffect, useState, type DragEvent } from "react";
 import axios from "axios";
-import { Sparkles, WandSparkles, Eye, LayoutGrid, Upload, ArrowRight, ExternalLink } from "lucide-react";
+import { Sparkles, WandSparkles, Eye, LayoutGrid, Upload, ArrowRight, ExternalLink, Maximize2, X } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -144,6 +144,8 @@ const Templates = () => {
 
   const [workspaceTemplate, setWorkspaceTemplate] = useState<WorkspaceTemplateState | null>(null);
   const [isGallerySelected, setIsGallerySelected] = useState(false);
+  const [showImglyIframe, setShowImglyIframe] = useState(false);
+  const [imglyLoading, setImglyLoading] = useState(false);
 
   useEffect(() => {
     const loadOfficialTemplates = async () => {
@@ -484,14 +486,71 @@ const Templates = () => {
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="space-y-4">
-                <div className="space-y-1">
-                  <h3 className="text-lg font-semibold text-foreground flex items-center gap-2">
-                    <LayoutGrid className="w-5 h-5 text-accent" />
-                    CertifyPro Template Library
-                  </h3>
-                  <p className="text-sm text-muted-foreground">
-                    Pick a professionally designed template and customize it to your needs.
-                  </p>
+                {/* IMG.LY In-App Design Studio */}
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <LayoutGrid className="w-5 h-5 text-accent" />
+                      <div>
+                        <h3 className="text-sm font-semibold text-foreground">Design with IMG.LY Studio</h3>
+                        <p className="text-xs text-muted-foreground">Create a custom certificate, export PNG/JPG, then upload below.</p>
+                      </div>
+                    </div>
+                    <Badge variant="outline" className="text-xs shrink-0">Free Editor</Badge>
+                  </div>
+
+                  {!showImglyIframe ? (
+                    <button
+                      type="button"
+                      onClick={() => { setImglyLoading(true); setShowImglyIframe(true); }}
+                      className="w-full flex items-center justify-center gap-2 rounded-lg border-2 border-dashed border-blue-200 bg-blue-50/50 dark:border-blue-800 dark:bg-blue-950/30 px-4 py-5 text-sm font-medium text-blue-700 dark:text-blue-400 hover:border-blue-400 hover:bg-blue-100/50 dark:hover:bg-blue-900/30 transition-colors"
+                    >
+                      <ExternalLink className="w-4 h-4" />
+                      Open IMG.LY Design Editor (In-App)
+                    </button>
+                  ) : (
+                    <div className="rounded-lg border border-border overflow-hidden">
+                      <div className="flex items-center justify-between px-3 py-2 bg-muted/30 border-b border-border">
+                        <div className="flex items-center gap-2">
+                          <ExternalLink className="w-3.5 h-3.5 text-blue-500" />
+                          <span className="text-xs font-medium text-foreground">IMG.LY Design Studio</span>
+                          {imglyLoading && <span className="text-xs text-muted-foreground">Loading editor...</span>}
+                        </div>
+                        <div className="flex items-center gap-1">
+                          <a
+                            href="https://img.ly/design"
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="inline-flex items-center gap-1 rounded px-2 py-1 text-xs text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors"
+                          >
+                            <Maximize2 className="w-3 h-3" /> Full Screen
+                          </a>
+                          <button
+                            type="button"
+                            onClick={() => { setShowImglyIframe(false); setImglyLoading(false); }}
+                            className="inline-flex items-center rounded p-1 text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors"
+                          >
+                            <X className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
+                      </div>
+                      <a
+                        href="https://img.ly/design?utm_source=certifypro&utm_medium=embed&utm_campaign=partner"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="block w-full h-[480px] rounded-lg border border-border overflow-hidden flex items-center justify-center text-center text-muted-foreground hover:text-foreground transition-colors bg-muted/50 hover:bg-muted"
+                      >
+                        <div className="flex flex-col items-center gap-3">
+                          <ExternalLink className="w-12 h-12 text-blue-500 opacity-70" />
+                          <div>
+                            <h4 className="text-sm font-semibold">IMG.LY Design Editor</h4>
+                            <p className="text-xs mt-1">Click to open full-screen editor (new tab)</p>
+                            <p className="text-xs mt-1 font-mono bg-muted/30 px-2 py-0.5 rounded text-[10px]">img.ly/design</p>
+                          </div>
+                        </div>
+                      </a>
+                    </div>
+                  )}
                 </div>
                 <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
                   {BUILTIN_TEMPLATES.map((template) => (
@@ -572,51 +631,19 @@ const Templates = () => {
                 </div>
               )}
 
-              <Card className="card-shadow">
-  <CardHeader className="pb-2">
-    <CardTitle className="text-sm font-heading flex items-center gap-2">
-      <ExternalLink className="w-4 h-4 text-blue-500" />
-      External Template Library
-      <Badge variant="outline" className="ml-auto text-xs">External</Badge>
-    </CardTitle>
-  </CardHeader>
-  <CardContent className="space-y-3">
-    <p className="text-xs text-muted-foreground">
-      Design your certificate in IMG.LY's free editor. Export as PNG or JPG, then upload it using the upload area below.
-    </p>
-    <Button
-      variant="outline"
-      className="w-full gap-2 border-blue-200 text-blue-700 hover:bg-blue-50 dark:border-blue-800 dark:text-blue-400 dark:hover:bg-blue-950"
-      onClick={() => window.open("https://img.ly/design", "_blank", "noopener,noreferrer")}
-    >
-      <ExternalLink className="w-4 h-4" />
-      Open IMG.LY Design Editor
-    </Button>
-  </CardContent>
-</Card>
 
-              <Card className="card-shadow">
-  <CardHeader className="pb-2">
-    <CardTitle className="text-sm font-heading flex items-center gap-2">
-      <ExternalLink className="w-4 h-4 text-blue-500" />
-      External Template Library
-      <Badge variant="outline" className="ml-auto text-xs">External</Badge>
-    </CardTitle>
-  </CardHeader>
-  <CardContent className="space-y-3">
-    <p className="text-xs text-muted-foreground">
-      Design your certificate in IMG.LY's free editor. Export as PNG or JPG, then upload it using the upload area below.
-    </p>
-    <Button
-      variant="outline"
-      className="w-full gap-2 border-blue-200 text-blue-700 hover:bg-blue-50 dark:border-blue-800 dark:text-blue-400 dark:hover:bg-blue-950"
-      onClick={() => window.open("https://img.ly/design", "_blank", "noopener,noreferrer")}
-    >
-      <ExternalLink className="w-4 h-4" />
-      Open IMG.LY Design Editor
-    </Button>
-  </CardContent>
-</Card>
+              {/* External Library Quick Link */}
+              <div className="rounded-lg border border-blue-200 dark:border-blue-800 bg-blue-50/40 dark:bg-blue-950/20 px-3 py-3">
+                <div className="flex items-center justify-between mb-2">
+                  <div className="flex items-center gap-2">
+                    <ExternalLink className="w-3.5 h-3.5 text-blue-500" />
+                    <span className="text-xs font-semibold text-foreground">IMG.LY Design Studio</span>
+                  </div>
+                  <Badge variant="outline" className="text-[10px]">External</Badge>
+                </div>
+                <p className="text-xs text-muted-foreground mb-2">Design in the left panel or open full screen, then upload your exported image below.</p>
+              </div>
+
               <div
                 onDragOver={(event) => {
                   event.preventDefault();
