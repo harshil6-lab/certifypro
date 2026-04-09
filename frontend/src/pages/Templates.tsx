@@ -144,8 +144,10 @@ const Templates = () => {
 
   const [workspaceTemplate, setWorkspaceTemplate] = useState<WorkspaceTemplateState | null>(null);
   const [isGallerySelected, setIsGallerySelected] = useState(false);
-  const [showImglyIframe, setShowImglyIframe] = useState(false);
-  const [imglyLoading, setImglyLoading] = useState(false);
+  // Remove IMG.LY editor state
+  const [templatedPreviewUrl, setTemplatedPreviewUrl] = useState<string | null>(null);
+  const [templatedPreviewLoading, setTemplatedPreviewLoading] = useState(false);
+  const [templatedPreviewError, setTemplatedPreviewError] = useState(false);
 
   useEffect(() => {
     const loadOfficialTemplates = async () => {
@@ -463,6 +465,49 @@ const Templates = () => {
     void uploadTemplate(file);
   };
 
+  // --- Templated.io Integration ---
+  async function openTemplatedEditor() {
+    setTemplatedPreviewLoading(true);
+    setTemplatedPreviewError(false);
+    try {
+      const apiKey = import.meta.env.VITE_TEMPLATED_API_KEY;
+      const templateId = import.meta.env.VITE_TEMPLATED_TEMPLATE_ID;
+      if (!apiKey || !templateId) throw new Error("Templated.io credentials missing");
+      const draft = selectedTemplate ? draftByTemplate[selectedTemplate.id] ?? normalizeDraft({}, selectedTemplate.title) : BUILTIN_PREVIEW_DRAFT;
+      // Map draft fields to Templated.io layer keys
+      const layers = {
+        name: draft.recipientName,
+        signature: draft.issuerName || draft.authorityName || "",
+        details: draft.certificateTitle,
+        date: draft.issuedDate,
+        "text-5": draft.description,
+        "text-5-2": "CertifyPro Academy",
+        // image-1: (logo support can be added here if needed)
+      };
+      const response = await fetch("https://api.templated.io/v1/render", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${apiKey}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          template: templateId,
+          layers,
+        }),
+      });
+      if (!response.ok) throw new Error(`API error: ${response.status}`);
+      const data = await response.json();
+      setTemplatedPreviewUrl(data.image_url || null);
+    } catch (err) {
+      setTemplatedPreviewError(true);
+      setTemplatedPreviewUrl(null);
+      // eslint-disable-next-line no-console
+      console.error("Templated preview failed", err);
+    } finally {
+      setTemplatedPreviewLoading(false);
+    }
+  }
+
   return (
     <div className="p-8 max-w-[1280px] mx-auto space-y-6 animate-fade-in">
       <div className="flex flex-wrap items-start justify-between gap-3">
@@ -486,71 +531,39 @@ const Templates = () => {
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="space-y-4">
-                {/* IMG.LY In-App Design Studio */}
+                {/* Templated.io Studio Integration */}
                 <div className="space-y-3">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2">
                       <LayoutGrid className="w-5 h-5 text-accent" />
                       <div>
-                        <h3 className="text-sm font-semibold text-foreground">Design with IMG.LY Studio</h3>
-                        <p className="text-xs text-muted-foreground">Create a custom certificate, export PNG/JPG, then upload below.</p>
+                        <h3 className="text-sm font-semibold text-foreground">Design with Templated.io Studio</h3>
+                        <p className="text-xs text-muted-foreground">Customize your certificate template using Templated.io dynamic rendering and preview it instantly inside CertifyPro.</p>
                       </div>
                     </div>
-                    <Badge variant="outline" className="text-xs shrink-0">Free Editor</Badge>
+                    <Badge variant="outline" className="text-xs shrink-0">API Preview</Badge>
                   </div>
 
-                  {!showImglyIframe ? (
-                    <button
-                      type="button"
-                      onClick={() => { setImglyLoading(true); setShowImglyIframe(true); }}
-                      className="w-full flex items-center justify-center gap-2 rounded-lg border-2 border-dashed border-blue-200 bg-blue-50/50 dark:border-blue-800 dark:bg-blue-950/30 px-4 py-5 text-sm font-medium text-blue-700 dark:text-blue-400 hover:border-blue-400 hover:bg-blue-100/50 dark:hover:bg-blue-900/30 transition-colors"
-                    >
-                      <ExternalLink className="w-4 h-4" />
-                      Open IMG.LY Design Editor (In-App)
-                    </button>
-                  ) : (
-                    <div className="rounded-lg border border-border overflow-hidden">
-                      <div className="flex items-center justify-between px-3 py-2 bg-muted/30 border-b border-border">
-                        <div className="flex items-center gap-2">
-                          <ExternalLink className="w-3.5 h-3.5 text-blue-500" />
-                          <span className="text-xs font-medium text-foreground">IMG.LY Design Studio</span>
-                          {imglyLoading && <span className="text-xs text-muted-foreground">Loading editor...</span>}
-                        </div>
-                        <div className="flex items-center gap-1">
-                          <a
-                            href="https://img.ly/design"
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="inline-flex items-center gap-1 rounded px-2 py-1 text-xs text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors"
-                          >
-                            <Maximize2 className="w-3 h-3" /> Full Screen
-                          </a>
-                          <button
-                            type="button"
-                            onClick={() => { setShowImglyIframe(false); setImglyLoading(false); }}
-                            className="inline-flex items-center rounded p-1 text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors"
-                          >
-                            <X className="w-3.5 h-3.5" />
-                          </button>
-                        </div>
+                  <button
+                    type="button"
+                    onClick={openTemplatedEditor}
+                    className="w-full flex items-center justify-center gap-2 rounded-lg border-2 border-dashed border-blue-200 bg-blue-50/50 dark:border-blue-800 dark:bg-blue-950/30 px-4 py-5 text-sm font-medium text-blue-700 dark:text-blue-400 hover:border-blue-400 hover:bg-blue-100/50 dark:hover:bg-blue-900/30 transition-colors"
+                  >
+                    <ExternalLink className="w-4 h-4" />
+                    Open Templated.io Template Editor
+                  </button>
+
+                  <div className="mt-4">
+                    {templatedPreviewLoading ? (
+                      <div className="rounded-lg border border-border bg-white p-8 flex items-center justify-center text-muted-foreground">Generating Templated.io preview...</div>
+                    ) : templatedPreviewUrl ? (
+                      <div className="rounded-lg border border-border overflow-hidden">
+                        <img src={templatedPreviewUrl} alt="Templated.io preview" className="w-full h-auto object-contain" />
                       </div>
-                      <a
-                        href="https://img.ly/design?utm_source=certifypro&utm_medium=embed&utm_campaign=partner"
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="block w-full h-[480px] rounded-lg border border-border overflow-hidden flex items-center justify-center text-center text-muted-foreground hover:text-foreground transition-colors bg-muted/50 hover:bg-muted"
-                      >
-                        <div className="flex flex-col items-center gap-3">
-                          <ExternalLink className="w-12 h-12 text-blue-500 opacity-70" />
-                          <div>
-                            <h4 className="text-sm font-semibold">IMG.LY Design Editor</h4>
-                            <p className="text-xs mt-1">Click to open full-screen editor (new tab)</p>
-                            <p className="text-xs mt-1 font-mono bg-muted/30 px-2 py-0.5 rounded text-[10px]">img.ly/design</p>
-                          </div>
-                        </div>
-                      </a>
-                    </div>
-                  )}
+                    ) : templatedPreviewError ? (
+                      <div className="rounded-lg border border-red-200 bg-red-50 p-8 text-red-700 text-center">Templated.io preview unavailable. Try again or upload a custom template below.</div>
+                    ) : null}
+                  </div>
                 </div>
                 <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
                   {BUILTIN_TEMPLATES.map((template) => (
@@ -632,16 +645,16 @@ const Templates = () => {
               )}
 
 
-              {/* External Library Quick Link */}
+              {/* Templated.io Renderer Panel */}
               <div className="rounded-lg border border-blue-200 dark:border-blue-800 bg-blue-50/40 dark:bg-blue-950/20 px-3 py-3">
                 <div className="flex items-center justify-between mb-2">
                   <div className="flex items-center gap-2">
                     <ExternalLink className="w-3.5 h-3.5 text-blue-500" />
-                    <span className="text-xs font-semibold text-foreground">IMG.LY Design Studio</span>
+                    <span className="text-xs font-semibold text-foreground">Templated.io Template Renderer</span>
                   </div>
-                  <Badge variant="outline" className="text-[10px]">External</Badge>
+                  <Badge variant="outline" className="text-[10px]">API</Badge>
                 </div>
-                <p className="text-xs text-muted-foreground mb-2">Design in the left panel or open full screen, then upload your exported image below.</p>
+                <p className="text-xs text-muted-foreground mb-2">Template previews are generated automatically using Templated.io rendering API.</p>
               </div>
 
               <div

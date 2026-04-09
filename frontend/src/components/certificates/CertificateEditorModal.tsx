@@ -37,7 +37,7 @@ class PreviewErrorBoundary extends Component<{ children: ReactNode }, { hasError
     if (this.state.hasError) {
       return (
         <div className="min-h-[420px] rounded-xl border border-slate-200 bg-white p-6 flex items-center justify-center text-sm text-slate-600">
-          Preview temporarily unavailable. Please close and reopen this template.
+          Certificate preview unavailable. Try again or check API key.
         </div>
       );
     }
@@ -57,6 +57,9 @@ export function CertificateEditorModal({
   initialMode = "edit",
 }: CertificateEditorModalProps) {
   const [mode, setMode] = useState<"preview" | "edit">(readOnly ? "preview" : initialMode);
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const [previewError, setPreviewError] = useState(false);
+  const [previewLoading, setPreviewLoading] = useState(false);
 
   const safeTemplate = template;
   const safeDraft: CertificateDraft = {
@@ -71,6 +74,68 @@ export function CertificateEditorModal({
     logoName: String(draft.logoName ?? ""),
     logoPreviewUrl: draft.logoPreviewUrl ? String(draft.logoPreviewUrl) : "",
   };
+
+  // Templated.io preview generation
+  useEffect(() => {
+    if (!open || mode !== "preview" || readOnly || !safeTemplate) {
+      setPreviewUrl(null);
+      setPreviewError(false);
+      return;
+    }
+
+    const generateTemplatedPreview = async () => {
+      setPreviewLoading(true);
+      setPreviewError(false);
+      try {
+        const apiKey = import.meta.env.VITE_TEMPLATED_API_KEY;
+        const templateId = import.meta.env.VITE_TEMPLATED_TEMPLATE_ID;
+
+        if (!apiKey || !templateId) {
+          throw new Error("Templated.io credentials missing");
+        }
+
+        const response = await fetch("https://api.templated.io/v1/render", {
+          method: "POST",
+          headers: {
+            "Authorization": `Bearer ${apiKey}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            template: templateId,
+            layers: {
+              name: safeDraft.recipientName,
+              title: safeDraft.certificateTitle,
+              description: safeDraft.description,
+              issuer: safeDraft.issuerName,
+              authority: safeDraft.authorityName,
+              date: safeDraft.issuedDate,
+              signature1: safeDraft.issuerSignatureText || "",
+              signature2: safeDraft.authoritySignatureText || "",
+              organization: "CertifyPro",
+              logo: safeDraft.logoPreviewUrl || "",
+            },
+          }),
+        });
+
+        if (!response.ok) {
+          throw new Error(`API error: ${response.status}`);
+        }
+
+        const data = await response.json();
+        setPreviewUrl(data.image_url || null);
+      } catch (error) {
+        console.error("Templated.io preview failed:", error);
+        setPreviewError(true);
+        setPreviewUrl(null);
+      } finally {
+        setPreviewLoading(false);
+      }
+    };
+
+    const timeoutId = setTimeout(generateTemplatedPreview, 500); // Debounce
+
+    return () => clearTimeout(timeoutId);
+  }, [open, mode, readOnly, safeTemplate, safeDraft]);
 
   useEffect(() => {
     if (readOnly && mode !== "preview") {
@@ -159,34 +224,55 @@ export function CertificateEditorModal({
             <div className="rounded-xl border border-slate-200 bg-white shadow-xl p-3 sm:p-5 overflow-auto max-h-[80vh]">
               <div className="mx-auto w-full max-w-[980px]">
                 <PreviewErrorBoundary>
-                  {/* If the template has a styleType (builtin or official styled), render the live component */}
-                  {safeTemplate?.styleType ? (
+                  {previewLoading ? (
+                    <div className="min-h-[420px] rounded-xl border border-slate-200 bg-white p-6 flex items-center justify-center text-sm text-slate-600">
+                      Generating Templated.io preview...
+                    </div>
+                  ) : previewUrl ? (
+                    <div className="relative aspect-[1.414/1] w-full overflow-hidden rounded-xl border border-border">
+                      <img
+                        src={previewUrl}
+                        alt="Templated.io certificate preview"
+                        className="h-full w-full object-contain"
+                      />
+                    </div>
+                  ) : previewError || !safeTemplate?.styleType ? (
+                    // Fallback to existing React template or show error
+                    safeTemplate?.styleType ? (
+                      <CertificateTemplate
+                        styleType={safeTemplate.styleType}
+                        draft={safeDraft}
+                        organizationName="CertifyPro"
+                        previewScale="md"
+                        highlightEditableZones={!readOnly && mode === "edit"}
+                        onInlineEdit={!readOnly && mode === "edit" ? onUpdateField : undefined}
+                      />
+                    ) : safeTemplate?.file_url || safeTemplate?.image_url ? (
+                      <div className="relative aspect-[1.414/1] w-full overflow-hidden rounded-xl border border-border">
+                        <img
+                          src={safeTemplate.file_url ?? safeTemplate.image_url}
+                          alt={safeTemplate.title}
+                          className="h-full w-full object-contain"
+                        />
+                      </div>
+                    ) : safeTemplate ? (
+                      <div className="min-h-[300px] rounded-xl border border-dashed border-border bg-muted/30 flex items-center justify-center text-sm text-muted-foreground">
+                        No preview available
+                      </div>
+                    ) : (
+                      <div className="min-h-[420px] rounded-xl border border-slate-200 bg-white p-6 flex items-center justify-center text-sm text-slate-600">
+                        Loading preview...
+                      </div>
+                    )
+                  ) : (
                     <CertificateTemplate
-                      styleType={safeTemplate.styleType}
+                      styleType={safeTemplate?.styleType ?? "academicFormal"}
                       draft={safeDraft}
                       organizationName="CertifyPro"
                       previewScale="md"
                       highlightEditableZones={!readOnly && mode === "edit"}
                       onInlineEdit={!readOnly && mode === "edit" ? onUpdateField : undefined}
                     />
-                  ) : safeTemplate?.file_url || safeTemplate?.image_url ? (
-                    /* Fallback: image-backed template (uploaded PNG/JPG) */
-                    <div className="relative aspect-[1.414/1] w-full overflow-hidden rounded-xl border border-border">
-                      <img
-                        src={safeTemplate.file_url ?? safeTemplate.image_url}
-                        alt={safeTemplate.title}
-                        className="h-full w-full object-contain"
-                      />
-                    </div>
-                  ) : safeTemplate ? (
-                    /* No preview available for this template */
-                    <div className="min-h-[300px] rounded-xl border border-dashed border-border bg-muted/30 flex items-center justify-center text-sm text-muted-foreground">
-                      No preview available
-                    </div>
-                  ) : (
-                    <div className="min-h-[420px] rounded-xl border border-slate-200 bg-white p-6 flex items-center justify-center text-sm text-slate-600">
-                      Loading preview...
-                    </div>
                   )}
                 </PreviewErrorBoundary>
               </div>
