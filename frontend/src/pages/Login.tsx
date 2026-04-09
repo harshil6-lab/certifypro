@@ -22,7 +22,6 @@ const Login = () => {
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [isSigningIn, setIsSigningIn] = useState(false);
-  const [showPassword, setShowPassword] = useState(false);
   const [authError, setAuthError] = useState("");
   const [resetMessage, setResetMessage] = useState("");
   const [searchParams] = useSearchParams();
@@ -96,7 +95,7 @@ const Login = () => {
               Admin Portal
             </h1>
             <p className="text-xl text-primary-foreground/90 font-body font-light tracking-wide">
-              Certificate Automation &amp; Verification
+              Certificate Automation & Verification
             </p>
           </div>
 
@@ -162,7 +161,7 @@ const Login = () => {
                 <Mail className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground/60 group-focus-within:text-accent transition-colors" />
                 <Input
                   value={email}
-                  onChange={(event) => setEmail(event.target.value)}
+                  onChange={(e) => setEmail(e.target.value)}
                   placeholder="admin@institution.edu"
                   type="email"
                   autoComplete="email"
@@ -171,22 +170,26 @@ const Login = () => {
               </div>
               <div className="relative group">
                 <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground/60 group-focus-within:text-accent transition-colors" />
-                <Input
-                  value={password}
-                  onChange={(event) => setPassword(event.target.value)}
-                  type={showPassword ? "text" : "password"}
-                  placeholder="Password"
-                  autoComplete="current-password"
-                  className="pl-12 pr-12 h-14 border-2 border-border bg-background/50 focus:bg-background focus:border-accent/50 focus:ring-1 focus:ring-accent/20 transition-all duration-300 placeholder:text-muted-foreground/50 font-body text-base"
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowPassword((previous) => !previous)}
-                  aria-label={showPassword ? "Hide password" : "Show password"}
-                  className="absolute right-4 top-1/2 -translate-y-1/2 text-muted-foreground/70 hover:text-accent focus-visible:outline-none focus-visible:text-accent transition-colors"
-                >
-                  {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
-                </button>
+                <div className="relative">
+                  <Input
+                    id="password"
+                    type={showPassword ? "text" : "password"}
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    autoComplete="current-password"
+                    placeholder="Enter your password"
+                    className="pr-10 pl-12 h-14 border-2 border-border bg-background/50 focus:bg-background focus:border-accent/50 focus:ring-1 focus:ring-accent/20 transition-all duration-300 placeholder:text-muted-foreground/50 font-body text-base"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword((prev) => !prev)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground focus:outline-none"
+                    aria-label={showPassword ? "Hide password" : "Show password"}
+                    tabIndex={-1}
+                  >
+                    {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                  </button>
+                </div>
               </div>
               <div className="flex justify-between items-center px-1">
                 <div className="flex items-center gap-2">
@@ -289,7 +292,7 @@ const Login = () => {
                 <h3 className="text-sm font-semibold text-foreground">Verify a Certificate</h3>
               </div>
               <p className="text-xs text-muted-foreground/80 leading-relaxed">
-                Students, employers, &amp; institutions can verify certificate authenticity instantly. No account necessary.
+                Students, employers, & institutions can verify certificate authenticity instantly. No account necessary.
               </p>
             </div>
 
@@ -303,13 +306,9 @@ const Login = () => {
 
             {/* Button */}
             <Button
-              className="w-full h-10 text-sm font-semibold gold-gradient text-accent-foreground hover:shadow-md hover:shadow-amber-500/20 active:scale-95 transition-all duration-300 mt-2"
-              onClick={(e) => {
-                e.stopPropagation();
-                setVerificationModalOpen(true);
-              }}
+              className="w-full h-10 text-sm font-semibold gold-gradient text-accent-foreground hover:shadow-md hover:shadow-amber"
             >
-              Start Verification
+              Verify Now
             </Button>
           </div>
 
@@ -329,3 +328,4 @@ const Login = () => {
 };
 
 export default Login;
+

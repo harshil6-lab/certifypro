@@ -49,6 +49,7 @@ const App = () => (
           <Route path="/verify/:certId" element={<VerifyResult />} />
           <Route element={<AdminLayout />}>
             <Route path="/dashboard" element={<Dashboard />} />
+            <Route path="/dashboard/profile" element={<Profile />} />
             <Route path="/templates" element={<Templates />} />
             <Route path="/import" element={<ImportStudents />} />
             <Route path="/generate" element={<Generate />} />
