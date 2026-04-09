@@ -12,7 +12,7 @@ The repository contains the application code, schema files, and operational docu
 <tr>
 <td align="center">
 Landing page<br/>
-<img src="./screenshots/image.png" width="400"/>
+<img src="image.png" width="400"/>
 </td>
 
 <td align="center">
