@@ -92,6 +92,7 @@ const Generate = () => {
             layout_config: workspace.data.layout_config ?? null,
           });
           setWorkspaceTemplateSource("workspace");
+          setCurrentStep(2);
           return;
         }
 
@@ -108,6 +109,7 @@ const Generate = () => {
           layout_config: fallback.layout_config ?? null,
         });
         setWorkspaceTemplateSource("gallery");
+        setCurrentStep(2);
       } catch {
         setWorkspaceTemplateSource("none");
       }
