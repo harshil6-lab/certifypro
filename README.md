@@ -7,35 +7,16 @@ CertifyPro is a full-stack certificate issuance, verification, and access-manage
 The repository contains the application code, schema files, and operational documentation needed to run the system locally. Because sensitive local files are intentionally excluded from source control, a ZIP download from GitHub is not enough by itself. You will need to recreate environment files and configure Supabase before the app can start successfully.
 
 ## ScreenShots 
--CertifyPro landing page – certificate automation and verification platform
-![alt text](image.png)
 
--Secure authentication using Supabase
-![alt text](image-1.png)
+![alt text](image.png)   ![alt text](image-1.png)
 
--Certificate editor / template selection
- ## (Building.. )
+![alt text](image-9.png) ![alt text](image-2.png)
 
--Import Students/Employees
-![alt text](image-9.png)
+![alt text](image-3.png) ![alt text](image-4.png)
 
--Certificate generation / dashboard
- ![alt text](image-2.png)
+![alt text](image-5.png) ![alt text](image-6.png)
 
--Generation Flow
- ![alt text](image-3.png)
-
--Certificate registry
- ![alt text](image-4.png)
-
--Access Control (Organizational Focused)
- ![alt text](image-5.png)
- ![alt text](image-6.png)
-
--dashboard/Profile
- ## (Building)
- ![alt text](image-7.png)
- ![alt text](image-8.png)
+![alt text](image-7.png) ![alt text](image-8.png)
 
 ## Overview
 
