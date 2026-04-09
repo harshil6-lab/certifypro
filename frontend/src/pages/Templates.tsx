@@ -1,6 +1,6 @@
 import { useEffect, useState, type DragEvent } from "react";
 import axios from "axios";
-import { Sparkles, WandSparkles, Eye, Pencil, LayoutGrid, Upload, ArrowRight } from "lucide-react";
+import { Sparkles, WandSparkles, Eye, Pencil, LayoutGrid, Upload, ArrowRight, ExternalLink } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -449,6 +449,29 @@ const Templates = () => {
                   Please , Select or Uplaod template
                 </div>
               )}
+
+              <Card className="card-shadow">
+  <CardHeader className="pb-2">
+    <CardTitle className="text-sm font-heading flex items-center gap-2">
+      <ExternalLink className="w-4 h-4 text-blue-500" />
+      External Template Library
+      <Badge variant="outline" className="ml-auto text-xs">External</Badge>
+    </CardTitle>
+  </CardHeader>
+  <CardContent className="space-y-3">
+    <p className="text-xs text-muted-foreground">
+      Design your certificate in IMG.LY's free editor. Export as PNG or JPG, then upload it using the upload area below.
+    </p>
+    <Button
+      variant="outline"
+      className="w-full gap-2 border-blue-200 text-blue-700 hover:bg-blue-50 dark:border-blue-800 dark:text-blue-400 dark:hover:bg-blue-950"
+      onClick={() => window.open("https://img.ly/design", "_blank", "noopener,noreferrer")}
+    >
+      <ExternalLink className="w-4 h-4" />
+      Open IMG.LY Design Editor
+    </Button>
+  </CardContent>
+</Card>
 
               <div
                 onDragOver={(event) => {

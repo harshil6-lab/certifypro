@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
-import { Lock, Mail, ShieldCheck, UserPlus, CheckCircle, ArrowRight, XCircle, Loader2 } from "lucide-react";
+import { Lock, Mail, ShieldCheck, UserPlus, CheckCircle, ArrowRight, XCircle, Loader2, Eye, EyeOff } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import loginBg from "@/assets/login-bg.jpg";
@@ -21,6 +21,7 @@ const Login = () => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [isSigningIn, setIsSigningIn] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
   const [authError, setAuthError] = useState("");
   const [resetMessage, setResetMessage] = useState("");
   const [searchParams] = useSearchParams();
@@ -169,14 +170,26 @@ const Login = () => {
               </div>
               <div className="relative group">
                 <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground/60 group-focus-within:text-accent transition-colors" />
-                <Input
-                  value={password}
-                  onChange={(event) => setPassword(event.target.value)}
-                  type="password"
-                  placeholder="Password"
-                  autoComplete="current-password"
-                  className="pl-12 h-14 border-2 border-border bg-background/50 focus:bg-background focus:border-accent/50 focus:ring-1 focus:ring-accent/20 transition-all duration-300 placeholder:text-muted-foreground/50 font-body text-base"
-                />
+                <div className="relative">
+                  <Input
+                    id="password"
+                    type={showPassword ? "text" : "password"}
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    autoComplete="current-password"
+                    placeholder="Enter your password"
+                    className="pr-10 pl-12 h-14 border-2 border-border bg-background/50 focus:bg-background focus:border-accent/50 focus:ring-1 focus:ring-accent/20 transition-all duration-300 placeholder:text-muted-foreground/50 font-body text-base"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword((prev) => !prev)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground focus:outline-none"
+                    aria-label={showPassword ? "Hide password" : "Show password"}
+                    tabIndex={-1}
+                  >
+                    {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                  </button>
+                </div>
               </div>
               <div className="flex justify-between items-center px-1">
                 <div className="flex items-center gap-2">

@@ -40,7 +40,7 @@ interface AdminAccessFormData {
   organizationWebsite: string;
   industry: string;
   organizationSize: string;
-  country: string;
+
   linkedInProfile: string;
   reasonForAccess: string;
   organizationalIdFile: File | null;
@@ -102,7 +102,7 @@ const INITIAL_FORM: AdminAccessFormData = {
   organizationWebsite: "",
   industry: "",
   organizationSize: "",
-  country: "",
+
   linkedInProfile: "",
   reasonForAccess: "",
   organizationalIdFile: null,
@@ -428,21 +428,7 @@ const AdminAccessRequestModal = ({
                     </Select>
                   </div>
 
-                  <div className="space-y-1.5 md:col-span-2">
-                    <Label>Country / Location</Label>
-                    <Select value={form.country} onValueChange={(value) => setField("country", value)}>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select country or region" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {COUNTRY_OPTIONS.map((option) => (
-                          <SelectItem value={option} key={option}>
-                            {option}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
+
                 </div>
               ) : null}
 
