@@ -235,15 +235,24 @@ const Profile = () => {
     }
   }, [searchParams]);
 
+  const loadSubscription = async () => {
+    try {
+      const sub = await getMySubscription();
+      setSubscription(sub);
+    } catch (error) {
+      console.error("Failed to load subscription:", error);
+      // Set a default subscription object to show the fallback UI
+      setSubscription({
+        plan: "free",
+        plan_selected: false,
+        credits_used: 0,
+        credits_limit: 12,
+        credits_remaining: 12,
+      });
+    }
+  };
+
   useEffect(() => {
-    const loadSubscription = async () => {
-      try {
-        const sub = await getMySubscription();
-        setSubscription(sub);
-      } catch {
-        // Silently fail if subscription can't be loaded
-      }
-    };
     void loadSubscription();
   }, []);
 
@@ -542,71 +551,88 @@ const Profile = () => {
             </CardContent>
           </Card>
 
-          {subscription && (
-            <Card id="subscription" className="card-shadow">
-              <CardHeader>
-                <CardTitle className="text-lg font-heading">Subscription</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="flex items-center justify-between p-4 rounded-lg border border-border bg-muted/20">
-                  <div className="flex items-center gap-3">
-                    <div className={`h-10 w-10 rounded-full flex items-center justify-center ${subscription.plan === "pro" ? "gold-gradient" : "bg-accent/10"}`}>
-                      {subscription.plan === "pro" ? (
-                        <Zap className="w-5 h-5 text-accent-foreground" />
-                      ) : (
-                        <Shield className="w-5 h-5 text-accent" />
-                      )}
+          <Card id="subscription" className="card-shadow">
+            <CardHeader>
+              <CardTitle className="text-lg font-heading">Subscription</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {subscription ? (
+                <>
+                  <div className="flex items-center justify-between p-4 rounded-lg border border-border bg-muted/20">
+                    <div className="flex items-center gap-3">
+                      <div className={`h-10 w-10 rounded-full flex items-center justify-center ${subscription.plan === "pro" ? "gold-gradient" : "bg-accent/10"}`}>
+                        {subscription.plan === "pro" ? (
+                          <Zap className="w-5 h-5 text-accent-foreground" />
+                        ) : (
+                          <Shield className="w-5 h-5 text-accent" />
+                        )}
+                      </div>
+                      <div>
+                        <p className="text-sm font-semibold capitalize">{subscription.plan} Plan</p>
+                        <p className="text-xs text-muted-foreground">
+                          {subscription.plan === "pro"
+                            ? "Unlimited certificate generations"
+                            : `${subscription.credits_remaining || 0} generations remaining`}
+                        </p>
+                      </div>
                     </div>
-                    <div>
-                      <p className="text-sm font-semibold capitalize">{subscription.plan} Plan</p>
-                      <p className="text-xs text-muted-foreground">
-                        {subscription.plan === "pro"
-                          ? "Unlimited certificate generations"
-                          : `${subscription.credits_remaining || 0} generations remaining`}
-                      </p>
-                    </div>
+                    <Badge className={subscription.plan === "pro" ? "gold-gradient text-accent-foreground" : "bg-secondary text-secondary-foreground"}>
+                      {subscription.plan === "pro" ? "PRO" : "FREE"}
+                    </Badge>
                   </div>
-                  <Badge className={subscription.plan === "pro" ? "gold-gradient text-accent-foreground" : "bg-secondary text-secondary-foreground"}>
-                    {subscription.plan === "pro" ? "PRO" : "FREE"}
-                  </Badge>
-                </div>
 
-                {subscription.plan === "free" && (
-                  <div className="space-y-3">
-                    <div className="flex items-center justify-between text-sm">
-                      <span className="font-medium text-muted-foreground">Certificate Generations</span>
-                      <span className="font-bold text-foreground">
-                        {subscription.credits_used} / {subscription.credits_limit || 12}
-                      </span>
-                    </div>
-                    <Progress value={(subscription.credits_used / (subscription.credits_limit || 12)) * 100} className="h-2" />
+                  {subscription.plan === "free" && (
+                    <div className="space-y-3">
+                      <div className="flex items-center justify-between text-sm">
+                        <span className="font-medium text-muted-foreground">Certificate Generations</span>
+                        <span className="font-bold text-foreground">
+                          {subscription.credits_used} / {subscription.credits_limit || 12}
+                        </span>
+                      </div>
+                      <Progress value={(subscription.credits_used / (subscription.credits_limit || 12)) * 100} className="h-2" />
 
-                    {!subscription.plan_selected ? (
-                      <div className="flex gap-3 pt-2">
-                        <Button variant="outline" className="flex-1" onClick={handleSelectFree} disabled={isUpgrading}>
-                          {isUpgrading ? "Processing..." : "Continue with Free"}
-                        </Button>
-                        <Button className="flex-1 gold-gradient text-accent-foreground" onClick={handleUpgradeToPro} disabled={isUpgrading}>
+                      {!subscription.plan_selected ? (
+                        <div className="flex gap-3 pt-2">
+                          <Button variant="outline" className="flex-1" onClick={handleSelectFree} disabled={isUpgrading}>
+                            {isUpgrading ? "Processing..." : "Continue with Free"}
+                          </Button>
+                          <Button className="flex-1 gold-gradient text-accent-foreground" onClick={handleUpgradeToPro} disabled={isUpgrading}>
+                            {isUpgrading ? "Processing..." : "Upgrade to Pro — ₹499/mo"}
+                          </Button>
+                        </div>
+                      ) : (
+                        <Button className="w-full gold-gradient text-accent-foreground" onClick={handleUpgradeToPro} disabled={isUpgrading}>
                           {isUpgrading ? "Processing..." : "Upgrade to Pro — ₹499/mo"}
                         </Button>
-                      </div>
-                    ) : (
-                      <Button className="w-full gold-gradient text-accent-foreground" onClick={handleUpgradeToPro} disabled={isUpgrading}>
-                        {isUpgrading ? "Processing..." : "Upgrade to Pro — ₹499/mo"}
-                      </Button>
-                    )}
-                  </div>
-                )}
+                      )}
+                    </div>
+                  )}
 
-                {subscription.plan === "pro" && (
-                  <div className="flex items-center gap-2 text-sm text-success">
-                    <CheckCircle className="w-4 h-4" />
-                    <span>Your Pro subscription is active</span>
+                  {subscription.plan === "pro" && (
+                    <div className="flex items-center gap-2 text-sm text-success">
+                      <CheckCircle className="w-4 h-4" />
+                      <span>Your Pro subscription is active</span>
+                    </div>
+                  )}
+                </>
+              ) : (
+                <div className="text-center py-8">
+                  <div className="h-16 w-16 mx-auto mb-4 rounded-full bg-muted/20 flex items-center justify-center">
+                    <Shield className="w-8 h-8 text-muted-foreground" />
                   </div>
-                )}
-              </CardContent>
-            </Card>
-          )}
+                  <p className="text-sm text-muted-foreground mb-4">Loading subscription information...</p>
+                  <div className="flex justify-center gap-3">
+                    <Button variant="outline" onClick={() => void loadSubscription()} disabled={isUpgrading}>
+                      Retry
+                    </Button>
+                    <Button className="gold-gradient text-accent-foreground" onClick={() => navigate("/select-plan")}>
+                      Select Plan
+                    </Button>
+                  </div>
+                </div>
+              )}
+            </CardContent>
+          </Card>
 
           <Card id="security" className="card-shadow">
             <CardHeader>
