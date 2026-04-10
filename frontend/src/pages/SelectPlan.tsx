@@ -27,8 +27,9 @@ const SelectPlan = () => {
     try {
       await selectFreePlan();
       navigate("/dashboard");
-    } catch {
-      setError("Something went wrong. Please try again.");
+    } catch (error) {
+      console.error("Free plan selection failed:", error);
+      setError("Unable to select free plan. Please try again.");
     } finally {
       setLoading(null);
     }
@@ -48,17 +49,20 @@ const SelectPlan = () => {
           try {
             await verifyPayment(paymentData);
             navigate("/dashboard");
-          } catch {
+          } catch (error) {
+            console.error("Payment verification failed:", error);
             setError("Payment completed but verification failed. Please contact support.");
             setLoading(null);
           }
         },
         (errMsg) => {
-          setError(errMsg);
+          console.error("Razorpay checkout error:", errMsg);
+          setError(errMsg || "Payment process was cancelled.");
           setLoading(null);
         }
       );
-    } catch {
+    } catch (error) {
+      console.error("Payment initiation failed:", error);
       setError("Could not initiate payment. Please try again.");
       setLoading(null);
     }
