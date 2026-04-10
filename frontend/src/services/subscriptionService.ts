@@ -1,14 +1,19 @@
 import { API_BASE } from "./apiService";
-import { supabase } from "@/lib/supabaseClient";
+import { getAccessToken } from "@/utils/getAccessToken";
 
 async function getAuthHeaders(): Promise<HeadersInit> {
-  const session = await supabase?.auth.getSession();
-  const token = session?.data?.session?.access_token;
+  const token = await getAccessToken();
+
+  if (!token) {
+    throw new Error("User not authenticated");
+  }
+
   return {
+    Authorization: `Bearer ${token}`,
     "Content-Type": "application/json",
-    ...(token ? { Authorization: `Bearer ${token}` } : {}),
   };
 }
+
 
 export interface SubscriptionInfo {
   plan: "free" | "pro";

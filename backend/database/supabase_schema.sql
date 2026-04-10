@@ -242,4 +242,27 @@ $$;
 -- Run backfill once (can be called manually if needed)
 -- select backfill_subscriptions();
 
--- End of schema file
+-- Task 4: Cleanup trigger for deleted users (orphans orgs/payments)
+CREATE OR REPLACE FUNCTION cleanup_deleted_user()
+RETURNS TRIGGER LANGUAGE plpgsql AS $$
+DECLARE
+  v_auth_uid uuid := OLD.auth_uid;
+  v_app_user_id uuid := OLD.id;
+BEGIN
+  -- Mark related orgs inactive (preserve cert records)
+  UPDATE organizations 
+  SET name = name || ' [DELETED-' || v_app_user_id::text || ']'
+  WHERE id::text = (OLD.metadata->'access_control'->>'organization_id')::uuid;
+  
+  -- Extra payment cleanup (cascades but ensure)
+  DELETE FROM payment_orders WHERE user_id = v_app_user_id;
+  
+  RETURN OLD;
+END;
+$$;
+
+DROP TRIGGER IF EXISTS tr_cleanup_deleted_user ON app_users;
+CREATE TRIGGER tr_cleanup_deleted_user
+  BEFORE DELETE ON app_users
+  FOR EACH ROW EXECUTE FUNCTION cleanup_deleted_user();
+

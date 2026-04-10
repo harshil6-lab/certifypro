@@ -2,9 +2,23 @@ import { Outlet } from "react-router-dom";
 import AdminNavbar from "./AdminNavbar";
 import { AccessControlProvider, useAccessControl } from "@/context/AccessControlContext";
 
+import { useEffect } from "react";
+import { useNavigate } from "react-router-dom";
+import { isAuthenticated } from "@/lib/auth";
+
 function AdminLayoutShell() {
   const { ready, loading, actor, canAccessPath } = useAccessControl();
+  const navigate = useNavigate();
   const pathname = window.location.pathname;
+
+  // Task 5: Redirect unauthenticated to /login
+  useEffect(() => {
+    if (!isAuthenticated()) {
+      navigate("/login", { replace: true });
+    }
+  }, []);
+
+
 
   if (!ready || loading) {
     return (

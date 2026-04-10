@@ -1,11 +1,12 @@
 import type { AuthChangeEvent, Session } from "@supabase/supabase-js";
 import {
   clearStoredSupabaseSession,
-  getSessionSafely,
   isSupabaseConfigured,
   supabase,
 } from "@/lib/supabaseClient";
 import { API_BASE } from "@/services/apiService";
+import { getAccessToken } from "@/utils/getAccessToken";
+
 
 const AUTH_KEY = "certifypro_auth";
 
@@ -57,8 +58,16 @@ export async function initializeAuthSession(): Promise<SessionSnapshot> {
     };
   }
 
-  try {
-    const session = await getSessionSafely();
+    try {
+    const token = await getAccessToken();
+    if (!token) {
+      setAuthFlag(false);
+      return { authenticated: false, firstLoginRequired: false };
+    }
+
+    const { data } = await supabase.auth.getSession();
+    const session = data.session;
+
     if (!session) {
       setAuthFlag(false);
       return { authenticated: false, firstLoginRequired: false };
@@ -72,6 +81,7 @@ export async function initializeAuthSession(): Promise<SessionSnapshot> {
       firstLoginRequired: verified ? isFirstLoginRequired(session) : false,
     };
   } catch {
+
     setAuthFlag(false);
     return { authenticated: false, firstLoginRequired: false };
   }
@@ -140,6 +150,10 @@ export async function signInWithEmailPassword(
       };
     }
 
+    // Store backend JWT token if present in response
+    if (data?.user?.access_token) {
+      localStorage.setItem("access_token", data.user.access_token);
+    }
     setAuthFlag(true);
     return {
       success: true,
@@ -284,26 +298,14 @@ async function bootstrapMissingProfile(token: string): Promise<boolean> {
  * Used to determine if user needs to complete profile setup.
  */
 export async function getCurrentUserProfile(): Promise<UserProfile | null> {
-  if (!isSupabaseConfigured || !supabase) {
-    console.warn("Supabase not configured");
-    return null;
-  }
-
   try {
-    const session = await getSessionSafely();
-    if (!session?.user?.id) {
-      console.warn("No authenticated user");
-      return null;
-    }
-
-    // Get the user's auth token for protected routes
-    const token = session.access_token;
+    const token = await getAccessToken();
     if (!token) {
-      console.warn("No access token available");
-      return null;
+      throw new Error("User not authenticated");
     }
 
     let response = await fetchUserProfileWithToken(token);
+
 
     if (!response.ok) {
       if (response.status === 401) {
@@ -321,7 +323,7 @@ export async function getCurrentUserProfile(): Promise<UserProfile | null> {
         }
       }
       if (!response.ok) {
-      throw new Error(`HTTP ${response.status}`);
+        throw new Error(`HTTP ${response.status}`);
       }
     }
 
@@ -370,15 +372,12 @@ export async function markFirstLoginComplete(): Promise<AuthResult> {
   }
 
   try {
-    const session = await getSessionSafely();
-    const token = session?.access_token;
+        const token = await getAccessToken();
 
     if (!token) {
-      return {
-        success: false,
-        error: "Not authenticated",
-      };
+      throw new Error("User not authenticated");
     }
+
 
     const response = await fetch(`${API_BASE}/user/profile/complete-first-login`, {
       method: "POST",

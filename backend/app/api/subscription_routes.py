@@ -33,7 +33,13 @@ def get_razorpay_client():
 
 
 def get_user_id_from_request(request: Request) -> str:
-    """Extract user_id set by AuthMiddleware."""
+    """Extract app_user.id set by AuthMiddleware (prefers app_user_id)."""
+    # Prefer app_user_id (created by middleware Task 1)
+    app_user_id = getattr(request.state, "app_user_id", None) or getattr(request.state, "user_id", None)
+    if app_user_id:
+        return app_user_id
+    
+    # Fallback to auth.user.id
     user = getattr(request.state, "user", None)
     if not user or not user.get("id"):
         raise HTTPException(status_code=401, detail="Not authenticated")
@@ -112,6 +118,13 @@ async def create_order(request: Request):
     """
     user_id = get_user_id_from_request(request)
     supabase = get_supabase_service_client()
+    
+    # Task 3: Validate Razorpay config
+    if not RAZORPAY_KEY_ID or not RAZORPAY_KEY_SECRET:
+        raise HTTPException(
+            status_code=503, 
+            detail="Payment gateway not configured. Please set RAZORPAY_KEY_ID and RAZORPAY_KEY_SECRET environment variables."
+        )
     rz = get_razorpay_client()
 
     try:

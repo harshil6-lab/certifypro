@@ -60,6 +60,20 @@ class AuthMiddleware(BaseHTTPMiddleware):
                 return JSONResponse({"detail": "invalid token"}, status_code=401)
 
             request.state.user = user
+            
+            # Task 1: Auto-create app_users row + access control metadata for new users
+            from app.services.access_control_service import AuthIdentity, ensure_actor_membership
+            identity = AuthIdentity(
+                auth_user_id=str(user["id"]), 
+                email=user.get("email", "")
+            )
+            try:
+                app_user = ensure_actor_membership(identity)
+                request.state.app_user_id = app_user["id"]
+                request.state.user_id = app_user["id"]  # Legacy
+            except:
+                pass  # Non-critical for auth flow
+            
             return await call_next(request)
         except Exception:
             return JSONResponse({"detail": "auth validation error"}, status_code=401)

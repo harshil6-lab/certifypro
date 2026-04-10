@@ -1,3 +1,4 @@
+
 from typing import Any
 
 from fastapi import APIRouter, Request, HTTPException
@@ -80,14 +81,11 @@ def _extract_identity(user: Any) -> AuthIdentity:
     )
 
 
-def _get_or_bootstrap_profile(user: Any) -> dict[str, Any]:
+def _get_or_bootstrap_profile(user: Any, app_user_id: str | None = None) -> dict[str, Any]:
     identity = _extract_identity(user)
-    profile = get_user_profile(identity.auth_user_id)
-    if profile and profile.get("organization"):
-        return profile
-
+    target_user_id = app_user_id or identity.auth_user_id
     ensure_actor_membership(identity)
-    profile = get_user_profile(identity.auth_user_id)
+    profile = get_user_profile(target_user_id)
     if not profile:
         raise HTTPException(status_code=404, detail="profile not found")
     return profile
@@ -96,11 +94,12 @@ def _get_or_bootstrap_profile(user: Any) -> dict[str, Any]:
 @router.get("/profile")
 async def get_profile(request: Request):
     """Get current user's profile with role and organization."""
+    app_user_id = getattr(request.state, "app_user_id", None) or getattr(request.state, "user_id", None)
     user = getattr(request.state, "user", None)
-    if not user:
+    if not app_user_id and not user:
         raise HTTPException(status_code=401, detail="unauthorized")
 
-    profile = _get_or_bootstrap_profile(user)
+    profile = _get_or_bootstrap_profile(user, app_user_id)
 
     profile["last_login_at"] = _extract_user_value(user, "last_sign_in_at")
     profile["email"] = profile.get("email") or _extract_user_value(user, "email")
@@ -119,7 +118,7 @@ async def update_profile(request: Request, payload: UpdateProfileRequest):
     if not user_id:
         raise HTTPException(status_code=400, detail="invalid user payload")
 
-    _get_or_bootstrap_profile(user)
+    _get_or_bootstrap_profile(user, None)
 
     payload_data = payload.model_dump() if hasattr(payload, "model_dump") else payload.dict()
     profile = update_user_profile(user_id, payload_data)
