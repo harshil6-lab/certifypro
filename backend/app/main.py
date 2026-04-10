@@ -5,7 +5,7 @@ API routers and registers the AuthMiddleware.
 """
 
 import os
-
+from .api.subscription_routes import router as subscription_router
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
@@ -32,6 +32,7 @@ from .services.template_gallery_seed import seed_gallery_templates
 from .services.templates_service import seed_default_templates
 
 app = FastAPI(title="CertifyPro Backend")
+
 
 allowed_origins = [
     "http://localhost:5173",
@@ -71,6 +72,7 @@ app.include_router(workspace_template_router)
 app.include_router(students_ready_router)
 app.include_router(access_control_routes.router)
 app.include_router(contact_routes.router)
+app.include_router(subscription_router)
 
 # Enable static file serving for uploaded templates
 uploads_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "uploads")

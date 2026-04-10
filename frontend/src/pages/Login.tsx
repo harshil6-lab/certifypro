@@ -45,6 +45,20 @@ const Login = () => {
         return;
       }
 
+      // Check if user needs to select a plan
+      try {
+        const { getMySubscription } = await import("@/services/subscriptionService");
+        const sub = await getMySubscription();
+        console.log("Subscription check result:", sub); // Debug log
+        if (!sub.plan_selected) {
+          navigate("/select-plan");
+          return;
+        }
+      } catch (err) {
+        console.error("Subscription check failed:", err); // Debug log
+        // If subscription check fails, proceed normally — don't block login
+      }
+
       navigate(redirectTo);
     } catch {
       setAuthError("Unexpected authentication error. Please try again.");

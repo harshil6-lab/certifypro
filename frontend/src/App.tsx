@@ -1,4 +1,5 @@
 // Clean and well-structured routing with protected admin access and centralized auth/session handling, ensuring smooth navigation and secure user flow.
+import SelectPlan from "./pages/SelectPlan";
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -41,6 +42,7 @@ const App = () => (
       <BrowserRouter>
         <Routes>
           <Route path="/" element={<Index />} />
+          <Route path="/select-plan" element={<SelectPlan />} />
           <Route path="/about" element={<About />} />
           <Route path="/features" element={<FeaturesPage />} />
           <Route path="/contact" element={<Contact />} />
@@ -58,6 +60,7 @@ const App = () => (
             <Route path="/help" element={<Help />} />
           </Route>
           <Route path="/faq" element={<Faq />} />
+          <Route path="/reset-password" element={<ResetPassword />} />
           <Route path="*" element={<NotFound />} />
         </Routes>
       </BrowserRouter>

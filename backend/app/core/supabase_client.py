@@ -20,3 +20,11 @@ supabase: Client = create_client(
     SUPABASE_URL,
     SUPABASE_SERVICE_ROLE_KEY
 )
+
+def get_supabase_service_client():
+    """Returns a Supabase client using the service role key (bypasses RLS)."""
+    import os
+    from supabase import create_client
+    url = os.getenv("SUPABASE_URL", "")
+    key = os.getenv("SUPABASE_SERVICE_ROLE_KEY", "")
+    return create_client(url, key)
