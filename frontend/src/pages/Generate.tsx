@@ -11,6 +11,7 @@ import {
   Loader2,
   AlertCircle,
 } from "lucide-react";
+import UpgradeModal from "@/components/UpgradeModal";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -64,6 +65,8 @@ const Generate = () => {
   const [zipUrl, setZipUrl] = useState("");
   const [generatedCerts, setGeneratedCerts] = useState<Array<Record<string, unknown>>>([]);
   const [generateError, setGenerateError] = useState("");
+  const [upgradeModalOpen, setUpgradeModalOpen] = useState(false);
+  const [creditInfo, setCreditInfo] = useState<{ used?: number; limit?: number }>({});
 
   const selectedStudentRecords = students.filter((student) => selectedStudentIds.includes(student.id));
   const resolvedLayoutConfig: LayoutConfig = workspaceTemplate?.layout_config
@@ -232,18 +235,30 @@ const Generate = () => {
       );
     } catch (err: unknown) {
       console.error("Error generating certificate:", err);
-      const detail =
-        typeof err === "object" && err && "response" in err
-          ? // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            (err as any)?.response?.data?.detail
-          : null;
-      setGenerateError(
+      const axiosError = err as { response?: { status?: number; data?: { detail?: unknown } } };
+      const status = axiosError?.response?.status;
+      const detail = axiosError?.response?.data?.detail;
+
+      // Check for 403 credits_exhausted response
+      if (status === 403 && typeof detail === "object" && detail !== null && "error" in detail && detail.error === "credits_exhausted") {
+        const creditsUsed = typeof (detail as any).credits_used === "number" ? (detail as any).credits_used : undefined;
+        const creditsLimit = typeof (detail as any).credits_limit === "number" ? (detail as any).credits_limit : undefined;
+        setCreditInfo({
+          used: creditsUsed,
+          limit: creditsLimit,
+        });
+        setUpgradeModalOpen(true);
+        setGenerating(false);
+        return;
+      }
+
+      const errorMessage =
         typeof detail === "string"
           ? detail
           : err instanceof Error
             ? err.message
-            : "Certificate generation failed.",
-      );
+            : "Certificate generation failed.";
+      setGenerateError(errorMessage);
     } finally {
       setGenerating(false);
     }
@@ -569,6 +584,13 @@ const Generate = () => {
           </Button>
         )}
       </div>
+
+      <UpgradeModal
+        open={upgradeModalOpen}
+        onOpenChange={setUpgradeModalOpen}
+        creditsUsed={creditInfo.used}
+        creditsLimit={creditInfo.limit}
+      />
     </div>
   );
 };

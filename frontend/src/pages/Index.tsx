@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Layers, QrCode, Library, Sparkles, ArrowRight, ShieldCheck, Quote, Upload, CheckCircle2, SearchCheck, BadgeCheck, Lock } from "lucide-react";
+import { Layers, QrCode, Library, Sparkles, ArrowRight, ShieldCheck, Quote, Upload, CheckCircle2, SearchCheck, BadgeCheck, Lock, CheckCircle } from "lucide-react";
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -419,6 +419,75 @@ const Index = () => {
               >
                 Verify Certificate
               </Button>
+            </div>
+          </div>
+        </section>
+
+        {/* ── Pricing Section ── */}
+        <section className="py-20 px-4">
+          <div className="max-w-4xl mx-auto">
+            <div className="text-center mb-12 space-y-3">
+              <h2 className="text-3xl md:text-4xl font-heading font-bold tracking-tight text-foreground">
+                Simple, Transparent Pricing
+              </h2>
+              <p className="text-muted-foreground text-lg">
+                Start free. Upgrade when you need more.
+              </p>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              {/* Free */}
+              <div className="rounded-2xl border border-border bg-card p-8 space-y-6">
+                <div>
+                  <p className="text-lg font-semibold text-foreground">Free</p>
+                  <p className="text-4xl font-bold text-foreground mt-1">₹0</p>
+                  <p className="text-sm text-muted-foreground mt-1">Forever free</p>
+                </div>
+                <ul className="space-y-3 text-sm text-muted-foreground">
+                  {["12 certificate generations", "All templates", "QR verification", "CSV student import"].map((f) => (
+                    <li key={f} className="flex items-center gap-2">
+                      <CheckCircle className="w-4 h-4 text-green-500 flex-shrink-0" />
+                      {f}
+                    </li>
+                  ))}
+                </ul>
+                <Link to="/login">
+                  <Button variant="outline" className="w-full">Get Started Free</Button>
+                </Link>
+              </div>
+
+              {/* Pro */}
+              <div className="rounded-2xl border border-accent/50 bg-card p-8 space-y-6 shadow-lg shadow-accent/10 relative">
+                <div className="absolute top-4 right-4 bg-accent text-accent-foreground text-xs font-bold px-2 py-1 rounded-full">
+                  POPULAR
+                </div>
+                <div>
+                  <p className="text-lg font-semibold text-foreground">Pro</p>
+                  <p className="text-4xl font-bold text-foreground mt-1">
+                    ₹499 <span className="text-base font-normal text-muted-foreground">/ month</span>
+                  </p>
+                  <p className="text-sm text-muted-foreground mt-1">Billed monthly</p>
+                </div>
+                <ul className="space-y-3 text-sm text-muted-foreground">
+                  {[
+                    "Unlimited certificate generations",
+                    "All templates",
+                    "QR verification",
+                    "CSV student import",
+                    "Priority support",
+                  ].map((f) => (
+                    <li key={f} className="flex items-center gap-2">
+                      <CheckCircle className="w-4 h-4 text-accent flex-shrink-0" />
+                      {f}
+                    </li>
+                  ))}
+                </ul>
+                <Link to="/login">
+                  <Button className="w-full gold-gradient text-accent-foreground">
+                    Upgrade to Pro — ₹499/mo
+                  </Button>
+                </Link>
+              </div>
             </div>
           </div>
         </section>

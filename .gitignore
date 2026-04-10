@@ -96,3 +96,5 @@ temp/
 /backend/uploads/
 /frontend/dist/
 /frontend/node_modules/
+
+.claude

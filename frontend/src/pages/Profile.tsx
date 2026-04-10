@@ -1,8 +1,9 @@
 import { useEffect, useMemo, useState } from "react";
-import { useSearchParams } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import {
   Building2,
   CalendarDays,
+  CheckCircle,
   Clock3,
   FileText,
   KeyRound,
@@ -10,6 +11,7 @@ import {
   Shield,
   UserCircle2,
   Users,
+  Zap,
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -18,6 +20,15 @@ import { Progress } from "@/components/ui/progress";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { useToast } from "@/hooks/use-toast";
 import { API_BASE, getAuthHeaders } from "@/services/apiService";
+import {
+  getMySubscription,
+  selectFreePlan,
+  createPaymentOrder,
+  verifyPayment,
+  openRazorpayCheckout,
+  type SubscriptionInfo,
+} from "@/services/subscriptionService";
+import { supabase } from "@/lib/supabaseClient";
 import {
   completeFirstLoginReset,
   getCurrentUserProfile,
@@ -57,6 +68,7 @@ type AccessControlOverview = {
 
 const sectionLinks = [
   { id: "overview", label: "Profile Overview" },
+  { id: "subscription", label: "Subscription" },
   { id: "security", label: "Account Security" },
   { id: "activity", label: "Activity Log" },
 ];
@@ -199,13 +211,16 @@ function summarizeActivity(entry: ActivityItem): { event: string; detail: string
 }
 
 const Profile = () => {
+  const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const { toast } = useToast();
 
   const [profile, setProfile] = useState<ProfileForm>(emptyProfile);
   const [stats, setStats] = useState<DashboardStats>(emptyStats);
   const [activityLog, setActivityLog] = useState<Array<{ event: string; detail: string; time: string }>>([]);
+  const [subscription, setSubscription] = useState<SubscriptionInfo | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [isUpgrading, setIsUpgrading] = useState(false);
   const firstLoginMode = searchParams.get("firstLogin") === "1";
 
   useEffect(() => {
@@ -219,6 +234,18 @@ const Profile = () => {
       element.scrollIntoView({ behavior: "smooth", block: "start" });
     }
   }, [searchParams]);
+
+  useEffect(() => {
+    const loadSubscription = async () => {
+      try {
+        const sub = await getMySubscription();
+        setSubscription(sub);
+      } catch {
+        // Silently fail if subscription can't be loaded
+      }
+    };
+    void loadSubscription();
+  }, []);
 
   useEffect(() => {
     let isMounted = true;
@@ -340,6 +367,78 @@ const Profile = () => {
     });
   };
 
+  const getUserEmail = async (): Promise<string> => {
+    const session = await supabase?.auth.getSession();
+    return session?.data?.session?.user?.email ?? "";
+  };
+
+  const handleSelectFree = async () => {
+    setIsUpgrading(true);
+    try {
+      await selectFreePlan();
+      const sub = await getMySubscription();
+      setSubscription(sub);
+      toast({
+        title: "Free plan selected",
+        description: "You now have access to 12 free certificate generations.",
+      });
+    } catch {
+      toast({
+        title: "Unable to select free plan",
+        description: "Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsUpgrading(false);
+    }
+  };
+
+  const handleUpgradeToPro = async () => {
+    setIsUpgrading(true);
+    try {
+      const orderData = await createPaymentOrder();
+      const email = await getUserEmail();
+
+      openRazorpayCheckout(
+        orderData,
+        email,
+        async (paymentData) => {
+          try {
+            await verifyPayment(paymentData);
+            const sub = await getMySubscription();
+            setSubscription(sub);
+            toast({
+              title: "Upgraded to Pro!",
+              description: "You now have unlimited certificate generations.",
+            });
+          } catch {
+            toast({
+              title: "Payment verification failed",
+              description: "Please contact support.",
+              variant: "destructive",
+            });
+          }
+          setIsUpgrading(false);
+        },
+        (errMsg) => {
+          toast({
+            title: "Payment cancelled",
+            description: errMsg,
+            variant: "destructive",
+          });
+          setIsUpgrading(false);
+        }
+      );
+    } catch {
+      toast({
+        title: "Unable to initiate payment",
+        description: "Please try again.",
+        variant: "destructive",
+      });
+      setIsUpgrading(false);
+    }
+  };
+
   return (
     <div className="p-8 max-w-[1240px] mx-auto space-y-6">
       <div className="grid grid-cols-1 lg:grid-cols-4 gap-6 items-start">
@@ -442,6 +541,72 @@ const Profile = () => {
               </div>
             </CardContent>
           </Card>
+
+          {subscription && (
+            <Card id="subscription" className="card-shadow">
+              <CardHeader>
+                <CardTitle className="text-lg font-heading">Subscription</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="flex items-center justify-between p-4 rounded-lg border border-border bg-muted/20">
+                  <div className="flex items-center gap-3">
+                    <div className={`h-10 w-10 rounded-full flex items-center justify-center ${subscription.plan === "pro" ? "gold-gradient" : "bg-accent/10"}`}>
+                      {subscription.plan === "pro" ? (
+                        <Zap className="w-5 h-5 text-accent-foreground" />
+                      ) : (
+                        <Shield className="w-5 h-5 text-accent" />
+                      )}
+                    </div>
+                    <div>
+                      <p className="text-sm font-semibold capitalize">{subscription.plan} Plan</p>
+                      <p className="text-xs text-muted-foreground">
+                        {subscription.plan === "pro"
+                          ? "Unlimited certificate generations"
+                          : `${subscription.credits_remaining || 0} generations remaining`}
+                      </p>
+                    </div>
+                  </div>
+                  <Badge className={subscription.plan === "pro" ? "gold-gradient text-accent-foreground" : "bg-secondary text-secondary-foreground"}>
+                    {subscription.plan === "pro" ? "PRO" : "FREE"}
+                  </Badge>
+                </div>
+
+                {subscription.plan === "free" && (
+                  <div className="space-y-3">
+                    <div className="flex items-center justify-between text-sm">
+                      <span className="font-medium text-muted-foreground">Certificate Generations</span>
+                      <span className="font-bold text-foreground">
+                        {subscription.credits_used} / {subscription.credits_limit || 12}
+                      </span>
+                    </div>
+                    <Progress value={(subscription.credits_used / (subscription.credits_limit || 12)) * 100} className="h-2" />
+
+                    {!subscription.plan_selected ? (
+                      <div className="flex gap-3 pt-2">
+                        <Button variant="outline" className="flex-1" onClick={handleSelectFree} disabled={isUpgrading}>
+                          {isUpgrading ? "Processing..." : "Continue with Free"}
+                        </Button>
+                        <Button className="flex-1 gold-gradient text-accent-foreground" onClick={handleUpgradeToPro} disabled={isUpgrading}>
+                          {isUpgrading ? "Processing..." : "Upgrade to Pro — ₹499/mo"}
+                        </Button>
+                      </div>
+                    ) : (
+                      <Button className="w-full gold-gradient text-accent-foreground" onClick={handleUpgradeToPro} disabled={isUpgrading}>
+                        {isUpgrading ? "Processing..." : "Upgrade to Pro — ₹499/mo"}
+                      </Button>
+                    )}
+                  </div>
+                )}
+
+                {subscription.plan === "pro" && (
+                  <div className="flex items-center gap-2 text-sm text-success">
+                    <CheckCircle className="w-4 h-4" />
+                    <span>Your Pro subscription is active</span>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          )}
 
           <Card id="security" className="card-shadow">
             <CardHeader>

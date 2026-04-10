@@ -3,15 +3,15 @@
 POST /api/generate/preview        — parse Excel, return rows with valid/error/duplicate status
 POST /api/generate/certificates   — render PNG certificates from Excel + template + layout_config
 """
-
 from __future__ import annotations
 
 import json
 
-from fastapi import APIRouter, File, Form, HTTPException, UploadFile
+from fastapi import APIRouter, File, Form, HTTPException, UploadFile, Request
 
 from app.core.supabase_client import supabase
 from app.services.generate_service import generate_certificates, parse_excel
+from app.services.subscription_service import check_and_deduct_credit
 
 router = APIRouter(prefix="/api/generate", tags=["Generate"])
 
@@ -93,6 +93,7 @@ async def post_preview_excel(excel_file: UploadFile = File(...)):
 
 @router.post("/certificates")
 async def post_generate_certificates(
+    request: Request,
     excel_file: UploadFile = File(...),
     layout_config: str = Form(...),
     template_id: str | None = Form(None),
@@ -152,6 +153,24 @@ async def post_generate_certificates(
 
     if not students:
         raise HTTPException(status_code=400, detail="No valid student rows to generate certificates for")
+
+    # Get user_id from request state (set by AuthMiddleware)
+    user_id = getattr(request.state, "user_id", None)
+    if not user_id:
+        raise HTTPException(status_code=401, detail="Not authenticated")
+
+    # Check and deduct credit before generation
+    credit_check = check_and_deduct_credit(user_id)
+    if not credit_check.get("allowed"):
+        raise HTTPException(
+            status_code=403,
+            detail={
+                "error": credit_check.get("reason", "credits_exhausted"),
+                "message": "You have used all 12 free credits. Please upgrade to Pro.",
+                "credits_used": credit_check.get("credits_used"),
+                "credits_limit": credit_check.get("credits_limit"),
+            }
+        )
 
     try:
         results = await generate_certificates(

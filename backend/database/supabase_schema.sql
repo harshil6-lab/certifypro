@@ -178,4 +178,68 @@ $$;
 create or replace view public_certificate_info as
 select id, template_id, student_id, issuer_id, data, status, issued_at from certificates;
 
+-- SUBSCRIPTIONS: user subscription and credit tracking
+create table if not exists subscriptions (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid references app_users(id) on delete cascade,
+  plan text not null default 'free', -- 'free' | 'pro'
+  plan_selected boolean default false,
+  credits_used integer default 0,
+  credits_limit integer default 12, -- null for unlimited (pro)
+  razorpay_payment_id text,
+  razorpay_subscription_id text,
+  created_at timestamptz default now(),
+  updated_at timestamptz default now()
+);
+
+-- PAYMENT_ORDERS: audit trail for Razorpay orders
+create table if not exists payment_orders (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid references app_users(id) on delete cascade,
+  razorpay_order_id text not null,
+  amount integer not null, -- in paise
+  currency text not null default 'INR',
+  status text not null default 'created', -- 'created' | 'paid' | 'failed'
+  razorpay_payment_id text,
+  razorpay_signature text,
+  created_at timestamptz default now()
+);
+
+-- INDEXES for subscriptions and payment_orders
+create index if not exists idx_subscriptions_user on subscriptions(user_id);
+create index if not exists idx_payment_orders_user on payment_orders(user_id);
+create index if not exists idx_payment_orders_razorpay_order on payment_orders(razorpay_order_id);
+
+-- TRIGGER: auto-create subscription on new user
+create or replace function create_subscription_on_user()
+returns trigger language plpgsql as $$
+begin
+  insert into subscriptions (user_id, plan, plan_selected, credits_used, credits_limit)
+    values (new.id, 'free', false, 0, 12);
+  return new;
+end;
+$$;
+
+drop trigger if exists tr_create_subscription_on_user on app_users;
+create trigger tr_create_subscription_on_user
+  after insert on app_users
+  for each row execute function create_subscription_on_user();
+
+-- FUNCTION: backfill subscriptions for existing users
+create or replace function backfill_subscriptions()
+returns void language plpgsql as $$
+declare
+  user_rec record;
+begin
+  for user_rec in select id from app_users loop
+    insert into subscriptions (user_id, plan, plan_selected, credits_used, credits_limit)
+      values (user_rec.id, 'free', false, 0, 12)
+      on conflict (user_id) do nothing;
+  end loop;
+end;
+$$;
+
+-- Run backfill once (can be called manually if needed)
+-- select backfill_subscriptions();
+
 -- End of schema file
