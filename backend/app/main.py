@@ -47,6 +47,7 @@ allowed_origins = _env_origins if _env_origins else [
     "http://127.0.0.1:8080",
     "http://localhost:8081",
     "http://127.0.0.1:8081",
+    "https://certifypro-tau.vercel.app",
 ]
 
 # Register auth middleware first, then CORS so cross-origin headers are still
