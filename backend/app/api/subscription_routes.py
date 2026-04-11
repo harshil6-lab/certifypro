@@ -12,6 +12,13 @@ Endpoints:
 import hashlib
 import hmac
 import os
+from dotenv import load_dotenv
+import pathlib
+
+# Ensure .env is loaded (module may be imported before supabase_client)
+_backend_dir = pathlib.Path(__file__).resolve().parent.parent.parent
+load_dotenv(_backend_dir / ".env")
+load_dotenv()  # also load from cwd
 
 import razorpay
 from fastapi import APIRouter, HTTPException, Request
@@ -32,18 +39,17 @@ def get_razorpay_client():
     return razorpay.Client(auth=(RAZORPAY_KEY_ID, RAZORPAY_KEY_SECRET))
 
 
-def get_user_id_from_request(request: Request) -> str:
-    """Extract app_user.id set by AuthMiddleware (prefers app_user_id)."""
-    # Prefer app_user_id (created by middleware Task 1)
-    app_user_id = getattr(request.state, "app_user_id", None) or getattr(request.state, "user_id", None)
-    if app_user_id:
-        return app_user_id
-    
-    # Fallback to auth.user.id
+def get_auth_user_id_from_request(request: Request) -> str:
+    """Extract the Supabase auth UID from request.state.user.
+    subscriptions.user_id references auth.users(id) directly."""
     user = getattr(request.state, "user", None)
-    if not user or not user.get("id"):
+    if not user:
         raise HTTPException(status_code=401, detail="Not authenticated")
-    return user["id"]
+    # user is a dict set by AuthMiddleware: {"id": auth_uid, "email": ...}
+    uid = user.get("id") if isinstance(user, dict) else getattr(user, "id", None)
+    if not uid:
+        raise HTTPException(status_code=401, detail="Not authenticated")
+    return str(uid)
 
 
 # ---------------------------------------------------------------------------
@@ -53,7 +59,7 @@ def get_user_id_from_request(request: Request) -> str:
 @router.get("/me")
 async def get_my_subscription(request: Request):
     """Return the current user's subscription info."""
-    user_id = get_user_id_from_request(request)
+    user_id = get_auth_user_id_from_request(request)
     supabase = get_supabase_service_client()
 
     result = supabase.table("subscriptions").select("*").eq("user_id", user_id).single().execute()
@@ -96,7 +102,7 @@ async def get_my_subscription(request: Request):
 @router.post("/select-free")
 async def select_free_plan(request: Request):
     """Mark user as having consciously selected the free plan."""
-    user_id = get_user_id_from_request(request)
+    user_id = get_auth_user_id_from_request(request)
     supabase = get_supabase_service_client()
 
     supabase.table("subscriptions").update({
@@ -116,7 +122,7 @@ async def create_order(request: Request):
     Creates a Razorpay order for the Pro plan.
     Returns { order_id, amount, currency, key_id } to the frontend.
     """
-    user_id = get_user_id_from_request(request)
+    user_id = get_auth_user_id_from_request(request)
     supabase = get_supabase_service_client()
     
     # Task 3: Validate Razorpay config
@@ -174,7 +180,7 @@ async def verify_payment(payload: VerifyPaymentIn, request: Request):
     If valid → upgrades user to Pro plan.
     If invalid → marks order as failed, returns 400.
     """
-    user_id = get_user_id_from_request(request)
+    user_id = get_auth_user_id_from_request(request)
     supabase = get_supabase_service_client()
 
     # Signature verification

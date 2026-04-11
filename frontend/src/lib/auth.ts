@@ -151,9 +151,9 @@ export async function signInWithEmailPassword(
     }
 
     // Store backend JWT token if present in response
-    if (data?.user?.access_token) {
-      localStorage.setItem("access_token", data.user.access_token);
-    }
+   if (data?.session?.access_token) {
+          localStorage.setItem("access_token", data.session.access_token);
+      }
     setAuthFlag(true);
     return {
       success: true,
