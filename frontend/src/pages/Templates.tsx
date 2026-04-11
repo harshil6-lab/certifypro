@@ -175,7 +175,7 @@ const Templates = () => {
           if (token) authHeader = `Bearer ${token}`;
         }
 
-        const { data } = await axios.get("http://127.0.0.1:8000/api/workspace-template", {
+        const { data } = await axios.get("`${import.meta.env.VITE_API_BASE_URL}/api/templates/upload`", {
           headers: authHeader ? { Authorization: authHeader } : {},
         });
 
@@ -294,7 +294,7 @@ const Templates = () => {
         }
 
         await axios.post(
-          "http://127.0.0.1:8000/api/save-layout",
+          "`${import.meta.env.VITE_API_BASE_URL}/api/templates/upload`",
           {
             template_id: workspaceTemplate.id,
             layout_config: normalizedLayout,
@@ -416,7 +416,7 @@ const Templates = () => {
         if (token) authHeader = `Bearer ${token}`;
       }
 
-      const { data } = await axios.post("http://127.0.0.1:8000/api/templates/upload", formData, {
+      const { data } = await axios.post("`${import.meta.env.VITE_API_BASE_URL}/api/templates/upload`", formData, {
         headers: {
           ...(authHeader ? { Authorization: authHeader } : {}),
           "Content-Type": "multipart/form-data",
