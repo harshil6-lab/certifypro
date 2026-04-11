@@ -154,10 +154,13 @@ async def post_generate_certificates(
     if not students:
         raise HTTPException(status_code=400, detail="No valid student rows to generate certificates for")
 
-    # Get user_id from request state (set by AuthMiddleware)
-    user_id = getattr(request.state, "user_id", None)
+    user_obj = getattr(request.state, "user", None)
+    if not user_obj:
+        raise HTTPException(status_code=401, detail="Not authenticated")
+    user_id = user_obj.get("id") if isinstance(user_obj, dict) else getattr(user_obj, "id", None)
     if not user_id:
         raise HTTPException(status_code=401, detail="Not authenticated")
+    user_id = str(user_id)
 
     # Check and deduct credit before generation
     credit_check = check_and_deduct_credit(user_id)

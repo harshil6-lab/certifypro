@@ -47,7 +47,11 @@ allowed_origins = [
 
 # Register auth middleware first, then CORS so cross-origin headers are still
 # attached when protected routes return auth or validation errors.
-app.add_middleware(AuthMiddleware, supabase_client=None)
+app.add_middleware(
+    AuthMiddleware,
+    supabase_client=None,
+    protected_prefixes=["/user", "/subscription", "/api/generate"],
+)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=allowed_origins,

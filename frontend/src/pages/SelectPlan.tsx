@@ -17,6 +17,12 @@ const SelectPlan = () => {
   const [loading, setLoading] = useState<"free" | "pro" | null>(null);
   const [error, setError] = useState("");
 
+  useEffect(() => {
+    if (!isAuthenticated()) {
+      navigate("/login");
+    }
+  }, [navigate]);
+
   const getUserEmail = async (): Promise<string> => {
     const session = await supabase?.auth.getSession();
     return session?.data?.session?.user?.email ?? "";
