@@ -83,7 +83,7 @@ const Generate = () => {
           if (token) authHeader = `Bearer ${token}`;
         }
 
-        const workspace = await axios.get("http://127.0.0.1:8000/api/workspace-template", {
+        const workspace = await axios.get(`${import.meta.env.VITE_API_BASE_URL}/api/workspace-template`, {
           headers: authHeader ? { Authorization: authHeader } : {},
         });
 
@@ -133,7 +133,7 @@ const Generate = () => {
           if (token) authHeader = `Bearer ${token}`;
         }
 
-        const res = await axios.get("http://127.0.0.1:8000/api/students-ready", {
+        const res = await axios.get(`${import.meta.env.VITE_API_BASE_URL}/api/students-ready`, {
           headers: authHeader ? { Authorization: authHeader } : {},
         });
         setStudents(Array.isArray(res.data) ? res.data : []);
@@ -203,12 +203,12 @@ const Generate = () => {
 
       const request = selectAllStudents
         ? axios.post(
-            "http://127.0.0.1:8000/api/generate-certificates/all",
+            "`${import.meta.env.VITE_API_BASE_URL}/api/generate-certificates/all`",
             renderContext,
             { headers: authHeader ? { Authorization: authHeader } : {} },
           )
         : axios.post(
-            "http://127.0.0.1:8000/api/generate-certificates",
+            "`${import.meta.env.VITE_API_BASE_URL}/api/generate-certificates`",
             {
               ...renderContext,
               students: selectedStudentRecords.map((student) => ({
