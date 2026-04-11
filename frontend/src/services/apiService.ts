@@ -1,7 +1,7 @@
 import { getSessionSafely, supabase } from "@/lib/supabaseClient";
 import type { CertificateStyleType, CertificateTemplateMeta } from "@/components/certificates/types";
 
-const API_BASE = "http://127.0.0.1:8000";
+const API_BASE = import.meta.env.VITE_API_BASE_URL || "http://127.0.0.1:8000";
 export { API_BASE };
 
 /**

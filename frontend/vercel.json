@@ -21,6 +21,14 @@
       "destination": "https://certifypro-backend.onrender.com/certificates/:path*"
     },
     {
+      "source": "/auth/:path*",
+      "destination": "https://certifypro-backend.onrender.com/auth/:path*"
+    },
+    {
+      "source": "/subscription/:path*",
+      "destination": "https://certifypro-backend.onrender.com/subscription/:path*"
+    },
+    {
       "source": "/verify/:path((?!.*\\..*$).*)",
       "destination": "https://certifypro-backend.onrender.com/verify/:path*"
     },

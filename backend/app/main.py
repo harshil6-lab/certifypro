@@ -34,15 +34,19 @@ from .services.templates_service import seed_default_templates
 app = FastAPI(title="CertifyPro Backend")
 
 
-allowed_origins = [
+
+import os as _os
+
+_frontend_origins_env = _os.getenv("FRONTEND_ORIGINS", "")
+_env_origins = [o.strip() for o in _frontend_origins_env.split(",") if o.strip()]
+
+allowed_origins = _env_origins if _env_origins else [
     "http://localhost:5173",
     "http://127.0.0.1:5173",
     "http://localhost:8080",
     "http://127.0.0.1:8080",
     "http://localhost:8081",
     "http://127.0.0.1:8081",
-    "http://192.168.56.1:8080",
-    "http://192.168.56.1:8081",
 ]
 
 # Register auth middleware first, then CORS so cross-origin headers are still
