@@ -25,7 +25,7 @@ import {
   normalizeLayoutConfig,
   type LayoutConfig,
 } from "@/lib/layoutConfig";
-import { getTemplates } from "@/services/apiService";
+import { getTemplates, API_BASE } from "@/services/apiService";
 
 type WorkspaceTemplate = {
   template_id: string;
@@ -83,7 +83,7 @@ const Generate = () => {
           if (token) authHeader = `Bearer ${token}`;
         }
 
-        const workspace = await axios.get(`${import.meta.env.VITE_API_BASE_URL}/api/workspace-template`, {
+        const workspace = await axios.get(`${API_BASE}/api/workspace-template`, {
           headers: authHeader ? { Authorization: authHeader } : {},
         });
 
@@ -133,7 +133,7 @@ const Generate = () => {
           if (token) authHeader = `Bearer ${token}`;
         }
 
-        const res = await axios.get(`${import.meta.env.VITE_API_BASE_URL}/api/students-ready`, {
+        const res = await axios.get(`${API_BASE}/api/students-ready`, {
           headers: authHeader ? { Authorization: authHeader } : {},
         });
         setStudents(Array.isArray(res.data) ? res.data : []);
@@ -203,12 +203,12 @@ const Generate = () => {
 
       const request = selectAllStudents
         ? axios.post(
-            "`${import.meta.env.VITE_API_BASE_URL}/api/generate-certificates/all`",
+            `${API_BASE}/api/generate-certificates/all`,
             renderContext,
             { headers: authHeader ? { Authorization: authHeader } : {} },
           )
         : axios.post(
-            "`${import.meta.env.VITE_API_BASE_URL}/api/generate-certificates`",
+            `${API_BASE}/api/generate-certificates`,
             {
               ...renderContext,
               students: selectedStudentRecords.map((student) => ({

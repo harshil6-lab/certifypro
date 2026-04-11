@@ -16,7 +16,7 @@ import {
 } from "@/components/certificates/types";
 import { LayoutPreview } from "@/components/LayoutPreview";
 import { addSessionActivity } from "@/services/sessionActivity";
-import { getTemplates } from "@/services/apiService";
+import { getTemplates, API_BASE } from "@/services/apiService";
 import {
   defaultLayoutConfig,
   normalizeLayoutConfig,
@@ -175,9 +175,12 @@ const Templates = () => {
           if (token) authHeader = `Bearer ${token}`;
         }
 
-        const { data } = await axios.get("`${import.meta.env.VITE_API_BASE_URL}/api/templates/upload`", {
-          headers: authHeader ? { Authorization: authHeader } : {},
-        });
+        const { data } = await axios.get(
+          `${API_BASE}/api/templates/upload`,
+          {
+            headers: authHeader ? { Authorization: authHeader } : {},
+          }
+        );
 
         if (!data?.template_id) {
           return;
@@ -294,13 +297,13 @@ const Templates = () => {
         }
 
         await axios.post(
-          "`${import.meta.env.VITE_API_BASE_URL}/api/templates/upload`",
+          `${API_BASE}/api/templates/upload`,
           {
             template_id: workspaceTemplate.id,
             layout_config: normalizedLayout,
             custom_template_url: workspaceTemplate.is_custom ? workspaceTemplate.file_url : null,
           },
-          { headers: authHeader ? { Authorization: authHeader } : {} },
+          { headers: authHeader ? { Authorization: authHeader } : {} }
         );
 
         setLayoutSaveStatus("Layout saved to workspace");
@@ -416,12 +419,16 @@ const Templates = () => {
         if (token) authHeader = `Bearer ${token}`;
       }
 
-      const { data } = await axios.post("`${import.meta.env.VITE_API_BASE_URL}/api/templates/upload`", formData, {
-        headers: {
-          ...(authHeader ? { Authorization: authHeader } : {}),
-          "Content-Type": "multipart/form-data",
-        },
-      });
+      const { data } = await axios.post(
+        `${API_BASE}/api/templates/upload`,
+        formData,
+        {
+          headers: {
+            ...(authHeader ? { Authorization: authHeader } : {}),
+            "Content-Type": "multipart/form-data",
+          },
+        }
+      );
 
       const nextTemplate = {
         id: data.template_id,
