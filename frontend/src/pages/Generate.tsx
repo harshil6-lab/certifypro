@@ -26,6 +26,7 @@ import {
   type LayoutConfig,
 } from "@/lib/layoutConfig";
 import { getTemplates, API_BASE } from "@/services/apiService";
+import { Link } from "react-router-dom";
 
 type WorkspaceTemplate = {
   template_id: string;
@@ -320,7 +321,18 @@ const Generate = () => {
                 </p>
               </div>
 
-              {selectedTemplate ? (
+              {workspaceTemplateSource === "none" ? (
+                <div className="space-y-4">
+                  <div className="rounded-xl border border-amber-300 bg-amber-50 p-8 text-center">
+                    <AlertCircle className="w-12 h-12 text-amber-500 mx-auto mb-4" />
+                    <p className="text-lg font-medium text-amber-900 mb-2">No saved template found</p>
+                    <p className="text-sm text-amber-800 mb-6">Please go to Templates page and click Save Layout first.</p>
+                    <Button asChild className="gold-gradient text-accent-foreground">
+                      <a href="/templates">Go to Templates</a>
+                    </Button>
+                  </div>
+                </div>
+              ) : selectedTemplate ? (
                 <div className="space-y-4">
                   <div className="rounded-xl border border-accent/30 bg-accent/5 p-4 flex items-center gap-3">
                     <CheckCircle2 className="w-5 h-5 text-accent shrink-0" />

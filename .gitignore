@@ -107,4 +107,5 @@ frontend/.env
 frontend/.env.local
 frontend/.env.production
 
+claude/
 .claude

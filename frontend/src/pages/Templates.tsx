@@ -176,7 +176,7 @@ const Templates = () => {
         }
 
         const { data } = await axios.get(
-          `${API_BASE}/api/templates/upload`,
+          `${API_BASE}/api/workspace-template`,
           {
             headers: authHeader ? { Authorization: authHeader } : {},
           }
@@ -297,11 +297,13 @@ const Templates = () => {
         }
 
         await axios.post(
-          `${API_BASE}/api/templates/upload`,
+          `${API_BASE}/api/save-layout`,
           {
             template_id: workspaceTemplate.id,
             layout_config: normalizedLayout,
             custom_template_url: workspaceTemplate.is_custom ? workspaceTemplate.file_url : null,
+            is_builtin: workspaceTemplate.id?.startsWith("builtin-") ?? false,
+            title: workspaceTemplate.title ?? null
           },
           { headers: authHeader ? { Authorization: authHeader } : {} }
         );
