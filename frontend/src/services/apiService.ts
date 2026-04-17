@@ -117,7 +117,7 @@ export async function generateCertificate(template_id: string, student_id: strin
 // Future API helpers (auth, user) can be added here.
 
 export async function verifyCertificate(token: string): Promise<Record<string, unknown>> {
-  const url = `${API_BASE}/verify/${encodeURIComponent(token)}`;
+  const url = `${API_BASE}/api/verify/${encodeURIComponent(token)}`;
   const res = await fetch(url, { method: "GET" });
   if (!res.ok) {
     if (res.status === 404) throw new Error("Certificate not found");

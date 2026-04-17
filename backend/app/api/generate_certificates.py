@@ -42,8 +42,8 @@ _BACKEND_ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(
 GENERATED_DIR = os.path.join(_BACKEND_ROOT, "uploads", "generated")
 os.makedirs(GENERATED_DIR, exist_ok=True)
 
-API_BASE_URL = os.getenv("API_BASE_URL", "http://127.0.0.1:8000")
-QR_VERIFY_BASE = os.getenv("PUBLIC_VERIFY_BASE_URL", "http://localhost:8080/verify")
+API_BASE_URL = os.getenv("API_BASE_URL", "")
+QR_VERIFY_BASE = os.getenv("PUBLIC_VERIFY_BASE_URL", "/verify")
 
 # ---------------------------------------------------------------------------
 # Request / Response models
