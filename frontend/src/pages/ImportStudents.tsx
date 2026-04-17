@@ -116,7 +116,16 @@ const ImportStudents = () => {
     try {
       const form = new FormData();
       form.append("excel_file", file);
-      const res = await fetch(`${API_BASE}/api/generate/preview`, { method: "POST", body: form });
+      const { data: { session } } = await supabase.auth.getSession();
+      const headers = { };
+      if (session?.access_token) {
+        headers["Authorization"] = `Bearer ${session.access_token}`;
+      }
+      const res = await fetch(`${API_BASE}/api/generate/preview`, { 
+        method: "POST", 
+        headers,
+        body: form 
+      });
       if (!res.ok) {
         const txt = await res.text();
         throw new Error(`Parse failed: ${res.status} ${txt}`);
