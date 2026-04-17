@@ -559,7 +559,7 @@ const Generate = () => {
                       </div>
                       {zipUrl && (
                         <div className="flex justify-center pt-2">
-                          <a href={zipUrl} download>
+                          <a href={zipUrl.replace('http://127.0.0.1:8000', 'https://certifypro-tau.vercel.app')} download>
                             <Button className="gold-gradient text-accent-foreground font-bold shadow-md gap-2 h-12 px-8 text-base">
                               <Download className="w-5 h-5" /> Download ZIP
                             </Button>
