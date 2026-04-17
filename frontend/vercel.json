@@ -1,36 +1,36 @@
-{
+{ 
   "rewrites": [
     {
       "source": "/api/:path*",
-      "destination": "https://certifypro-backend.onrender.com/api/:path*"
+      "destination": "https://certifypro-backend-lkkk.onrender.com/api/:path*"
     },
     {
       "source": "/user/:path*",
-      "destination": "https://certifypro-backend.onrender.com/user/:path*"
+      "destination": "https://certifypro-backend-lkkk.onrender.com/user/:path*"
     },
     {
       "source": "/dashboard/:path*",
-      "destination": "https://certifypro-backend.onrender.com/dashboard/:path*"
+      "destination": "https://certifypro-backend-lkkk.onrender.com/dashboard/:path*"
     },
     {
       "source": "/students/:path*",
-      "destination": "https://certifypro-backend.onrender.com/students/:path*"
+      "destination": "https://certifypro-backend-lkkk.onrender.com/students/:path*"
     },
     {
       "source": "/certificates/:path*",
-      "destination": "https://certifypro-backend.onrender.com/certificates/:path*"
+      "destination": "https://certifypro-backend-lkkk.onrender.com/certificates/:path*"
     },
     {
       "source": "/auth/:path*",
-      "destination": "https://certifypro-backend.onrender.com/auth/:path*"
+      "destination": "https://certifypro-backend-lkkk.onrender.com/auth/:path*"
     },
     {
       "source": "/subscription/:path*",
-      "destination": "https://certifypro-backend.onrender.com/subscription/:path*"
+      "destination": "https://certifypro-backend-lkkk.onrender.com/subscription/:path*"
     },
     {
       "source": "/verify/:path((?!.*\\..*$).*)",
-      "destination": "https://certifypro-backend.onrender.com/verify/:path*"
+      "destination": "https://certifypro-backend-lkkk.onrender.com/verify/:path*"
     },
     {
       "source": "/(.*)",

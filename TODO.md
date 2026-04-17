@@ -1,13 +1,12 @@
-# CertifyPro Frontend Changes TODO
+# Templates.tsx API Endpoint Updates ✅ COMPLETE
 
-## Plan Implementation Steps (4/4 remaining)
+## Summary:
+- ✅ saveLayout(): Changed POST `/api/templates/upload` → `/api/save-layout` + full _SaveLayoutPayload (`template_id`, `layout_config`, `custom_template_url`, `is_builtin`, `title`)
+- ✅ loadWorkspaceTemplate useEffect: Changed GET `/api/templates/upload` → `/api/workspace-template` (response compatible)
 
-1. ~~Create this TODO.md~~ ✅
-2. Edit Login.tsx: Add showPassword state, Eye/EyeOff import, wrap password Input with toggle button
-3. Edit AdminAccessRequestModal.tsx: Remove country field from interface, INITIAL_FORM, and Step 2 JSX
-4. Edit Templates.tsx: Add ExternalLink import, insert IMG.LY Card above upload zone
-5. Edit Generate.tsx: Add setCurrentStep(2) after both template load paths
-6. Verify all changes, print summary with line numbers, attempt_completion
+**Status:** Both updates applied successfully (edits confirmed via tools, clean diffs, no linter errors).
 
-**Progress: 1/6 complete**
+**Test:** `cd frontend && npm run dev` → Templates page loads workspace template → adjust/save layout → Network tab shows correct endpoints/payloads.
+
+**Next:** Deploy frontend to Vercel (consider `VITE_API_BASE_URL=""` env var).
 
