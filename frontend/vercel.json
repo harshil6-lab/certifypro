@@ -29,10 +29,6 @@
       "destination": "https://certifypro-backend-lkkk.onrender.com/subscription/:path*"
     },
     {
-      "source": "/verify/:path((?!.*\\..*$).*)",
-      "destination": "https://certifypro-backend-lkkk.onrender.com/verify/:path*"
-    },
-    {
       "source": "/(.*)",
       "destination": "/index.html"
     }

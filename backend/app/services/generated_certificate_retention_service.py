@@ -8,7 +8,7 @@ from app.core.supabase_client import supabase
 RETENTION_DAYS = 7
 _BACKEND_ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 GENERATED_DIR = os.path.join(_BACKEND_ROOT, "uploads", "generated")
-API_BASE_URL = os.getenv("API_BASE_URL", "http://127.0.0.1:8000")
+API_BASE_URL = os.getenv("API_BASE_URL", "").rstrip("/")
 
 
 def is_generated_certificate_expired(created_at: str | None) -> bool:

@@ -12,7 +12,7 @@ services:
       - key: SUPABASE_SERVICE_ROLE_KEY
         sync: false
       - key: FRONTEND_ORIGINS
-        sync: false
+        value: https://certifypro-tau.vercel.app
       - key: ACCESS_INVITE_REDIRECT_URL
         sync: false
       - key: SMTP_HOST
@@ -34,4 +34,8 @@ services:
       - key: RAZORPAY_KEY_SECRET
         sync: false
       - key: RAZORPAY_PLAN_ID
+        sync: false
+      - key: API_BASE_URL
+        value: https://certifypro-backend-lkkk.onrender.com
+      - key: PUBLIC_VERIFY_BASE_URL
         sync: false
