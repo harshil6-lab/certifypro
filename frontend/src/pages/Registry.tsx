@@ -97,8 +97,7 @@ const Registry = () => {
           if (token) authHeader = `Bearer ${token}`;
         }
 
-        const response = await axios.get("/api/my-certificates", {
-          baseURL: API_BASE,
+        const response = await axios.get(`${API_BASE}/api/my-certificates`, {
           headers: authHeader ? { Authorization: authHeader } : {},
         });
 

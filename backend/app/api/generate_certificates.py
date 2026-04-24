@@ -16,6 +16,7 @@ Expected JSON body:
 from __future__ import annotations
 
 import io
+import mimetypes
 import os
 import uuid
 import zipfile
@@ -42,7 +43,7 @@ _BACKEND_ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(
 GENERATED_DIR = os.path.join(_BACKEND_ROOT, "uploads", "generated")
 os.makedirs(GENERATED_DIR, exist_ok=True)
 
-API_BASE_URL = os.getenv("API_BASE_URL", "")
+GENERATED_STORAGE_BUCKET = "generated-certificates"
 QR_VERIFY_BASE = os.getenv("PUBLIC_VERIFY_BASE_URL", "/verify")
 
 # ---------------------------------------------------------------------------
@@ -319,6 +320,52 @@ def _persist_generated_certificate(
         raise last_error
 
 
+def _public_storage_url(storage_name: str) -> str:
+    public_url = supabase.storage.from_(GENERATED_STORAGE_BUCKET).get_public_url(storage_name)
+    if isinstance(public_url, str) and public_url:
+        return public_url
+    if isinstance(public_url, dict):
+        nested = public_url.get("data")
+        if isinstance(nested, dict):
+            nested_url = nested.get("publicUrl") or nested.get("publicURL")
+            if nested_url:
+                return nested_url
+        top_level_url = public_url.get("publicUrl") or public_url.get("publicURL")
+        if top_level_url:
+            return top_level_url
+
+    for attr in ("public_url", "publicUrl", "publicURL"):
+        value = getattr(public_url, attr, None)
+        if value:
+            return value
+
+    raise HTTPException(status_code=500, detail=f"Could not build public URL for storage object: {storage_name}")
+
+
+def _upload_to_supabase_storage(local_path: str, storage_name: str) -> str:
+    """Upload file to Supabase storage bucket and return public URL."""
+    with open(local_path, "rb") as file_handle:
+        file_bytes = file_handle.read()
+
+    content_type = mimetypes.guess_type(local_path)[0] or "application/octet-stream"
+
+    try:
+        result = supabase.storage.from_(GENERATED_STORAGE_BUCKET).upload(
+            storage_name,
+            file_bytes,
+            {"content-type": content_type, "upsert": "true"},
+        )
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=f"Failed to upload generated file to storage: {exc}") from exc
+
+    if hasattr(result, "error") and result.error:
+        raise HTTPException(status_code=500, detail=f"Failed to upload generated file to storage: {result.error}")
+    if isinstance(result, dict) and result.get("error"):
+        raise HTTPException(status_code=500, detail=f"Failed to upload generated file to storage: {result['error']}")
+
+    return _public_storage_url(storage_name)
+
+
 def _get_existing_generated_certificate(certificate_id: str) -> dict[str, Any] | None:
     try:
         resp = (
@@ -334,21 +381,6 @@ def _get_existing_generated_certificate(certificate_id: str) -> dict[str, Any] |
 
     rows = resp.data if hasattr(resp, "data") and resp.data else []
     return rows[0] if rows else None
-
-
-def _local_generated_path(file_url: str | None) -> str | None:
-    if not file_url:
-        return None
-    prefix = f"{API_BASE_URL}/uploads/generated/"
-    if not file_url.startswith(prefix):
-        return None
-    file_name = file_url[len(prefix):]
-    if not file_name:
-        return None
-    local_path = os.path.join(GENERATED_DIR, file_name)
-    return local_path if os.path.exists(local_path) else None
-
-
 def _workspace_template_rows(user_id: str, template_id: str) -> list[dict[str, Any]]:
     try:
         workspace_resp = (
@@ -542,8 +574,8 @@ def post_generate_certificates(body: GenerateRequest, request: Request) -> Gener
 
     1. Loads template background image and layout_config from Supabase.
     2. Renders student_name, certificate_id, and QR code on each copy.
-    3. Saves to uploads/generated/{certificate_id}.png.
-    4. Packages all PNGs into a ZIP archive.
+    3. Saves local PNG files, uploads them to Supabase Storage, and records public URLs.
+    4. Packages all PNGs into a ZIP archive and uploads the ZIP to Supabase Storage.
     5. Returns individual download URLs and a single ZIP download URL.
     """
     if not body.students:
@@ -597,7 +629,7 @@ def post_generate_certificates(body: GenerateRequest, request: Request) -> Gener
         rendered.convert("RGB").save(out_path, "PNG")
         generated_paths.append(out_path)
 
-        generated_path = f"{API_BASE_URL}/uploads/generated/{out_name}"
+        generated_path = _upload_to_supabase_storage(out_path, f"generated/{out_name}")
 
         # Persist generated certificate metadata in the generated_certificates table.
         try:
@@ -628,7 +660,7 @@ def post_generate_certificates(body: GenerateRequest, request: Request) -> Gener
         for cert_path in generated_paths:
             zipf.write(cert_path, arcname=os.path.basename(cert_path))
 
-    zip_url = f"{API_BASE_URL}/uploads/generated/{zip_name}"
+    zip_url = _upload_to_supabase_storage(zip_path, f"generated/{zip_name}")
 
     return GenerateResponse(certificates=results, zip_url=zip_url)
 
@@ -741,7 +773,7 @@ def post_generate_all_ready(body: BulkGenerateRequest, request: Request) -> Gene
         rendered.convert("RGB").save(out_path, "PNG")
         generated_files.append(out_path)
 
-        generated_path = f"{API_BASE_URL}/uploads/generated/{out_name}"
+        generated_path = _upload_to_supabase_storage(out_path, f"generated/{out_name}")
 
         # Persist generated certificate metadata in the generated_certificates table.
         try:
@@ -772,6 +804,6 @@ def post_generate_all_ready(body: BulkGenerateRequest, request: Request) -> Gene
         for file_path in generated_files:
             zipf.write(file_path, arcname=os.path.basename(file_path))
 
-    zip_url = f"{API_BASE_URL}/uploads/generated/{zip_name}"
+    zip_url = _upload_to_supabase_storage(zip_path, f"generated/{zip_name}")
 
     return GenerateResponse(certificates=results, zip_url=zip_url)

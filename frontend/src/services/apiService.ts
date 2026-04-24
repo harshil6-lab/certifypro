@@ -1,7 +1,7 @@
 import { getSessionSafely, supabase } from "@/lib/supabaseClient";
 import type { CertificateStyleType, CertificateTemplateMeta } from "@/components/certificates/types";
 
-const API_BASE = import.meta.env.VITE_API_BASE_URL || "http://127.0.0.1:8000";
+const API_BASE = (import.meta.env.VITE_API_BASE_URL ?? "").replace(/\/$/, "");
 export { API_BASE };
 
 /**
@@ -117,7 +117,7 @@ export async function generateCertificate(template_id: string, student_id: strin
 // Future API helpers (auth, user) can be added here.
 
 export async function verifyCertificate(token: string): Promise<Record<string, unknown>> {
-  const url = `${API_BASE}/api/verify/${encodeURIComponent(token)}`;
+  const url = `${API_BASE}/verify/${encodeURIComponent(token)}`;
   const res = await fetch(url, { method: "GET" });
   if (!res.ok) {
     if (res.status === 404) throw new Error("Certificate not found");
