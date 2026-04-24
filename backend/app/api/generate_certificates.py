@@ -43,7 +43,7 @@ _BACKEND_ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(
 GENERATED_DIR = os.path.join(_BACKEND_ROOT, "uploads", "generated")
 os.makedirs(GENERATED_DIR, exist_ok=True)
 
-GENERATED_STORAGE_BUCKET = "generated-certificates"
+GENERATED_STORAGE_BUCKET = os.getenv("GENERATED_STORAGE_BUCKET", "certificate-templates")
 QR_VERIFY_BASE = os.getenv("PUBLIC_VERIFY_BASE_URL", "/verify")
 
 # ---------------------------------------------------------------------------
