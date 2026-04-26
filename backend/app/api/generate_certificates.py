@@ -15,6 +15,7 @@ Expected JSON body:
 
 from __future__ import annotations
 
+from concurrent.futures import ThreadPoolExecutor, as_completed
 import io
 import mimetypes
 import os
@@ -212,6 +213,14 @@ _MAC_SERIF_FONTS = [
     "/Library/Fonts/Georgia.ttf",
 ]
 
+
+def _load_font(paths: list[str], size: int) -> ImageFont.FreeTypeFont | ImageFont.ImageFont:
+    for path in paths:
+        if os.path.exists(path):
+            return ImageFont.truetype(path, size)
+    return ImageFont.load_default()
+
+
 _DOC_NAME_PT = 52
 _CERT_ID_PT = 18
 _QR_MM = 60
@@ -224,6 +233,16 @@ def _pt_to_px(value: int, dpi: int = _DOC_DPI) -> int:
 
 def _mm_to_px(value: int, dpi: int = _DOC_DPI) -> int:
     return max(1, round(value * dpi / 25.4))
+
+
+_CACHED_NAME_FONT = _load_font(
+    _WINDOWS_SERIF_FONTS + _LINUX_SERIF_FONTS + _MAC_SERIF_FONTS,
+    _pt_to_px(_DOC_NAME_PT),
+)
+_CACHED_ID_FONT = _load_font(
+    _WINDOWS_FONTS + _LINUX_FONTS + _MAC_FONTS,
+    _pt_to_px(_CERT_ID_PT),
+)
 
 
 def _get_font(size: int = 28) -> ImageFont.FreeTypeFont | ImageFont.ImageFont:
@@ -342,12 +361,15 @@ def _public_storage_url(storage_name: str) -> str:
     raise HTTPException(status_code=500, detail=f"Could not build public URL for storage object: {storage_name}")
 
 
-def _upload_to_supabase_storage(local_path: str, storage_name: str) -> str:
+def _upload_to_supabase_storage(file_source: str | bytes, storage_name: str) -> str:
     """Upload file to Supabase storage bucket and return public URL."""
-    with open(local_path, "rb") as file_handle:
-        file_bytes = file_handle.read()
-
-    content_type = mimetypes.guess_type(local_path)[0] or "application/octet-stream"
+    if isinstance(file_source, str):
+        with open(file_source, "rb") as file_handle:
+            file_bytes = file_handle.read()
+        content_type = mimetypes.guess_type(file_source)[0] or "application/octet-stream"
+    else:
+        file_bytes = file_source
+        content_type = mimetypes.guess_type(storage_name)[0] or "application/octet-stream"
 
     try:
         result = supabase.storage.from_(GENERATED_STORAGE_BUCKET).upload(
@@ -423,9 +445,9 @@ def _upsert_generated_certificate(
     verification_url: str,
 ) -> None:
     payload = {
+        "certificate_id": certificate_id,
         "student_id": student_id,
         "template_id": template_id,
-        "certificate_id": certificate_id,
         "student_name": student_name,
         "file_url": file_url,
         "verification_url": verification_url,
@@ -434,38 +456,19 @@ def _upsert_generated_certificate(
         payload["created_by"] = created_by
 
     try:
-        existing_resp = (
-            supabase.table("generated_certificates")
-            .select("id")
-            .eq("certificate_id", certificate_id)
-            .limit(1)
-            .execute()
-        )
-        existing_rows = existing_resp.data if hasattr(existing_resp, "data") and existing_resp.data else []
+        supabase.table("generated_certificates").upsert(
+            payload,
+            on_conflict="certificate_id",
+        ).execute()
     except Exception:
-        existing_rows = []
-
-    if existing_rows:
         try:
-            (
-                supabase.table("generated_certificates")
-                .update(payload)
-                .eq("id", existing_rows[0]["id"])
-                .execute()
-            )
-            return
-        except Exception:
-            pass
-
-    _persist_generated_certificate(
-        template_id=template_id,
-        student_id=student_id,
-        created_by=created_by,
-        certificate_id=certificate_id,
-        student_name=student_name,
-        file_url=file_url,
-        verification_url=verification_url,
-    )
+            fallback = {key: value for key, value in payload.items() if key != "created_by"}
+            supabase.table("generated_certificates").upsert(
+                fallback,
+                on_conflict="certificate_id",
+            ).execute()
+        except Exception as exc2:
+            print(f"[generate_certificates] Failed upsert for {certificate_id}: {exc2}")
 
 
 def _draw_centered_text(
@@ -532,8 +535,8 @@ def _render_certificate(
     x_qr = int(width * qr_x_pct / 100)
     y_qr = int(height * qr_y_pct / 100)
 
-    font_name = _get_serif_font(_pt_to_px(_DOC_NAME_PT))
-    font_id = _get_sans_font(_pt_to_px(_CERT_ID_PT))
+    font_name = _CACHED_NAME_FONT
+    font_id = _CACHED_ID_FONT
 
     # --- Render student name (centre-anchored to match preview) ---
     if show_name:
@@ -568,6 +571,167 @@ def _render_certificate(
 
     return bg
 
+
+def _generate_batch_with_progress(
+    *,
+    template_id: str,
+    students: list[StudentIn],
+    user_id: str | None,
+    job_id: str,
+    update_fn,
+) -> dict[str, Any]:
+    cleanup_expired_generated_certificate_files()
+
+    template, layout_config, file_url = _resolve_template_render_context(
+        template_id,
+        user_id,
+    )
+
+    if not file_url:
+        raise HTTPException(
+            status_code=422,
+            detail="Template has no file_url or image_url. Upload a background image first.",
+        )
+
+    img_bytes = _download_image(file_url)
+    try:
+        background = Image.open(io.BytesIO(img_bytes))
+    except Exception as exc:
+        raise HTTPException(status_code=422, detail=f"Could not open template image: {exc}")
+
+    rendered_certs: list[tuple[str, str, str, bytes, str | None, str]] = []
+    total_students = len(students)
+    update_fn(job_id, progress=0, total=total_students)
+
+    for student in students:
+        student_id = student.student_id.strip() if student.student_id else None
+        cert_id = student.external_id.strip()
+        student_name = student.student_name.strip()
+        qr_url = f"{QR_VERIFY_BASE}/{cert_id}"
+        out_name = f"{cert_id}.png"
+
+        rendered = _render_certificate(background, student_name, cert_id, layout_config)
+        png_buf = io.BytesIO()
+        rendered.convert("RGB").save(png_buf, "PNG")
+        png_bytes = png_buf.getvalue()
+        rendered_certs.append(
+            (cert_id, student_name, out_name, png_bytes, student_id, qr_url)
+        )
+
+    MAX_WORKERS = 10
+
+    def _upload_one(
+        args: tuple[str, str, str, bytes, str | None, str],
+    ) -> tuple[str, str, str | None, str | None, str, str | None]:
+        cert_id, student_name, out_name, png_bytes, student_id, qr_url = args
+        storage_name = f"generated/{out_name}"
+        try:
+            result = supabase.storage.from_(GENERATED_STORAGE_BUCKET).upload(
+                storage_name,
+                png_bytes,
+                {"content-type": "image/png", "upsert": "true"},
+            )
+            if hasattr(result, "error") and result.error:
+                raise Exception(result.error)
+            if isinstance(result, dict) and result.get("error"):
+                raise Exception(result["error"])
+            public_url = _public_storage_url(storage_name)
+            return cert_id, student_name, public_url, student_id, qr_url, None
+        except Exception as exc:
+            return cert_id, student_name, None, student_id, qr_url, str(exc)
+
+    upload_results: dict[str, tuple[str, str, str | None, str]] = {}
+    with ThreadPoolExecutor(max_workers=MAX_WORKERS) as executor:
+        futures = {executor.submit(_upload_one, args): args[0] for args in rendered_certs}
+        for completed_count, future in enumerate(as_completed(futures), start=1):
+            cert_id, student_name, url, student_id, qr_url, err = future.result()
+            if err:
+                print(f"[generate] Upload failed for {cert_id}: {err}")
+            else:
+                upload_results[cert_id] = (student_name, url, student_id, qr_url)
+            update_fn(job_id, progress=completed_count, total=total_students)
+
+    def _upsert_one(args: tuple[str, str, str, str | None, str]) -> None:
+        cert_id, student_name, url, student_id, qr_url = args
+        _upsert_generated_certificate(
+            template_id=template.get("id") or template_id,
+            student_id=student_id,
+            created_by=user_id,
+            certificate_id=cert_id,
+            student_name=student_name,
+            file_url=url,
+            verification_url=qr_url,
+        )
+
+    upsert_args = [
+        (cert_id, *upload_results[cert_id])
+        for cert_id in upload_results
+    ]
+    with ThreadPoolExecutor(max_workers=MAX_WORKERS) as executor:
+        list(executor.map(_upsert_one, upsert_args))
+
+    certificates: list[dict[str, str]] = []
+    for cert_id, _, _, _, _, _ in rendered_certs:
+        if cert_id in upload_results:
+            student_name, url, _, _ = upload_results[cert_id]
+            certificates.append(
+                {
+                    "certificate_id": cert_id,
+                    "student_name": student_name,
+                    "url": url,
+                }
+            )
+
+    zip_name = f"certificates_{uuid.uuid4().hex[:8]}.zip"
+    zip_buf = io.BytesIO()
+    with zipfile.ZipFile(zip_buf, "w", compression=zipfile.ZIP_DEFLATED) as zipf:
+        for _, _, out_name, png_bytes, _, _ in rendered_certs:
+            zipf.writestr(out_name, png_bytes)
+    zip_bytes = zip_buf.getvalue()
+
+    storage_zip = f"generated/{zip_name}"
+    try:
+        result = supabase.storage.from_(GENERATED_STORAGE_BUCKET).upload(
+            storage_zip,
+            zip_bytes,
+            {"content-type": "application/zip", "upsert": "true"},
+        )
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=f"Failed to upload generated ZIP to storage: {exc}") from exc
+
+    if hasattr(result, "error") and result.error:
+        raise HTTPException(status_code=500, detail=f"Failed to upload generated ZIP to storage: {result.error}")
+    if isinstance(result, dict) and result.get("error"):
+        raise HTTPException(status_code=500, detail=f"Failed to upload generated ZIP to storage: {result['error']}")
+
+    return {
+        "certificates": certificates,
+        "zip_url": _public_storage_url(storage_zip),
+    }
+
+
+@router.post("/start", response_model=dict[str, str])
+def post_generate_certificates_async(body: GenerateRequest, request: Request):
+    """Start async generation, return job_id immediately for polling."""
+    from app.api.job_routes import create_job, run_generate_job
+
+    auth_header = request.headers.get("Authorization", "")
+    token = auth_header.split(" ", 1)[1] if auth_header.lower().startswith("bearer ") else None
+    user = get_current_user(token) if token else None
+    user_id = _extract_user_id(user)
+
+    job_id = create_job()
+
+    run_generate_job(
+        job_id,
+        _generate_batch_with_progress,
+        template_id=body.template_id,
+        students=body.students,
+        user_id=user_id,
+    )
+
+    return {"job_id": job_id}
+
 @router.post("", response_model=GenerateResponse)
 def post_generate_certificates(body: GenerateRequest, request: Request) -> GenerateResponse:
     """Generate PNG certificates for the provided student list.
@@ -581,7 +745,19 @@ def post_generate_certificates(body: GenerateRequest, request: Request) -> Gener
     if not body.students:
         raise HTTPException(status_code=400, detail="No students provided.")
 
-    cleanup_expired_generated_certificate_files()
+    MAX_BATCH_SIZE = 500
+    if len(body.students) > MAX_BATCH_SIZE:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Batch size {len(body.students)} exceeds maximum of {MAX_BATCH_SIZE}. "
+            f"Split into smaller batches or use the /all endpoint for large datasets.",
+        )
+
+    import threading
+    threading.Thread(
+        target=cleanup_expired_generated_certificate_files,
+        daemon=True
+    ).start()
 
     auth_header = request.headers.get("Authorization", "")
     token = auth_header.split(" ", 1)[1] if auth_header.lower().startswith("bearer ") else None
@@ -608,59 +784,114 @@ def post_generate_certificates(body: GenerateRequest, request: Request) -> Gener
     except Exception as exc:
         raise HTTPException(status_code=422, detail=f"Could not open template image: {exc}")
 
-    width, height = background.size
-
-    # --- 4. Generate one certificate per student ---
-    results: list[CertificateOut] = []
-    generated_paths: list[str] = []
+    # --- 4. Render all certificates sequentially ---
+    rendered_certs: list[tuple[str, str, str, bytes, str | None, str]] = []
 
     for student in body.students:
         student_id = student.student_id.strip() if student.student_id else None
         cert_id = student.external_id.strip()
         student_name = student.student_name.strip()
-        email = student.email.strip()
         qr_url = f"{QR_VERIFY_BASE}/{cert_id}"
+        out_name = f"{cert_id}.png"
 
         rendered = _render_certificate(background, student_name, cert_id, layout_config)
 
-        # Save as RGB PNG
-        out_name = f"{cert_id}.png"
-        out_path = os.path.join(GENERATED_DIR, out_name)
-        rendered.convert("RGB").save(out_path, "PNG")
-        generated_paths.append(out_path)
-
-        generated_path = _upload_to_supabase_storage(out_path, f"generated/{out_name}")
-
-        # Persist generated certificate metadata in the generated_certificates table.
-        try:
-            _upsert_generated_certificate(
-                template_id=template.get("id") or body.template_id,
-                student_id=student_id,
-                created_by=user_id,
-                certificate_id=cert_id,
-                student_name=student_name,
-                file_url=generated_path,
-                verification_url=qr_url,
-            )
-        except Exception as exc:
-            print(f"[generate_certificates] Failed to save generated certificate record for {cert_id}: {exc}")
-
-        results.append(
-            CertificateOut(
-                certificate_id=cert_id,
-                student_name=student_name,
-                url=generated_path,
-            )
+        png_buf = io.BytesIO()
+        rendered.convert("RGB").save(png_buf, "PNG")
+        png_bytes = png_buf.getvalue()
+        rendered_certs.append(
+            (cert_id, student_name, out_name, png_bytes, student_id, qr_url)
         )
 
-    # --- 5. Package all generated PNGs into a ZIP archive ---
-    zip_name = f"certificates_{uuid.uuid4().hex[:8]}.zip"
-    zip_path = os.path.join(GENERATED_DIR, zip_name)
-    with zipfile.ZipFile(zip_path, "w", compression=zipfile.ZIP_DEFLATED) as zipf:
-        for cert_path in generated_paths:
-            zipf.write(cert_path, arcname=os.path.basename(cert_path))
+    # --- 5. Upload all PNGs in parallel ---
+    MAX_WORKERS = 10
 
-    zip_url = _upload_to_supabase_storage(zip_path, f"generated/{zip_name}")
+    def _upload_one(
+        args: tuple[str, str, str, bytes, str | None, str],
+    ) -> tuple[str, str, str | None, str | None, str, str | None]:
+        cert_id, student_name, out_name, png_bytes, student_id, qr_url = args
+        storage_name = f"generated/{out_name}"
+        try:
+            result = supabase.storage.from_(GENERATED_STORAGE_BUCKET).upload(
+                storage_name,
+                png_bytes,
+                {"content-type": "image/png", "upsert": "true"},
+            )
+            if hasattr(result, "error") and result.error:
+                raise Exception(result.error)
+            if isinstance(result, dict) and result.get("error"):
+                raise Exception(result["error"])
+            public_url = _public_storage_url(storage_name)
+            return cert_id, student_name, public_url, student_id, qr_url, None
+        except Exception as exc:
+            return cert_id, student_name, None, student_id, qr_url, str(exc)
+
+    upload_results: dict[str, tuple[str, str, str | None, str]] = {}
+    with ThreadPoolExecutor(max_workers=MAX_WORKERS) as executor:
+        futures = {executor.submit(_upload_one, args): args[0] for args in rendered_certs}
+        for future in as_completed(futures):
+            cert_id, student_name, url, student_id, qr_url, err = future.result()
+            if err:
+                print(f"[generate] Upload failed for {cert_id}: {err}")
+            else:
+                upload_results[cert_id] = (student_name, url, student_id, qr_url)
+
+    # --- 6. Upsert generated certificate records in parallel ---
+    def _upsert_one(args: tuple[str, str, str, str | None, str]) -> None:
+        cert_id, student_name, url, student_id, qr_url = args
+        _upsert_generated_certificate(
+            template_id=template.get("id") or body.template_id,
+            student_id=student_id,
+            created_by=user_id,
+            certificate_id=cert_id,
+            student_name=student_name,
+            file_url=url,
+            verification_url=qr_url,
+        )
+
+    upsert_args = [
+        (cert_id, *upload_results[cert_id])
+        for cert_id in upload_results
+    ]
+    with ThreadPoolExecutor(max_workers=MAX_WORKERS) as executor:
+        list(executor.map(_upsert_one, upsert_args))
+
+    results: list[CertificateOut] = []
+    for cert_id, _, _, _, _, _ in rendered_certs:
+        if cert_id in upload_results:
+            student_name, url, _, _ = upload_results[cert_id]
+            results.append(
+                CertificateOut(
+                    certificate_id=cert_id,
+                    student_name=student_name,
+                    url=url,
+                )
+            )
+
+    # --- 7. Build ZIP in memory and upload it ---
+    zip_name = f"certificates_{uuid.uuid4().hex[:8]}.zip"
+    zip_buf = io.BytesIO()
+    with zipfile.ZipFile(zip_buf, "w", compression=zipfile.ZIP_DEFLATED) as zipf:
+        for _, _, out_name, png_bytes, _, _ in rendered_certs:
+            zipf.writestr(out_name, png_bytes)
+    zip_bytes = zip_buf.getvalue()
+
+    storage_zip = f"generated/{zip_name}"
+    try:
+        result = supabase.storage.from_(GENERATED_STORAGE_BUCKET).upload(
+            storage_zip,
+            zip_bytes,
+            {"content-type": "application/zip", "upsert": "true"},
+        )
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=f"Failed to upload generated ZIP to storage: {exc}") from exc
+
+    if hasattr(result, "error") and result.error:
+        raise HTTPException(status_code=500, detail=f"Failed to upload generated ZIP to storage: {result.error}")
+    if isinstance(result, dict) and result.get("error"):
+        raise HTTPException(status_code=500, detail=f"Failed to upload generated ZIP to storage: {result['error']}")
+
+    zip_url = _public_storage_url(storage_zip)
 
     return GenerateResponse(certificates=results, zip_url=zip_url)
 
@@ -691,7 +922,11 @@ def post_generate_all_ready(body: BulkGenerateRequest, request: Request) -> Gene
     user_id = _extract_user_id(user)
     user_email = _extract_user_email(user)
 
-    cleanup_expired_generated_certificate_files()
+    import threading
+    threading.Thread(
+        target=cleanup_expired_generated_certificate_files,
+        daemon=True
+    ).start()
 
     if not user_id:
         raise HTTPException(status_code=401, detail="Unauthorized")
@@ -755,55 +990,113 @@ def post_generate_all_ready(body: BulkGenerateRequest, request: Request) -> Gene
     except Exception as exc:
         raise HTTPException(status_code=422, detail=f"Could not open template image: {exc}")
 
-    # --- 3. Render a certificate for each imported student ---
-    results: list[CertificateOut] = []
-    generated_files: list[str] = []
+    # --- 3. Render all certificates sequentially ---
+    rendered_certs: list[tuple[str, str, str, bytes, str | None, str]] = []
 
     for student in valid_students:
         student_name: str = (student.get("full_name") or "").strip()
-        email: str = (student.get("email") or "").strip()
         student_id: str | None = student.get("id")
         cert_id: str = (student.get("external_id") or "").strip()
         qr_url = f"{QR_VERIFY_BASE}/{cert_id}"
+        out_name = f"{cert_id}.png"
 
         rendered = _render_certificate(background, student_name, cert_id, layout_config)
 
-        out_name = f"{cert_id}.png"
-        out_path = os.path.join(GENERATED_DIR, out_name)
-        rendered.convert("RGB").save(out_path, "PNG")
-        generated_files.append(out_path)
-
-        generated_path = _upload_to_supabase_storage(out_path, f"generated/{out_name}")
-
-        # Persist generated certificate metadata in the generated_certificates table.
-        try:
-            _upsert_generated_certificate(
-                template_id=template.get("id") or body.template_id,
-                student_id=student_id,
-                created_by=user_id,
-                certificate_id=cert_id,
-                student_name=student_name,
-                file_url=generated_path,
-                verification_url=qr_url,
-            )
-        except Exception as exc:
-            print(f"[generate_all] Failed to save generated certificate record for {cert_id}: {exc}")
-
-        results.append(
-            CertificateOut(
-                certificate_id=cert_id,
-                student_name=student_name,
-                url=generated_path,
-            )
+        png_buf = io.BytesIO()
+        rendered.convert("RGB").save(png_buf, "PNG")
+        png_bytes = png_buf.getvalue()
+        rendered_certs.append(
+            (cert_id, student_name, out_name, png_bytes, student_id, qr_url)
         )
 
-    # --- 4. Package all PNGs into a ZIP archive ---
-    zip_name = f"certificates_{uuid.uuid4().hex[:8]}.zip"
-    zip_path = os.path.join(GENERATED_DIR, zip_name)
-    with zipfile.ZipFile(zip_path, "w", compression=zipfile.ZIP_DEFLATED) as zipf:
-        for file_path in generated_files:
-            zipf.write(file_path, arcname=os.path.basename(file_path))
+    # --- 4. Upload all PNGs in parallel ---
+    MAX_WORKERS = 10
 
-    zip_url = _upload_to_supabase_storage(zip_path, f"generated/{zip_name}")
+    def _upload_one(
+        args: tuple[str, str, str, bytes, str | None, str],
+    ) -> tuple[str, str, str | None, str | None, str, str | None]:
+        cert_id, student_name, out_name, png_bytes, student_id, qr_url = args
+        storage_name = f"generated/{out_name}"
+        try:
+            result = supabase.storage.from_(GENERATED_STORAGE_BUCKET).upload(
+                storage_name,
+                png_bytes,
+                {"content-type": "image/png", "upsert": "true"},
+            )
+            if hasattr(result, "error") and result.error:
+                raise Exception(result.error)
+            if isinstance(result, dict) and result.get("error"):
+                raise Exception(result["error"])
+            public_url = _public_storage_url(storage_name)
+            return cert_id, student_name, public_url, student_id, qr_url, None
+        except Exception as exc:
+            return cert_id, student_name, None, student_id, qr_url, str(exc)
+
+    upload_results: dict[str, tuple[str, str, str | None, str]] = {}
+    with ThreadPoolExecutor(max_workers=MAX_WORKERS) as executor:
+        futures = {executor.submit(_upload_one, args): args[0] for args in rendered_certs}
+        for future in as_completed(futures):
+            cert_id, student_name, url, student_id, qr_url, err = future.result()
+            if err:
+                print(f"[generate] Upload failed for {cert_id}: {err}")
+            else:
+                upload_results[cert_id] = (student_name, url, student_id, qr_url)
+
+    # --- 5. Upsert generated certificate records in parallel ---
+    def _upsert_one(args: tuple[str, str, str, str | None, str]) -> None:
+        cert_id, student_name, url, student_id, qr_url = args
+        _upsert_generated_certificate(
+            template_id=template.get("id") or body.template_id,
+            student_id=student_id,
+            created_by=user_id,
+            certificate_id=cert_id,
+            student_name=student_name,
+            file_url=url,
+            verification_url=qr_url,
+        )
+
+    upsert_args = [
+        (cert_id, *upload_results[cert_id])
+        for cert_id in upload_results
+    ]
+    with ThreadPoolExecutor(max_workers=MAX_WORKERS) as executor:
+        list(executor.map(_upsert_one, upsert_args))
+
+    results: list[CertificateOut] = []
+    for cert_id, _, _, _, _, _ in rendered_certs:
+        if cert_id in upload_results:
+            student_name, url, _, _ = upload_results[cert_id]
+            results.append(
+                CertificateOut(
+                    certificate_id=cert_id,
+                    student_name=student_name,
+                    url=url,
+                )
+            )
+
+    # --- 6. Build ZIP in memory and upload it ---
+    zip_name = f"certificates_{uuid.uuid4().hex[:8]}.zip"
+    zip_buf = io.BytesIO()
+    with zipfile.ZipFile(zip_buf, "w", compression=zipfile.ZIP_DEFLATED) as zipf:
+        for _, _, out_name, png_bytes, _, _ in rendered_certs:
+            zipf.writestr(out_name, png_bytes)
+    zip_bytes = zip_buf.getvalue()
+
+    storage_zip = f"generated/{zip_name}"
+    try:
+        result = supabase.storage.from_(GENERATED_STORAGE_BUCKET).upload(
+            storage_zip,
+            zip_bytes,
+            {"content-type": "application/zip", "upsert": "true"},
+        )
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=f"Failed to upload generated ZIP to storage: {exc}") from exc
+
+    if hasattr(result, "error") and result.error:
+        raise HTTPException(status_code=500, detail=f"Failed to upload generated ZIP to storage: {result.error}")
+    if isinstance(result, dict) and result.get("error"):
+        raise HTTPException(status_code=500, detail=f"Failed to upload generated ZIP to storage: {result['error']}")
+
+    zip_url = _public_storage_url(storage_zip)
 
     return GenerateResponse(certificates=results, zip_url=zip_url)

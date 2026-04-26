@@ -197,45 +197,87 @@ const Generate = () => {
     }
 
     try {
-      setProgress(30);
-      const renderContext = {
-        template_id: selectedTemplate,
-      };
-
-      const request = selectAllStudents
-        ? axios.post(
-            `${API_BASE}/api/generate-certificates/all`,
-            renderContext,
-            { headers: authHeader ? { Authorization: authHeader } : {} },
+      // STEP 1: Start the job (returns immediately with a job_id)
+      setProgress(5);
+      const startRes = selectAllStudents
+        ? await axios.post(`${API_BASE}/api/generate-certificates/start`,
+            { template_id: selectedTemplate },
+            { headers: authHeader ? { Authorization: authHeader } : {}, timeout: 30000 }
           )
-        : axios.post(
-            `${API_BASE}/api/generate-certificates`,
+        : await axios.post(`${API_BASE}/api/generate-certificates/start`,
             {
-              ...renderContext,
-              students: selectedStudentRecords.map((student) => ({
-                student_id: student.id,
-                student_name: student.full_name || "",
-                email: student.email || "",
-                external_id: student.external_id || student.certificate_id || "",
-              })),
+              template_id: selectedTemplate,
+              students: selectedStudentRecords.map(s => ({
+                student_id: s.id,
+                student_name: s.full_name || "",
+                email: s.email || "",
+                external_id: s.external_id || s.certificate_id || "",
+              }))
             },
-            { headers: authHeader ? { Authorization: authHeader } : {} },
+            { headers: authHeader ? { Authorization: authHeader } : {}, timeout: 30000 }
           );
 
-      const { data } = await request;
+      const jobId = startRes.data.job_id;
+
+      // STEP 2: Poll for status every 2 seconds
+      const pollInterval = 2000;
+      const maxWait = 15 * 60 * 1000; // 15 minutes
+      const startTime = Date.now();
+
+      const result = await new Promise<{certificates: any[], zip_url: string}>((resolve, reject) => {
+        const poll = async () => {
+          if (Date.now() - startTime > maxWait) {
+            reject(new Error("Generation timed out after 15 minutes."));
+            return;
+          }
+          try {
+            const statusRes = await axios.get(`${API_BASE}/api/jobs/${jobId}`, {
+              headers: authHeader ? { Authorization: authHeader } : {},
+              timeout: 10000,
+            });
+            const job = statusRes.data;
+            
+            // Update progress bar
+            if (job.total > 0) {
+              const pct = Math.min(95, Math.round((job.progress / job.total) * 90) + 5);
+              setProgress(pct);
+            }
+            
+            if (job.status === "done") {
+              resolve({ certificates: job.certificates, zip_url: job.zip_url });
+            } else if (job.status === "error") {
+              reject(new Error(job.error || "Generation failed"));
+            } else {
+              setTimeout(poll, pollInterval);
+            }
+          } catch (e) {
+            reject(e);
+          }
+        };
+        setTimeout(poll, pollInterval);
+      });
+
       setProgress(100);
-      setGeneratedCerts(data.certificates ?? []);
-      setZipUrl(data.zip_url ?? "");
+      setGeneratedCerts(result.certificates ?? []);
+      setZipUrl(result.zip_url ?? "");
       addSessionActivity(
         "certificates_generated",
-        `${(data.certificates ?? []).length} certificate(s) generated`,
+        `${(result.certificates ?? []).length} certificate(s) generated`,
         {
-          count: (data.certificates ?? []).length,
+          count: (result.certificates ?? []).length,
           templateId: selectedTemplate,
         },
       );
     } catch (err: unknown) {
       console.error("Error generating certificate:", err);
+      if (axios.isAxiosError(err) && err.code === "ECONNABORTED") {
+        setGenerateError(
+          "Request timed out. Your certificates are still being processed — " +
+          "check the Registry page in a few minutes to download them."
+        );
+        return;
+      }
+
       const axiosError = err as { response?: { status?: number; data?: { detail?: unknown } } };
       const status = axiosError?.response?.status;
       const detail = axiosError?.response?.data?.detail;

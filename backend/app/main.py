@@ -24,6 +24,7 @@ from .api import (
 from .api.generate_certificates import router as generate_certificates_router
 from .api.generate_routes import router as generate_router
 from .api.import_students import router as import_students_router
+from .api.job_routes import router as job_router
 from .api.students_ready import router as students_ready_router
 from .api.verify import router as public_verify_router
 from .api.workspace_template import router as workspace_template_router
@@ -73,6 +74,7 @@ app.include_router(certificates_routes.router, prefix="/certificates", tags=["ce
 app.include_router(verify_routes.router, prefix="", tags=["verify"])
 app.include_router(generate_router)
 app.include_router(import_students_router)
+app.include_router(job_router)
 app.include_router(generate_certificates_router)
 app.include_router(public_verify_router)
 app.include_router(workspace_template_router)
