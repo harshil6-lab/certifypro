@@ -200,7 +200,7 @@ const Generate = () => {
       // STEP 1: Start the job (returns immediately with a job_id)
       setProgress(5);
       const startRes = selectAllStudents
-        ? await axios.post(`${API_BASE}/api/generate-certificates/start`,
+        ? await axios.post(`${API_BASE}/api/generate-certificates/all`,
             { template_id: selectedTemplate },
             { headers: authHeader ? { Authorization: authHeader } : {}, timeout: 30000 }
           )
