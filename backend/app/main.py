@@ -28,6 +28,7 @@ from .api.job_routes import router as job_router
 from .api.students_ready import router as students_ready_router
 from .api.verify import router as public_verify_router
 from .api.workspace_template import router as workspace_template_router
+from .api.profile_activity import router as profile_activity_router
 from .middleware.auth_middleware import AuthMiddleware
 from .services.template_gallery_seed import seed_gallery_templates
 from .services.templates_service import seed_default_templates
@@ -77,6 +78,7 @@ app.include_router(generate_certificates_router)
 app.include_router(public_verify_router)
 app.include_router(workspace_template_router)
 app.include_router(students_ready_router)
+app.include_router(profile_activity_router)
 app.include_router(access_control_routes.router)
 app.include_router(contact_routes.router)
 app.include_router(subscription_router)

@@ -58,6 +58,7 @@ create table if not exists students (
   external_id text, -- optional id from upstream (csv, SIS)
   metadata jsonb default '{}'::jsonb,
   created_by uuid references app_users(id) on delete set null,
+  organization_id uuid references organizations(id) on delete set null,
   created_at timestamptz default now()
 );
 
@@ -110,6 +111,8 @@ create table if not exists activities (
 -- INDEXES to speed up common queries
 create index if not exists idx_templates_category on templates(category);
 create index if not exists idx_students_email on students(email);
+create index if not exists idx_students_organization_id on students(organization_id);
+create index if not exists idx_students_org_created_by on students(organization_id, created_by);
 create index if not exists idx_certificates_qr_token on certificates(qr_token);
 create index if not exists idx_certificates_student on certificates(student_id);
 create index if not exists idx_generated_certificates_student on generated_certificates(student_id);
@@ -145,7 +148,7 @@ begin
 
   update certificates set qr_token = token where id = cert_id;
 
-  -- If an application-level verify base URL is set, set qr_url
+  -- If an application-level verify base url is set, set qr_url
   if base_url is not null then
     update certificates set qr_url = base_url || '/verify/' || cert_id::text where id = cert_id;
   end if;

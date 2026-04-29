@@ -67,6 +67,9 @@ async def import_students(request: Request, file: UploadFile = File(...)):
             raise HTTPException(status_code=400, detail="no rows parsed from CSV")
         for row in rows:
             row["metadata"] = build_student_metadata(scope, user_email)
+            organization_id = str(scope.get("organization_id") or "").strip()
+            if organization_id:
+                row["organization_id"] = organization_id
             if user_id:
                 row["created_by"] = user_id
         inserted = insert_students_bulk(rows)

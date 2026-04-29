@@ -136,6 +136,9 @@ async def save_students(payload: _SavePayload, request: Request):
     certificate_id. Rows that pass are inserted into the students table;
     rows that fail are collected and returned in ``rejected_rows`` so the
     frontend can highlight them without blocking valid rows.
+    
+    Students are tagged with the current user's organization_id to enforce
+    multi-tenant isolation.
     """
     if not payload.rows:
         raise HTTPException(status_code=400, detail="No rows provided.")
@@ -147,6 +150,9 @@ async def save_students(payload: _SavePayload, request: Request):
     user_id = _extract_user_id(user)
     user_email = _extract_user_email(user)
     scope = resolve_student_scope(user_id, user_email)
+    
+    # Extract organization_id from scope for multi-tenant isolation
+    organization_id = scope.get("organization_id") or ""
 
     # Ensure the app_users record exists before inserting any students so that
     # foreign-key constraints on created_by are satisfied.
@@ -181,12 +187,18 @@ async def save_students(payload: _SavePayload, request: Request):
             rejected.append({"row": i, "student_name": row.student_name, "missing": missing})
             continue
 
+        # Build student record with organization_id for multi-tenant isolation
         record: dict = {
             "full_name": name,
             "email": email,
             "external_id": cert_id,
             "metadata": build_student_metadata(scope, user_email),
         }
+        
+        # Add organization_id directly to record for database-level filtering
+        if organization_id:
+            record["organization_id"] = organization_id
+            
         if user_id:
             record["created_by"] = user_id
 

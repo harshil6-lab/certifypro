@@ -21,6 +21,7 @@ class CertificateVerification(BaseModel):
     full_name: str
     email: str
     external_id: str
+    organization_name: str
     created_at: str | None
     status: str
 
@@ -39,7 +40,7 @@ def get_verify_certificate(certificate_id: str) -> CertificateVerification:
     try:
         resp = (
             supabase.table("students")
-            .select("full_name, email, external_id, created_at")
+            .select("full_name, email, external_id, organization_id, metadata, created_at")
             .eq("external_id", certificate_id)
             .execute()
         )
@@ -59,11 +60,25 @@ def get_verify_certificate(certificate_id: str) -> CertificateVerification:
 
     row = rows[0]
 
+    metadata = row.get("metadata", {}) if row.get("metadata") else {}
+    org_id = row.get("organization_id")
+    org_name = ""
+    if isinstance(metadata, dict):
+        org_name = metadata.get("organization", "")
+    if not org_name and org_id:
+        try:
+            org_resp = supabase.table("organizations").select("name").eq("id", org_id).single().execute()
+            org_row = org_resp.data if hasattr(org_resp, "data") else {}
+            org_name = org_row.get("name", "") if org_row else ""
+        except:
+            org_name = ""
+    
     return CertificateVerification(
         valid=True,
         full_name=row.get("full_name", ""),
         email=row.get("email", ""),
         external_id=row.get("external_id", certificate_id),
+        organization_name=org_name,
         created_at=row.get("created_at"),
         status="valid",
     )
