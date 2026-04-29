@@ -2,7 +2,7 @@
 -- Run this in the Supabase SQL editor to create application tables and helpful views
 -- NOTES:
 -- 1. Supabase handles authentication in the 'auth' schema (auth.users). We
---    keep an application-level `users` table for roles and app metadata and
+--    keep an application-level `app_users` table for roles and app metadata and
 --    store `auth_uid` to link to auth.users.
 -- 2. Do NOT insert or expose the service_role key to the frontend.
 
@@ -164,8 +164,8 @@ $$;
 -- 1. Enable Row Level Security (RLS) on tables and create policies that allow
 --    only authenticated users to insert/select, and owners to modify their
 --    own data. Example policies are intentionally omitted here because your
---    team needs to review role mappings (app_users.auth_uid) and decide the
---    exact rules. Consider granting admins broader access via role checks.
+--    team needs to review role mappings (organization_id → app_users.metadata).
+--    Consider granting admins broader access via role checks.
 
 -- Helpful function: verify_certificate_by_token
 create or replace function verify_certificate_by_token(token_text text)
@@ -181,10 +181,11 @@ $$;
 create or replace view public_certificate_info as
 select id, template_id, student_id, issuer_id, data, status, issued_at from certificates;
 
--- SUBSCRIPTIONS: user subscription and credit tracking
+-- SUBSCRIPTIONS: organization subscription and credit tracking (org-keyed)
 create table if not exists subscriptions (
   id uuid primary key default gen_random_uuid(),
-  user_id uuid references app_users(id) on delete cascade,
+  organization_id uuid references organizations(id) on delete cascade unique,
+  user_id uuid references app_users(id) on delete set null, -- legacy reference
   plan text not null default 'free', -- 'free' | 'pro'
   plan_selected boolean default false,
   credits_used integer default 0,
@@ -195,10 +196,11 @@ create table if not exists subscriptions (
   updated_at timestamptz default now()
 );
 
--- PAYMENT_ORDERS: audit trail for Razorpay orders
+-- PAYMENT_ORDERS: audit trail for Razorpay orders (org-keyed)
 create table if not exists payment_orders (
   id uuid primary key default gen_random_uuid(),
-  user_id uuid references app_users(id) on delete cascade,
+  organization_id uuid references organizations(id),
+  user_id uuid references app_users(id) on delete set null, -- legacy reference
   razorpay_order_id text not null,
   amount integer not null, -- in paise
   currency text not null default 'INR',
@@ -209,35 +211,38 @@ create table if not exists payment_orders (
 );
 
 -- INDEXES for subscriptions and payment_orders
+create index if not exists idx_subscriptions_org_id on subscriptions(organization_id);
 create index if not exists idx_subscriptions_user on subscriptions(user_id);
+create index if not exists idx_payment_orders_org_id on payment_orders(organization_id);
 create index if not exists idx_payment_orders_user on payment_orders(user_id);
 create index if not exists idx_payment_orders_razorpay_order on payment_orders(razorpay_order_id);
 
--- TRIGGER: auto-create subscription on new user
-create or replace function create_subscription_on_user()
+-- TRIGGER: auto-create subscription on NEW organization
+create or replace function create_subscription_on_org()
 returns trigger language plpgsql as $$
 begin
-  insert into subscriptions (user_id, plan, plan_selected, credits_used, credits_limit)
-    values (new.id, 'free', false, 0, 12);
+  insert into subscriptions (organization_id, plan, plan_selected, credits_used, credits_limit)
+    values (new.id, 'free', false, 0, 12)
+    on conflict (organization_id) do nothing;
   return new;
 end;
 $$;
 
 drop trigger if exists tr_create_subscription_on_user on app_users;
-create trigger tr_create_subscription_on_user
-  after insert on app_users
-  for each row execute function create_subscription_on_user();
+create trigger tr_create_subscription_on_org
+  after insert on organizations
+  for each row execute function create_subscription_on_org();
 
--- FUNCTION: backfill subscriptions for existing users
+-- FUNCTION: backfill subscriptions for existing organizations
 create or replace function backfill_subscriptions()
 returns void language plpgsql as $$
 declare
-  user_rec record;
+  org_rec record;
 begin
-  for user_rec in select id from app_users loop
-    insert into subscriptions (user_id, plan, plan_selected, credits_used, credits_limit)
-      values (user_rec.id, 'free', false, 0, 12)
-      on conflict (user_id) do nothing;
+  for org_rec in select id from organizations loop
+    insert into subscriptions (organization_id, plan, plan_selected, credits_used, credits_limit)
+      values (org_rec.id, 'free', false, 0, 12)
+      on conflict (organization_id) do nothing;
   end loop;
 end;
 $$;
