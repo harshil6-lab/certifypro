@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useParams, Link } from "react-router-dom";
-import { CheckCircle2, XCircle, ArrowLeft, ShieldCheck, Calendar, User, Mail, Hash, Loader2 } from "lucide-react";
+import { CheckCircle2, XCircle, ArrowLeft, ShieldCheck, Calendar, User, Mail, Hash, Loader2, Building2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import certifyProIcon from "@/assets/certify_pro_icon.png";
@@ -124,7 +124,7 @@ const VerifyResult = () => {
                     </div>
                   </div>
                   <div className="flex items-start gap-2 col-span-2">
-                    <Building className="w-4 h-4 text-muted-foreground mt-0.5" />
+                    <Building2 className="w-4 h-4 text-muted-foreground mt-0.5" />
                     <div>
                       <p className="text-xs text-muted-foreground">Organization</p>
                       <p className="text-sm font-medium">{cert.organization_name}</p>
