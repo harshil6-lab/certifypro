@@ -535,100 +535,18 @@ const Templates = () => {
             <CardHeader className="pb-3">
               <CardTitle className="text-base font-heading flex items-center gap-2">
                 <Sparkles className="w-4 h-4 text-accent" />
-                CertifyPro Official Template Gallery
+                Template Gallery
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
-              <div className="space-y-4">
-                {/* Templated.io Studio Integration */}
-                <div className="space-y-3">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <LayoutGrid className="w-5 h-5 text-accent" />
-                      <div>
-                        <h3 className="text-sm font-semibold text-foreground">Design with Templated.io Studio</h3>
-                        <p className="text-xs text-muted-foreground">Customize your certificate template using Templated.io dynamic rendering and preview it instantly inside CertifyPro.</p>
-                      </div>
-                    </div>
-                    <Badge variant="outline" className="text-xs shrink-0">API Preview</Badge>
-                  </div>
-
-                  <button
-                    type="button"
-                    onClick={openTemplatedEditor}
-                    className="w-full flex items-center justify-center gap-2 rounded-lg border-2 border-dashed border-blue-200 bg-blue-50/50 dark:border-blue-800 dark:bg-blue-950/30 px-4 py-5 text-sm font-medium text-blue-700 dark:text-blue-400 hover:border-blue-400 hover:bg-blue-100/50 dark:hover:bg-blue-900/30 transition-colors"
-                  >
-                    <ExternalLink className="w-4 h-4" />
-                    Open Templated.io Template Editor
-                  </button>
-
-                  <div className="mt-4">
-                    {templatedPreviewLoading ? (
-                      <div className="rounded-lg border border-border bg-white p-8 flex items-center justify-center text-muted-foreground">Generating Templated.io preview...</div>
-                    ) : templatedPreviewUrl ? (
-                      <div className="rounded-lg border border-border overflow-hidden">
-                        <img src={templatedPreviewUrl} alt="Templated.io preview" className="w-full h-auto object-contain" />
-                      </div>
-                    ) : templatedPreviewError ? (
-                      <div className="rounded-lg border border-red-200 bg-red-50 p-8 text-red-700 text-center">Templated.io preview unavailable. Try again or upload a custom template below.</div>
-                    ) : null}
-                  </div>
+              <div className="flex flex-col items-center justify-center min-h-[400px] space-y-4 p-8 text-center rounded-xl border-2 border-dashed border-border/50 bg-muted/20">
+                <div className="w-16 h-16 rounded-full bg-accent/10 flex items-center justify-center mx-auto mb-4">
+                  <Sparkles className="w-8 h-8 text-accent" />
                 </div>
-                <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
-                  {BUILTIN_TEMPLATES.map((template) => (
-                    <div key={template.id} className={`rounded-xl ${selectedTemplateId === template.id ? "ring-2 ring-accent" : ""}`}>
-                      <Card className="card-shadow h-full">
-                        <CardContent className="p-4 space-y-3">
-                          <div
-                            className="relative w-full overflow-hidden rounded-lg border border-border bg-muted/20"
-                            style={{ aspectRatio: "1.414 / 1" }}
-                          >
-                            <div
-                              className="absolute origin-top-left"
-                              style={{
-                                width: "300%",
-                                transform: "scale(0.333)",
-                                transformOrigin: "top left",
-                                pointerEvents: "none",
-                              }}
-                            >
-                              <CertificateTemplate
-                                styleType={template.styleType}
-                                draft={BUILTIN_PREVIEW_DRAFT}
-                                organizationName="CertifyPro"
-                                previewScale="md"
-                                highlightEditableZones={false}
-                              />
-                            </div>
-                          </div>
-
-                          <div className="space-y-1">
-                            <p className="text-sm font-semibold text-foreground">{template.title}</p>
-                            <Badge variant="outline">{template.category}</Badge>
-                          </div>
-
-                          <div className="flex items-center gap-2">
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              className="gap-2"
-                              onClick={() => openOfficialTemplate(template, "preview")}
-                            >
-                              <Eye className="h-4 w-4" /> Preview
-                            </Button>
-                            <Button
-                              size="sm"
-                              className="gold-gradient text-accent-foreground"
-                              onClick={() => handleSelectBuiltinTemplate(template)}
-                            >
-                              Use This
-                            </Button>
-                          </div>
-                        </CardContent>
-                      </Card>
-                    </div>
-                  ))}
-                </div>
+                <h3 className="text-xl font-heading font-bold text-foreground">COMING SOON</h3>
+                <p className="text-muted-foreground max-w-md">
+                  Template gallery will be available soon.
+                </p>
               </div>
             </CardContent>
           </Card>
