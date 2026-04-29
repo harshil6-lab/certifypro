@@ -109,3 +109,5 @@ frontend/.env.production
 
 claude/
 .claude
+TODO*.md
+*.md~
