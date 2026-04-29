@@ -109,7 +109,8 @@ const FALLBACK_OVERVIEW: AccessOverview = {
 };
 
 const PATH_PERMISSION_MAP: Array<{ match: RegExp; permission: AccessPermission | null }> = [
-  { match: /^\/dashboard(?:\/profile)?(?:\?.*)?$/i, permission: "dashboard" },
+  { match: /^\/dashboard\/profile(?:\?.*)?$/i, permission: null },
+  { match: /^\/dashboard(?:\?.*)?$/i, permission: "dashboard" },
   { match: /^\/dashboard\/templates(?:\?.*)?$/i, permission: "templates" },
   { match: /^\/templates(?:\?.*)?$/i, permission: "templates" },
   { match: /^\/import(?:\?.*)?$/i, permission: "import_students" },

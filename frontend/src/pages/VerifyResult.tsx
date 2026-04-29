@@ -11,6 +11,7 @@ type VerificationDetails = {
   full_name: string;
   email: string;
   external_id: string;
+  organization_name: string;
   created_at?: string | null;
   status: string;
 };
@@ -35,7 +36,10 @@ const VerifyResult = () => {
       try {
         const data = await verifyCertificate(certId);
         if (mounted && data?.valid) {
-          setCert(data);
+          setCert({
+            ...data,
+            organization_name: data.organization_name || "N/A",
+          } as VerificationDetails);
         }
       } catch {
         if (mounted) {
@@ -117,6 +121,13 @@ const VerifyResult = () => {
                     <div>
                       <p className="text-xs text-muted-foreground">Recipient</p>
                       <p className="text-sm font-medium">{cert.full_name}</p>
+                    </div>
+                  </div>
+                  <div className="flex items-start gap-2 col-span-2">
+                    <Building className="w-4 h-4 text-muted-foreground mt-0.5" />
+                    <div>
+                      <p className="text-xs text-muted-foreground">Organization</p>
+                      <p className="text-sm font-medium">{cert.organization_name}</p>
                     </div>
                   </div>
                   <div className="flex items-start gap-2">
