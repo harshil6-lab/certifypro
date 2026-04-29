@@ -365,17 +365,7 @@ const Generate = () => {
                 </p>
               </div>
 
-{workspaceTemplateSource === "none" ? (
-                <div className="flex flex-col items-center justify-center min-h-[400px] space-y-4 p-8 text-center rounded-xl border-2 border-dashed border-border/50 bg-muted/20">
-                  <div className="w-16 h-16 rounded-full bg-accent/10 flex items-center justify-center mx-auto mb-4">
-                    <FileText className="w-8 h-8 text-accent" />
-                  </div>
-                  <h3 className="text-xl font-heading font-bold text-foreground">COMING SOON</h3>
-                  <p className="text-muted-foreground max-w-md">
-                    Template gallery will be available soon. Use your saved workspace template above to generate certificates.
-                  </p>
-                </div>
-              ) : selectedTemplate ? (
+{selectedTemplate ? (
                 <div className="space-y-4">
                   <div className="rounded-xl border border-accent/30 bg-accent/5 p-4 flex items-center gap-3">
                     <CheckCircle2 className="w-5 h-5 text-accent shrink-0" />
