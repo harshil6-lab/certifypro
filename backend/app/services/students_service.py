@@ -253,11 +253,20 @@ def list_students(auth_user_id: str | None = None, auth_email: str | None = None
     if organization_id:
         try:
             if owner_ids:
-                filter_str = f"created_by.in.({','.join([f\"'{oid}'\" for oid in owner_ids])})"
-                query = supabase.table("students").select("*").eq("organization_id", organization_id).or_(filter_str)
+                resp = (
+                    supabase.table("students")
+                    .select("*")
+                    .eq("organization_id", organization_id)
+                    .in_("created_by", owner_ids)
+                    .execute()
+                )
             else:
-                query = supabase.table("students").select("*").eq("organization_id", organization_id)
-            resp = query.execute()
+                resp = (
+                    supabase.table("students")
+                    .select("*")
+                    .eq("organization_id", organization_id)
+                    .execute()
+                )
             filtered_students.extend(_rows(resp))
         except Exception:
             pass  # fallback below

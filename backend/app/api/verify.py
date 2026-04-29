@@ -60,20 +60,25 @@ def get_verify_certificate(certificate_id: str) -> CertificateVerification:
 
     row = rows[0]
 
-        metadata = row.get("metadata", {}) if row.get("metadata") else {}
-        org_id = row.get("organization_id")
-        org_name = metadata.get("organization", "") if isinstance(metadata, dict) else ""
-        if not org_name and org_id:
-            org_resp = supabase.table("organizations").select("name").eq("id", org_id).execute()
-            org_rows = org_resp.data if hasattr(org_resp, "data") else []
-            org_name = org_rows[0].get("name", "") if org_rows else ""
+    metadata = row.get("metadata", {}) if row.get("metadata") else {}
+    org_id = row.get("organization_id")
+    org_name = ""
+    if isinstance(metadata, dict):
+        org_name = metadata.get("organization", "")
+    if not org_name and org_id:
+        try:
+            org_resp = supabase.table("organizations").select("name").eq("id", org_id).single().execute()
+            org_row = org_resp.data if hasattr(org_resp, "data") else {}
+            org_name = org_row.get("name", "") if org_row else ""
+        except:
+            org_name = ""
     
-        return CertificateVerification(
-            valid=True,
-            full_name=row.get("full_name", ""),
-            email=row.get("email", ""),
-            external_id=row.get("external_id", certificate_id),
-            organization_name=org_name,
-            created_at=row.get("created_at"),
-            status="valid",
-        )
+    return CertificateVerification(
+        valid=True,
+        full_name=row.get("full_name", ""),
+        email=row.get("email", ""),
+        external_id=row.get("external_id", certificate_id),
+        organization_name=org_name,
+        created_at=row.get("created_at"),
+        status="valid",
+    )
