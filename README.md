@@ -8,15 +8,75 @@ The repository contains the application code, schema files, and operational docu
 
 ## ScreenShots 
 
-![alt text](image.png)   ![alt text](image-1.png)
+<table>
+<tr>
+<td align="center">
+Landing page<br/>
+<img src="image.png" width="400"/>
+</td>
 
-![alt text](image-9.png) ![alt text](image-2.png)
+<td align="center">
+Login/Request_Access Page<br/>
+<img src="image-1.png" width="400"/>
+</td>
+</tr>
+</table>
 
-![alt text](image-3.png) ![alt text](image-4.png)
+<table>
+<tr>
+<td align="center">
+Dashboard<br/>
+<img src="image-2.png" width="400"/>
+</td>
 
-![alt text](image-5.png) ![alt text](image-6.png)
+<td align="center">
+Main Generation Flow<br/>
+<img src="image-3.png" width="400"/>
+</td>
+</tr>
+</table>
 
-![alt text](image-7.png) ![alt text](image-8.png)
+<table>
+<tr>
+<td align="center">
+Registry<br/>
+<img src="image-4.png" width="400"/>
+</td>
+
+<td align="center">
+Access Control<br/>
+<img src="image-5.png" width="400"/>
+</td>
+</tr>
+</table>
+
+<table>
+<tr>
+<td align="center">
+Cont. Access Control<br/>
+<img src="image-6.png" width="400"/>
+</td>
+
+<td align="center">
+Profile Page (Bulding..)<br/>
+<img src="image-7.png" width="400"/>
+</td>
+</tr>
+</table>
+
+<table>
+<tr>
+<td align="center">
+Profile_page (building)<br/>
+<img src="image-8.png" width="400"/>
+</td>
+
+<td align="center">
+Import Data<br/>
+<img src="image-9.png" width="400"/>
+</td>
+</tr>
+</table>
 
 ## Overview
 
