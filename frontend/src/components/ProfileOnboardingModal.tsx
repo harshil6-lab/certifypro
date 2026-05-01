@@ -1,12 +1,10 @@
 import { useState, useEffect } from "react";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { CheckCircle2, ArrowRight, X } from "lucide-react";
 
 interface OnboardingData {
   role: string;
-  organization: string;
   discoveredVia: string;
   intendedUse: string;
 }
@@ -55,7 +53,6 @@ export function ProfileOnboardingModal({
   const [isLoading, setIsLoading] = useState(false);
   const [formData, setFormData] = useState<OnboardingData>({
     role: "",
-    organization: "",
     discoveredVia: "",
     intendedUse: "",
   });
@@ -69,11 +66,10 @@ export function ProfileOnboardingModal({
 
   const handleNext = () => {
     if (step === 1 && !formData.role) return;
-    if (step === 2 && !formData.organization.trim()) return;
-    if (step === 3 && !formData.discoveredVia) return;
-    if (step === 4 && !formData.intendedUse) return;
+    if (step === 2 && !formData.discoveredVia) return;
+    if (step === 3 && !formData.intendedUse) return;
 
-    if (step < 4) {
+    if (step < 3) {
       setStep(step + 1);
     } else {
       submitForm();
@@ -99,17 +95,15 @@ export function ProfileOnboardingModal({
       case 1:
         return formData.role !== "";
       case 2:
-        return formData.organization.trim() !== "";
-      case 3:
         return formData.discoveredVia !== "";
-      case 4:
+      case 3:
         return formData.intendedUse !== "";
       default:
         return true;
     }
   };
 
-  const progressPercent = (step / 4) * 100;
+  const progressPercent = (step / 3) * 100;
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => {
@@ -138,15 +132,13 @@ export function ProfileOnboardingModal({
         <DialogHeader className="pt-4">
           <DialogTitle className="text-2xl font-heading font-bold">
             {step === 1 && "What's your role?"}
-            {step === 2 && "Tell us about your organization"}
-            {step === 3 && "How did you discover CertifyPro?"}
-            {step === 4 && "What will you use CertifyPro for?"}
+            {step === 2 && "How did you discover CertifyPro?"}
+            {step === 3 && "What will you use CertifyPro for?"}
           </DialogTitle>
           <DialogDescription className="text-base text-muted-foreground/80 mt-2">
             {step === 1 && "This helps us tailor your experience and provide better support."}
-            {step === 2 && "We use this to understand your institutional context."}
-            {step === 3 && "Your feedback helps us improve our marketing and outreach."}
-            {step === 4 && "This information helps us prioritize features for your needs."}
+            {step === 2 && "Your feedback helps us improve our marketing and outreach."}
+            {step === 3 && "This information helps us prioritize features for your needs."}
           </DialogDescription>
         </DialogHeader>
 
@@ -176,33 +168,8 @@ export function ProfileOnboardingModal({
             </div>
           )}
 
-          {/* Step 2: Organization */}
+          {/* Step 2: Discovery */}
           {step === 2 && (
-            <div className="space-y-4">
-              <div>
-                <label className="block text-sm font-semibold text-foreground mb-3">
-                  Institution or Company Name
-                </label>
-                <Input
-                  value={formData.organization}
-                  onChange={(e) =>
-                    setFormData({ ...formData, organization: e.target.value })
-                  }
-                  placeholder="e.g., Harvard University, Microsoft Corp"
-                  className="h-12 border-2 border-border focus:border-accent/50"
-                  autoFocus
-                />
-              </div>
-              <div className="p-4 rounded-lg bg-accent/5 border border-accent/20">
-                <p className="text-xs text-muted-foreground/70">
-                  <strong>Tip:</strong> We use this to understand the scale and type of institutions using CertifyPro.
-                </p>
-              </div>
-            </div>
-          )}
-
-          {/* Step 3: Discovery */}
-          {step === 3 && (
             <div className="space-y-3">
               {discoveryOptions.map((option) => (
                 <button
@@ -225,8 +192,8 @@ export function ProfileOnboardingModal({
             </div>
           )}
 
-          {/* Step 4: Intended Use */}
-          {step === 4 && (
+          {/* Step 3: Intended Use */}
+          {step === 3 && (
             <div className="space-y-3">
               {useOptions.map((option) => (
                 <button
@@ -253,7 +220,7 @@ export function ProfileOnboardingModal({
         {/* Footer */}
         <div className="flex items-center justify-between gap-3 pt-4 border-t border-border">
           <div className="text-xs text-muted-foreground/60 font-medium">
-            Step {step} of 4
+            Step {step} of 3
           </div>
 
           <div className="flex gap-3">
@@ -272,7 +239,7 @@ export function ProfileOnboardingModal({
               disabled={!isStepComplete() || isLoading}
               className="gap-2 gold-gradient text-accent-foreground hover:shadow-lg hover:shadow-amber-500/30 disabled:opacity-50"
             >
-              {step === 4 ? (
+              {step === 3 ? (
                 <>
                   {isLoading ? "Completing..." : "Complete Onboarding"}
                   <CheckCircle2 className="w-4 h-4" />

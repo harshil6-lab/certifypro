@@ -12,8 +12,9 @@ export type AccessRequestInput = {
 export type AccessRequestResult = {
   success: boolean;
   requestId?: string;
-  status?: "pending" | "approved" | "hold" | "rejected";
+  status?: "pending" | "approved" | "rejected";
   score?: number;
+  rejection_reasons?: string[];
   error?: string;
 };
 
@@ -46,48 +47,6 @@ const createSafeRandomId = (): string => {
 const normalizeOrganizationName = (value: string): string =>
   value.trim().replace(/\s+/g, " ");
 
-const organizationKey = (value: string): string =>
-  normalizeOrganizationName(value).toLowerCase().replace(/[^a-z0-9]/g, "");
-
-const findOrganizationConflict = async (
-  submittedOrganization: string,
-): Promise<{ id: string; name: string } | null> => {
-  const client = publicSupabase ?? supabase;
-  if (!client) {
-    return null;
-  }
-
-  const normalizedOrganization = normalizeOrganizationName(submittedOrganization);
-  const key = organizationKey(normalizedOrganization);
-  if (!normalizedOrganization || !key) {
-    return null;
-  }
-
-  try {
-    const { data, error } = await client
-      .from("organizations")
-      .select("id, name, organization_key")
-      .eq("organization_key", key)
-      .maybeSingle();
-
-    if (error || !data?.id || !data?.name) {
-      return null;
-    }
-
-    const canonicalName = normalizeOrganizationName(data.name);
-    if (canonicalName !== normalizedOrganization) {
-      return {
-        id: data.id,
-        name: data.name,
-      };
-    }
-  } catch {
-    return null;
-  }
-
-  return null;
-};
-
 const uploadOrganizationDocument = async (file: File): Promise<string> => {
   if (!publicSupabase) {
     throw new Error("Supabase client is unavailable.");
@@ -101,7 +60,7 @@ const uploadOrganizationDocument = async (file: File): Promise<string> => {
   const randomId = createSafeRandomId();
   const path = `requests/${Date.now()}-${randomId}-${sanitizeFileName(file.name)}`;
 
-  const candidateBuckets = ["org-documents", "Org_ids"];
+  const candidateBuckets = ["org-documents", "org-docs"];
   let uploadError: string | null = null;
 
   for (const bucket of candidateBuckets) {
@@ -157,13 +116,6 @@ export async function submitAccessRequest(
 
   try {
     const normalizedOrganization = normalizeOrganizationName(input.organization);
-    const conflict = await findOrganizationConflict(normalizedOrganization);
-    if (conflict) {
-      return {
-        success: false,
-        error: `Organization already exists as "${conflict.name}" (Org ID: ${conflict.id}). Use the registered organization name exactly.`,
-      };
-    }
 
     const orgDocumentPath = await uploadOrganizationDocument(input.organizationDocument);
 
@@ -185,7 +137,7 @@ export async function submitAccessRequest(
       };
     }
 
-    let processResult: { status?: "pending" | "approved" | "hold" | "rejected"; score?: number } | null = null;
+    let processResult: { status?: "pending" | "approved" | "rejected"; score?: number; rejection_reasons?: string[] } | null = null;
 
     try {
       const functionsClient = publicSupabase ?? supabase;
@@ -199,7 +151,7 @@ export async function submitAccessRequest(
       if (invokeError) {
         console.error("Edge function invoke failed:", invokeError);
       } else {
-        processResult = data as { status?: "pending" | "approved" | "hold" | "rejected"; score?: number };
+        processResult = data as { status?: "pending" | "approved" | "rejected"; score?: number; rejection_reasons?: string[] };
       }
     } catch (error) {
       console.error("Edge function invoke failed:", error);
@@ -210,6 +162,7 @@ export async function submitAccessRequest(
       requestId: requestRow.id,
       status: processResult?.status ?? requestRow.status,
       score: processResult?.score ?? requestRow.score,
+      rejection_reasons: processResult?.rejection_reasons,
     };
   } catch (error) {
     return {

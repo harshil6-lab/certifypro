@@ -62,6 +62,19 @@ def _normalize_org_name(value: str | None) -> str:
     return " ".join(value.strip().split())
 
 
+def _get_canonical_organization(metadata: dict[str, Any]) -> str:
+    """Single source of truth for org name — reads in priority order."""
+    ac = metadata.get("access_control") or {}
+    profile = metadata.get("profile") or {}
+    return (
+        ac.get("organization_name")
+        or profile.get("organization")
+        or profile.get("institution_name")
+        or metadata.get("organization")
+        or ""
+    ).strip()
+
+
 def _organization_key(value: str | None) -> str:
     normalized = _normalize_org_name(value).lower()
     if not normalized:
@@ -81,12 +94,8 @@ def _extract_organization_id(metadata: dict[str, Any]) -> str:
 
 
 def _extract_profile_org(metadata: dict[str, Any]) -> str:
-    profile = metadata.get("profile") if isinstance(metadata.get("profile"), dict) else {}
-    return _normalize_org_name(
-        profile.get("organization")
-        or profile.get("institution_name")
-        or metadata.get("organization")
-    )
+    """Legacy helper — now uses _get_canonical_organization."""
+    return _get_canonical_organization(metadata)
 
 
 def _resolve_identity_org(identity: AuthIdentity, metadata: dict[str, Any]) -> str:

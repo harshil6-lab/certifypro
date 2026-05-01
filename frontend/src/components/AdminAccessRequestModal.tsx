@@ -332,9 +332,10 @@ const AdminAccessRequestModal = ({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
   const [submitError, setSubmitError] = useState("");
-  const [submissionSummary, setSubmissionSummary] = useState<{
-    status: "pending" | "approved" | "hold" | "rejected";
+const [submissionSummary, setSubmissionSummary] = useState<{
+    status: "pending" | "approved" | "rejected";
     score: number;
+    rejection_reasons?: string[];
   } | null>(null);
 
   const currentStepTitle = useMemo(
@@ -429,9 +430,10 @@ const AdminAccessRequestModal = ({
       return;
     }
 
-    setSubmissionSummary({
+setSubmissionSummary({
       status: result.status ?? "pending",
       score: result.score ?? 0,
+      rejection_reasons: result.rejection_reasons,
     });
     setSubmitted(true);
     setIsSubmitting(false);

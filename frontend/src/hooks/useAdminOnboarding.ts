@@ -2,7 +2,6 @@ import { useState, useEffect } from "react";
 
 export interface OnboardingProfile {
   role: string;
-  organization: string;
   discoveredVia: string;
   intendedUse: string;
   completedAt: string;
@@ -21,7 +20,6 @@ const isCompletedProfile = (data: unknown): data is OnboardingProfile => {
   const value = data as Record<string, unknown>;
   return (
     typeof value.role === "string" &&
-    typeof value.organization === "string" &&
     typeof value.discoveredVia === "string" &&
     typeof value.intendedUse === "string" &&
     typeof value.completedAt === "string"
