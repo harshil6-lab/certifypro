@@ -41,10 +41,11 @@ const admin = createClient(supabaseUrl, serviceRoleKey, {
 /* UTILITIES */
 /* ------------------------------------------------ */
 
-const corporateFreeDomains = [
-  "gmail.com","yahoo.com","outlook.com","hotmail.com",
-  "live.com","icloud.com","protonmail.com"
-];
+const PLACEHOLDER_LOCAL_PARTS = new Set([
+  "abc","xyz","test","user","admin","info","email","mail",
+  "hello","demo","sample","noreply","no-reply","null","undefined",
+  "aaa","bbb","ccc","123","1234","asdf","qwerty","temp","fake",
+]);
 
 const getDomain = (email:string) =>
   email.split("@")[1]?.toLowerCase() ?? "";
@@ -111,9 +112,14 @@ function scoreDomainAlignment(domain: string, organizationName: string) {
 const hasValidEmailFormat = (value: string | null | undefined) =>
   Boolean(value && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value.trim()));
 
-const hasInstitutionalEmail = (value: string | null | undefined) => {
-  const domain = getDomain(value ?? "");
-  return Boolean(domain && !corporateFreeDomains.includes(domain));
+const hasNonPlaceholderEmail = (value: string | null | undefined): boolean => {
+  const email = value?.trim() ?? "";
+  if (!hasValidEmailFormat(email)) return false;
+  const localPart = email.split("@")[0].toLowerCase().replace(/[^a-z0-9]/g, "");
+  if (localPart.length < 3) return false;
+  if (PLACEHOLDER_LOCAL_PARTS.has(localPart)) return false;
+  if (/^(.)\1{2,}$/.test(localPart)) return false; // aaa, bbb, 111
+  return true;
 };
 
 async function resolveOrCreateOrganization(organizationName: string) {
@@ -179,18 +185,8 @@ async function resolveOrCreateOrganization(organizationName: string) {
   };
 }
 
-function statusFromScore(
-  score: number,
-) {
-  if (score >= 50) {
-    return "approved";
-  }
-
-  if (score <= 35) {
-    return "rejected";
-  }
-
-  return "hold";
+function statusFromScore(score: number): "approved" | "rejected" {
+  return score >= 40 ? "approved" : "rejected";
 }
 
 /* ------------------------------------------------ */
@@ -220,6 +216,49 @@ async function processRequest(requestId: string) {
   console.log("==================================================");
   console.log("🚀 [START] process-access-request for requestId:", requestId);
   console.log("==================================================");
+
+  /* DUPLICATE CHECK */
+  console.log("🔍 [DUPLICATE CHECK] Checking for existing requests...");
+
+  try {
+    const { data: rowForDuplicateCheck, error: fetchDuplicateError } = await admin
+      .from("access_requests")
+      .select("email")
+      .eq("id", requestId)
+      .single();
+
+    if (!fetchDuplicateError && rowForDuplicateCheck) {
+      const { data: existingRequest } = await admin
+        .from("access_requests")
+        .select("id, status")
+        .eq("email", rowForDuplicateCheck.email)
+        .neq("id", requestId)
+        .in("status", ["approved", "pending"])
+        .maybeSingle();
+
+      if (existingRequest) {
+        console.log("⚠️ Duplicate email detected:", rowForDuplicateCheck.email);
+
+        await admin.from("access_requests").update({
+          score: 0,
+          status: "rejected",
+          validation_notes: "Duplicate: An account with this email already exists or is pending approval.",
+        }).eq("id", requestId);
+
+        return {
+          success: true,
+          score: 0,
+          status: "rejected",
+          approvedUserId: null,
+          emailSent: false,
+          validationNotes: "Duplicate email detected",
+          rejection_reasons: ["An account with this email address already exists or is pending review."],
+        };
+      }
+    }
+  } catch (dupCheckErr) {
+    console.log("  ⚠️ Duplicate check failed, continuing:", dupCheckErr instanceof Error ? dupCheckErr.message : String(dupCheckErr));
+  }
 
   /* STEP 1: FETCH REQUEST */
   console.log("📖 [STEP 1] Fetching access request from database...");
@@ -298,13 +337,13 @@ async function processRequest(requestId: string) {
       console.log("  ⚠ Email format is invalid");
     }
 
-    /* INSTITUTIONAL EMAIL */
-    if (hasInstitutionalEmail(row.email)) {
+/* NON-PLACEHOLDER EMAIL */
+    if (hasNonPlaceholderEmail(row.email)) {
       score += 10;
-      console.log("  ✓ Institutional email detected (+10)");
+      console.log("  ✓ Non-placeholder email (+10)");
     } else {
-      notes.push("Free email domain");
-      console.log("  ⚠ Free email domain detected (no points)");
+      notes.push("Email appears to be a placeholder or test address");
+      console.log("  ⚠ Placeholder or test email detected");
     }
 
     /* ORGANIZATION NAME */
@@ -316,9 +355,12 @@ async function processRequest(requestId: string) {
       console.log("  ⚠ Organization name is too weak for verification");
     }
 
-    if (domainAlignment.points === 0 && hasInstitutionalEmail(row.email)) {
-      notes.push("Institutional email domain does not closely match organization");
-      console.log("  ⚠ Institutional email domain does not closely match organization");
+if (domainAlignment.strongMatch) {
+      score += 20;
+      console.log("  ✓ Strong domain-organization alignment (+20)");
+    } else if (domainAlignment.points > 0) {
+      score += 10;
+      console.log("  ✓ Partial domain-organization alignment (+10)");
     }
 
     /* LINKEDIN */
@@ -331,15 +373,6 @@ async function processRequest(requestId: string) {
     } else {
       notes.push("LinkedIn profile is missing");
       console.log("  ⚠ No LinkedIn profile provided");
-    }
-
-    /* ACCESS JUSTIFICATION */
-    if (hasMeaningfulReason(row.reason_for_access)) {
-      score += 10;
-      console.log("  ✓ Access justification provided (+10)");
-    } else {
-      notes.push("Access justification is too short");
-      console.log("  ⚠ Access justification is too short");
     }
 
     /* DOCUMENT */
@@ -389,9 +422,9 @@ async function processRequest(requestId: string) {
     try {
       console.log("  📧 Creating user via Supabase Auth...");
 
-      const { data: inviteData, error: inviteError } = await admin.auth.admin
+const { data: inviteData, error: inviteError } = await admin.auth.admin
         .inviteUserByEmail(row.email, {
-          redirectTo: resetPasswordRedirectUrl,
+          redirectTo: "https://certifypro-tau.vercel.app/reset-password",
           data: {
             first_login: true,
             access_request_id: row.id,
@@ -503,15 +536,12 @@ async function processRequest(requestId: string) {
     let emailSubject = "";
     let emailBody = "";
 
-    if (status === "approved") {
+if (status === "approved") {
       emailSubject = `Welcome to CertifyPro - Access Approved`;
       emailBody = buildWelcomeEmailBody(
         appLoginUrl,
         organizationName
       );
-    } else if (status === "hold") {
-      emailSubject = `CertifyPro Access Request - Under Review`;
-      emailBody = buildUnderReviewEmailBody(organizationName);
     } else if (status === "rejected") {
       emailSubject = `CertifyPro Access Request - Decision`;
       emailBody = buildRejectionEmailBody();
@@ -588,13 +618,14 @@ async function processRequest(requestId: string) {
   console.log("✅ [COMPLETE] Access request processed successfully");
   console.log("==================================================");
 
-  return {
+return {
     success: true,
     score,
     status,
     approvedUserId,
     emailSent,
     validationNotes: notes.join(" | "),
+    rejection_reasons: status === "rejected" ? notes : [],
   };
 }
 
@@ -634,7 +665,7 @@ Deno.serve(async (req: Request) => {
 
     console.log("✅ [RESPONSE] Sending success response");
 
-    return new Response(
+return new Response(
       JSON.stringify({
         success: true,
         score: result.score,
@@ -642,6 +673,7 @@ Deno.serve(async (req: Request) => {
         approvedUserId: result.approvedUserId,
         emailSent: result.emailSent,
         validationNotes: result.validationNotes,
+        rejection_reasons: result.rejection_reasons,
       }),
       {
         headers: { ...corsHeaders, "Content-Type": "application/json" },

@@ -8,6 +8,7 @@ import {
   Shield,
   HelpCircle,
   LogOut,
+  UserCircle,
 } from "lucide-react";
 import { signOutUser } from "@/lib/auth";
 import certifyProIcon from "@/assets/certify_pro_icon.png";
@@ -71,8 +72,19 @@ export function AdminSidebar() {
         })}
       </nav>
 
-      {/* Bottom */}
+{/* Bottom */}
       <div className="p-4 border-t border-sidebar-border space-y-1 bg-sidebar/30">
+        <NavLink
+          to="/profile"
+          className={`group flex items-center gap-3.5 px-4 py-3 rounded-lg text-[15px] font-medium transition-all duration-200 ${
+            location.pathname === "/profile"
+              ? "bg-sidebar-accent/15 text-sidebar-primary shadow-sm border border-sidebar-border/60"
+              : "text-sidebar-foreground/80 hover:bg-sidebar-accent/10 hover:text-sidebar-accent-foreground hover:translate-x-1"
+          }`}
+        >
+          <UserCircle className={`w-5 h-5 transition-colors ${location.pathname === "/profile" ? "text-sidebar-primary" : "text-sidebar-muted/80 group-hover:text-sidebar-primary"}`} />
+          My Profile
+        </NavLink>
         <NavLink
           to="/help"
           className="group flex items-center gap-3.5 px-4 py-3 rounded-lg text-[15px] font-medium text-sidebar-foreground/80 hover:bg-sidebar-accent/10 hover:text-sidebar-accent-foreground transition-all duration-200"

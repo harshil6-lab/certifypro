@@ -176,6 +176,16 @@ function summarizeActivity(entry: ActivityItem): { event: string; detail: string
   const action = entry.action || "activity";
   const meta = entry.meta && typeof entry.meta === "object" ? entry.meta : {};
 
+if (action === "signed_in") {
+    const device = typeof meta.device === "string" ? meta.device : "Unknown device";
+    const ip = typeof meta.ip === "string" ? meta.ip : "";
+    return {
+      event: "Signed in",
+      detail: `${device}${ip ? " · " + ip : ""}`,
+      time: formatDateTime(entry.created_at),
+    };
+  }
+
   if (action === "template_created") {
     const templateName = typeof meta.template_name === "string" ? meta.template_name : "Template created";
     return {
@@ -272,9 +282,9 @@ const Profile = () => {
           }
           return response.json() as Promise<DashboardStats>;
         })(),
-        (async () => {
+(async () => {
           const headers = await getAuthHeaders();
-          const response = await fetch(`${API_BASE}/dashboard/activity`, { headers });
+          const response = await fetch(`${API_BASE}/profile/login-activity`, { headers });
           if (!response.ok) {
             throw new Error(`Failed to load activity: ${response.status}`);
           }

@@ -24,9 +24,13 @@
       "source": "/auth/:path*",
       "destination": "https://certifypro-backend-lkkk.onrender.com/auth/:path*"
     },
-    {
+{
       "source": "/subscription/:path*",
       "destination": "https://certifypro-backend-lkkk.onrender.com/subscription/:path*"
+    },
+    {
+      "source": "/profile/:path*",
+      "destination": "https://certifypro-backend-lkkk.onrender.com/profile/:path*"
     },
     {
       "source": "/(.*)",
