@@ -121,6 +121,9 @@ def _extract_user_email(user: Any) -> Optional[str]:
     if user is None:
         return None
     if isinstance(user, dict):
+        nested = user.get("user")  # handle {"user": {"email": ...}}
+        if isinstance(nested, dict) and nested.get("email"):
+            return nested.get("email")
         return user.get("email")
     inner = getattr(user, "user", None)
     if inner is not None:

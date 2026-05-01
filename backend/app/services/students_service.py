@@ -226,64 +226,67 @@ def build_student_metadata(scope: dict[str, Any], imported_by_email: str | None 
 def list_students(auth_user_id: str | None = None, auth_email: str | None = None) -> List[Dict[str, Any]]:
     """
     List students visible to the authenticated user's organization.
-    
-    Filters students by:
-    1. Organization_id from current user's scope (multi-tenant isolation)
-    2. Owner IDs (students created by the user's organization members)
-    3. Organization metadata if org_id is not directly available
-    
+
+    Filters students using three paths with deduplication:
+    1. DB filter by organization_id (multi-tenant isolation)
+    2. DB filter by created_by — ALWAYS runs (covers users without organization_id)
+    3. Full scan + Python filter (legacy metadata-only records)
+
     Returns only students that belong to the current user's organization.
     """
     scope = resolve_student_scope(auth_user_id, auth_email)
     organization_id = str(scope.get("organization_id") or "").strip()
-    owner_ids = scope.get("owner_ids") or []
-    
+    owner_ids = [oid for oid in (scope.get("owner_ids") or []) if oid]
+
     # Super admins see all students
     if scope.get("is_super_admin"):
         try:
-            resp = supabase.table("students").select("*").execute()
-            return _rows(resp)
+            return _rows(supabase.table("students").select("*").execute())
         except Exception:
             return []
-    
-    # For regular users: primary DB filter by organization_id, fallback to full scan + Python filter
-    filtered_students = []
-    
-    # Primary: DB-level filter if organization_id available (multi-tenant isolation)
+
+    seen_ids: set[str] = set()
+    result: list[dict[str, Any]] = []
+
+    def _add(s):
+        sid = str(s.get("id") or "")
+        if sid and sid not in seen_ids:
+            seen_ids.add(sid)
+            result.append(s)
+
+    # Path 1: DB filter by organization_id
     if organization_id:
         try:
+            q = supabase.table("students").select("*").eq("organization_id", organization_id)
             if owner_ids:
-                resp = (
-                    supabase.table("students")
-                    .select("*")
-                    .eq("organization_id", organization_id)
-                    .in_("created_by", owner_ids)
-                    .execute()
-                )
-            else:
-                resp = (
-                    supabase.table("students")
-                    .select("*")
-                    .eq("organization_id", organization_id)
-                    .execute()
-                )
-            filtered_students.extend(_rows(resp))
+                q = q.in_("created_by", owner_ids)
+            for s in _rows(q.execute()):
+                _add(s)
         except Exception:
-            pass  # fallback below
-    
-    # Fallback: full scan + Python filter (legacy records, metadata-only)
+            pass
+
+    # Path 2: DB filter by created_by — ALWAYS run (covers no-org-id users)
+    if owner_ids:
+        try:
+            for s in _rows(
+                supabase.table("students").select("*").in_("created_by", owner_ids).execute()
+            ):
+                _add(s)
+        except Exception:
+            pass
+
+    # Path 3: Full scan + Python filter (legacy metadata-only records)
     try:
-        resp = supabase.table("students").select("*").execute()
-        students = _rows(resp)
-        for student in students:
-            if str(student.get("organization_id") or "").strip() == organization_id:
-                continue  # already added above
-            if _student_visible_to_scope(student, scope):
-                filtered_students.append(student)
+        for s in _rows(supabase.table("students").select("*").execute()):
+            if _student_visible_to_scope(s, scope):
+                _add(s)
     except Exception:
         pass
-    
-    return filtered_students
+
+    return result
+
+
+
 
 
 def insert_students_bulk(students: List[Dict[str, Any]]):
