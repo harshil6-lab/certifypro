@@ -455,7 +455,14 @@ def ensure_actor_membership(identity: AuthIdentity) -> dict[str, Any]:
         actor_org_id, canonical_org_name = actor_org_record
         actor_org = canonical_org_name
     else:
+        # FIX: Always try to extract organization_id from metadata, but also fetch
+        # it directly from the organizations table using the org name if metadata is empty
         actor_org_id = _extract_organization_id(metadata)
+        if not actor_org_id and actor_org:
+            # Try fetching the organization record using the org name
+            org_record = _resolve_or_create_organization(actor_org)
+            if org_record:
+                actor_org_id, _ = org_record
     actor_org_key = _organization_key(actor_org)
 
     if email == SUPER_ADMIN_EMAIL:
