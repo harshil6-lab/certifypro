@@ -8,6 +8,7 @@ import {
 import { useLocation, useNavigate } from "react-router-dom";
 import { API_BASE, getAuthHeaders } from "@/services/apiService";
 
+
 export type AccessPermission =
   | "dashboard"
   | "templates"
@@ -215,22 +216,44 @@ export function AccessControlProvider({ children }: { children: ReactNode }) {
     if (!canAccessPath(location.pathname)) {
       navigate("/dashboard", { replace: true });
     }
-}, [ready, loading, overview, location.pathname, navigate]);
+  }, [ready, loading, overview, location.pathname, navigate]);
 
-  const inviteMember = async (payload: InvitePayload) => {
-    const actor = overview?.current_actor;
-    const response = await requestJson<InviteResponse>("/api/access-control/invite", {
-      method: "POST",
-      body: JSON.stringify({
-        email: payload.email,
-        member_type: payload.memberType,
-        permissions: payload.permissions,
-        organizationId: actor?.organization_id ?? null,
-      }),
-    });
-    await refresh();
-    return response.message || `${response.member.name} is now ${response.member.status === "invited" ? "invited" : "active"}.`;
-  };
+const inviteMember = async (payload: InvitePayload) => {
+  const actor = overview?.current_actor;
+
+  let organizationId = actor?.organization_id ?? null;
+
+  if (!organizationId) {
+    try {
+      const { createClient } = await import("@supabase/supabase-js");
+      const client = createClient(
+        import.meta.env.VITE_SUPABASE_URL,
+        import.meta.env.VITE_SUPABASE_ANON_KEY
+      );
+      const { data: { session } } = await client.auth.getSession();
+      organizationId =
+        session?.user?.user_metadata?.organization_id ??
+        session?.user?.app_metadata?.organization_id ??
+        session?.user?.user_metadata?.organizationId ??
+        session?.user?.app_metadata?.organizationId ??
+        null;
+    } catch {
+      organizationId = null;
+    }
+  }
+
+  const response = await requestJson<InviteResponse>("/api/access-control/invite", {
+    method: "POST",
+    body: JSON.stringify({
+      email: payload.email,
+      member_type: payload.memberType,
+      permissions: payload.permissions,
+      organizationId,
+    }),
+  });
+  await refresh();
+  return response.message || `${response.member.name} is now ${response.member.status === "invited" ? "invited" : "active"}.`;
+};
 
   const updatePermissions = async (memberId: string, permissions: AccessPermission[]) => {
     const response = await requestJson<{ member: AccessMember }>(`/api/access-control/members/${memberId}/permissions`, {
