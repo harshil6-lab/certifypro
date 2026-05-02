@@ -28,6 +28,9 @@ export interface AccessMember {
   member_type: AccessMemberType;
   status: AccessMemberStatus;
   permissions: AccessPermission[];
+  organization?: string;
+  organization_id?: string | null;
+  organization_key?: string;
   joined_at?: string | null;
   invited_by_email?: string | null;
   is_current_user: boolean;
@@ -212,15 +215,17 @@ export function AccessControlProvider({ children }: { children: ReactNode }) {
     if (!canAccessPath(location.pathname)) {
       navigate("/dashboard", { replace: true });
     }
-  }, [ready, loading, overview, location.pathname, navigate]);
+}, [ready, loading, overview, location.pathname, navigate]);
 
   const inviteMember = async (payload: InvitePayload) => {
+    const actor = overview?.current_actor;
     const response = await requestJson<InviteResponse>("/api/access-control/invite", {
       method: "POST",
       body: JSON.stringify({
         email: payload.email,
         member_type: payload.memberType,
         permissions: payload.permissions,
+        organizationId: actor?.organization_id ?? null,
       }),
     });
     await refresh();

@@ -84,6 +84,7 @@ class InviteMemberPayload(BaseModel):
     email: EmailStr
     member_type: str = Field(pattern="^(admin|co_admin)$")
     permissions: list[str] = []
+    organizationId: str | None = None
 
 
 class UpdatePermissionsPayload(BaseModel):
@@ -122,6 +123,7 @@ async def invite_access_member(request: Request, payload: InviteMemberPayload):
                 target_member_type=payload.member_type,
                 permissions=payload.permissions,
                 redirect_to=redirect_to,
+                organization_id=payload.organizationId,
             ),
             timeout=4,
         )

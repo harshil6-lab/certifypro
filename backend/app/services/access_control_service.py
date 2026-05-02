@@ -590,6 +590,7 @@ def invite_member(
     target_member_type: str,
     permissions: list[str],
     redirect_to: str,
+    organization_id: str | None = None,
 ) -> dict[str, Any]:
     overview = get_access_control_overview(actor_identity)
     actor_member = overview["current_actor"]
@@ -598,6 +599,9 @@ def invite_member(
     actor_type = actor_member["member_type"]
     actor_org = _normalize_org_name(actor_member.get("organization"))
     actor_org_id = str(actor_member.get("organization_id") or "").strip()
+    # FIX: If organization_id is passed in the request, use it as override
+    if organization_id and not actor_org_id:
+        actor_org_id = organization_id
     actor_org_key = actor_member.get("organization_key") or _organization_key(actor_org)
     invite_email = invite_email.strip().lower()
     if invite_email == SUPER_ADMIN_EMAIL and actor_type != "super_admin":
