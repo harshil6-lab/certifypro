@@ -7,11 +7,11 @@ import certifyProIcon from "@/assets/certify_pro_icon.png";
 
 const navItems = [
   { label: "Home", to: "/" },
-  { label: "About Us", to: "/about" },
+  { label: "About CertifyPro", to: "/about" },
   { label: "Features", to: "/features" },
-  { label: "Templates", to: "/login?reason=templates" },
-  { label: "Contact Us", to: "/contact" },
-  { label: "Verify Certificate", to: "/verify" },
+  { label: "Certificate templates", to: "/login?reason=templates" },
+  { label: "Contact", to: "/contact" },
+  { label: "Verify a certificate", to: "/verify" },
 ];
 
 export function PublicNavbar() {
@@ -61,7 +61,7 @@ export function PublicNavbar() {
         <div className="flex items-center justify-end gap-2 shrink-0">
           <Link to="/login" className="hidden sm:block">
             <Button size="sm">
-              Login / Request Access
+              Access workspace
             </Button>
           </Link>
 
@@ -99,7 +99,7 @@ export function PublicNavbar() {
                 <div className="pt-2">
                   <SheetClose asChild>
                     <Link to="/login">
-                      <Button className="w-full">Login / Request Access</Button>
+                      <Button className="w-full">Access workspace</Button>
                     </Link>
                   </SheetClose>
                 </div>
