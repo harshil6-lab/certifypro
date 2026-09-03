@@ -31,7 +31,7 @@ export function LandingFooter() {
                 <Link to="/verify" className="block text-muted-foreground transition-colors hover:text-foreground">Verification</Link>
               </li>
               <li>
-                <Link to="/login?reason=templates" className="block text-muted-foreground transition-colors hover:text-foreground">Templates</Link>
+                <Link to="/login?reason=templates" className="block text-muted-foreground transition-colors hover:text-foreground">Certificate templates</Link>
               </li>
             </ul>
           </div>
@@ -58,7 +58,7 @@ export function LandingFooter() {
                 <Link to="/faq" className="block text-muted-foreground transition-colors hover:text-foreground">FAQs</Link>
               </li>
               <li>
-                <Link to="/login" className="block text-muted-foreground transition-colors hover:text-foreground">Request Access</Link>
+                <Link to="/login" className="block text-muted-foreground transition-colors hover:text-foreground">Request workspace access</Link>
               </li>
             </ul>
           </div>
@@ -69,14 +69,14 @@ export function LandingFooter() {
             <div className="space-y-2.5">
               <Link to="/login" className="block">
                 <Button size="sm" className="w-full justify-between">
-                  Request Access
+                  Request workspace access
                   <ArrowRight className="h-4 w-4" />
                 </Button>
               </Link>
 
               <Link to="/verify" className="block">
                 <Button size="sm" variant="outline" className="w-full justify-between">
-                  Verify Certificate
+                  Verify a certificate
                   <BadgeCheck className="h-4 w-4" />
                 </Button>
               </Link>

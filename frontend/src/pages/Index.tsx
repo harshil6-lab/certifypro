@@ -2,12 +2,13 @@ import { useState } from "react";
 import { Layers, QrCode, Library, Sparkles, ArrowRight, ShieldCheck, Upload, CheckCircle2, SearchCheck, BadgeCheck, Lock, CheckCircle } from "lucide-react";
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { CertificateGallerySection } from "@/components/landing/CertificateGallerySection";
 import { PublicNavbar } from "@/components/landing/PublicNavbar";
 import { LandingFooter } from "@/components/landing/LandingFooter";
 import PublicCertificateVerificationModal from "@/components/PublicCertificateVerificationModal";
+import { CertificateTemplate } from "@/components/certificates/CertificateTemplate";
+import type { CertificateDraft } from "@/components/certificates/types";
 
 const features = [
   {
@@ -104,6 +105,21 @@ const faqs = [
   },
 ];
 
+// Realistic sample certificate for the hero. Uses sample identities only — the
+// same illustrative data pattern shipped inside the product's own preview.
+const heroCertificate: CertificateDraft = {
+  recipientName: "Alex Morgan",
+  certificateTitle: "Advanced Data Analytics Program",
+  description: "Awarded in recognition of the successful completion of all program requirements and assessments.",
+  issuerSignatureText: "",
+  issuerName: "Program Director",
+  authoritySignatureText: "",
+  authorityName: "Registrar",
+  issuedDate: "September 3, 2026",
+  logoName: "",
+  logoPreviewUrl: "",
+};
+
 const Index = () => {
   const [verificationModalOpen, setVerificationModalOpen] = useState(false);
 
@@ -134,11 +150,11 @@ const Index = () => {
             <div className="flex flex-wrap items-center gap-3">
               <Link to="/login">
                 <Button size="lg" className="gap-2">
-                  Request access <ArrowRight className="h-4 w-4" />
+                  Request workspace access <ArrowRight className="h-4 w-4" />
                 </Button>
               </Link>
               <Button size="lg" variant="outline" onClick={() => setVerificationModalOpen(true)}>
-                Verify certificate
+                Verify a certificate
               </Button>
             </div>
 
@@ -147,30 +163,26 @@ const Index = () => {
             </p>
           </div>
 
-          {/* Certificate preview — serif here is deliberate (certificate artifact) */}
-          <div className="rounded-lg border border-border bg-card p-6 shadow-elevation-2">
-            <p className="text-sm font-medium text-muted-foreground">Certificate preview</p>
-            <div className="mt-4 aspect-[1.414/1] rounded-md border border-border bg-background p-6">
-              <div className="flex h-full flex-col justify-between text-center">
-                <div className="space-y-1.5">
-                  <div className="mx-auto flex h-10 w-10 items-center justify-center rounded-full bg-accent/10 text-accent">
-                    <BadgeCheck className="h-5 w-5" />
-                  </div>
-                  <p className="text-xs uppercase tracking-wider text-muted-foreground">
-                    Certificate of Completion
-                  </p>
-                  <h3 className="font-heading text-xl font-semibold tracking-tight text-foreground">
-                    Advanced Security Workshop
-                  </h3>
-                  <p className="text-sm text-muted-foreground">Awarded to {"{{RECIPIENT_NAME}}"}</p>
-                </div>
-
-                <div className="grid grid-cols-3 items-end gap-2 text-xs text-muted-foreground">
-                  <span className="text-left">Date: {"{{ISSUE_DATE}}"}</span>
-                  <div className="mx-auto h-14 w-14 rounded-md border-2 border-dashed border-border" />
-                  <span className="text-right">Issuer signature</span>
-                </div>
-              </div>
+          {/* Real certificate artifact — the same renderer used inside the product */}
+          <div className="relative">
+            <div className="overflow-hidden rounded-xl border border-border shadow-elevation-3">
+              <CertificateTemplate
+                styleType="academicFormal"
+                draft={heroCertificate}
+                organizationName="CertifyPro Institution"
+                previewScale="md"
+              />
+            </div>
+            <div className="mt-4 flex flex-wrap items-center gap-x-5 gap-y-2 text-xs text-muted-foreground">
+              <span className="inline-flex items-center gap-1.5 font-medium text-success">
+                <BadgeCheck className="h-4 w-4" />
+                Verified
+              </span>
+              <span>Certificate ID · CERT-2026-04821</span>
+              <span className="inline-flex items-center gap-1.5">
+                <QrCode className="h-3.5 w-3.5 text-accent" />
+                QR verification enabled
+              </span>
             </div>
           </div>
         </section>
@@ -186,22 +198,22 @@ const Index = () => {
             </p>
           </div>
 
-          <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
+          <div className="grid grid-cols-1 gap-x-10 gap-y-8 sm:grid-cols-2">
             {features.map((feature) => (
-              <Card key={feature.title}>
-                <CardContent className="space-y-3 p-6">
-                  <div className="flex h-10 w-10 items-center justify-center rounded-md bg-accent/10 text-accent">
-                    <feature.icon className="h-5 w-5" />
-                  </div>
+              <div key={feature.title} className="flex gap-4">
+                <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-md bg-accent/10 text-accent">
+                  <feature.icon className="h-5 w-5" />
+                </div>
+                <div className="space-y-1.5">
                   <h3 className="text-base font-semibold tracking-tight text-foreground">{feature.title}</h3>
                   <p className="text-sm leading-relaxed text-muted-foreground">{feature.description}</p>
-                </CardContent>
-              </Card>
+                </div>
+              </div>
             ))}
           </div>
         </section>
 
-        {/* Certificate gallery */}
+        {/* Certificate gallery — "what does the product look like" */}
         <CertificateGallerySection />
 
         {/* How it works */}
@@ -213,19 +225,19 @@ const Index = () => {
             </p>
           </div>
 
-          <div className="grid grid-cols-1 gap-8 sm:grid-cols-3">
+          <div className="relative grid grid-cols-1 gap-10 sm:grid-cols-3">
+            {/* connector line linking the three steps on desktop */}
+            <div className="pointer-events-none absolute left-[16%] right-[16%] top-6 hidden h-px bg-border sm:block" aria-hidden />
             {workflowSteps.map((step, index) => (
-              <div key={step.title} className="space-y-3">
-                <div className="flex items-center justify-between">
-                  <div className="flex h-11 w-11 items-center justify-center rounded-md bg-accent/10 text-accent">
-                    <step.icon className="h-5 w-5" />
-                  </div>
-                  <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                    Step {index + 1}
-                  </span>
+              <div key={step.title} className="relative flex flex-col items-center text-center">
+                <div className="flex h-12 w-12 items-center justify-center rounded-full border border-border bg-background text-base font-semibold text-foreground shadow-sm">
+                  {String(index + 1).padStart(2, "0")}
                 </div>
-                <h3 className="text-base font-semibold tracking-tight text-foreground">{step.title}</h3>
-                <p className="text-sm leading-relaxed text-muted-foreground">{step.description}</p>
+                <div className="mt-4 flex items-center gap-2 text-accent">
+                  <step.icon className="h-4 w-4" />
+                  <h3 className="text-base font-semibold tracking-tight text-foreground">{step.title}</h3>
+                </div>
+                <p className="mt-1.5 max-w-xs text-sm leading-relaxed text-muted-foreground">{step.description}</p>
               </div>
             ))}
           </div>
@@ -250,38 +262,38 @@ const Index = () => {
             </div>
           </div>
 
-          <Card>
-            <CardContent className="space-y-4 p-6">
-              <p className="text-sm font-medium text-foreground">Platform capabilities</p>
-              <ul className="space-y-3">
-                {capabilities.map((item) => (
-                  <li key={item} className="flex items-start gap-3 text-sm text-muted-foreground">
-                    <CheckCircle2 className="mt-0.5 h-4 w-4 flex-shrink-0 text-success" />
-                    {item}
-                  </li>
-                ))}
-              </ul>
-            </CardContent>
-          </Card>
+          <div className="rounded-xl border border-border bg-muted/40 p-6 sm:p-8">
+            <p className="text-sm font-medium text-foreground">Platform capabilities</p>
+            <ul className="mt-4 grid grid-cols-1 gap-x-6 gap-y-3 sm:grid-cols-2">
+              {capabilities.map((item) => (
+                <li key={item} className="flex items-start gap-2.5 text-sm text-muted-foreground">
+                  <CheckCircle2 className="mt-0.5 h-4 w-4 flex-shrink-0 text-success" />
+                  {item}
+                </li>
+              ))}
+            </ul>
+          </div>
         </section>
 
         {/* Security */}
-        <section className="space-y-8">
-          <div className="max-w-2xl space-y-2">
+        <section className="grid grid-cols-1 gap-10 lg:grid-cols-2 lg:gap-12">
+          <div className="max-w-md space-y-3">
             <h2 className="text-2xl font-semibold tracking-tight text-foreground md:text-3xl">Security</h2>
             <p className="leading-relaxed text-muted-foreground">
               CertifyPro is designed to keep certificate data protected and independently verifiable.
             </p>
           </div>
 
-          <div className="grid grid-cols-1 gap-8 sm:grid-cols-2 lg:grid-cols-4">
+          <div className="divide-y divide-border">
             {securityHighlights.map((item) => (
-              <div key={item.title} className="space-y-3">
-                <div className="flex h-10 w-10 items-center justify-center rounded-md bg-accent/10 text-accent">
+              <div key={item.title} className="flex gap-4 py-4 first:pt-0 last:pb-0">
+                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-md bg-accent/10 text-accent">
                   <item.icon className="h-5 w-5" />
                 </div>
-                <h3 className="text-base font-semibold tracking-tight text-foreground">{item.title}</h3>
-                <p className="text-sm leading-relaxed text-muted-foreground">{item.description}</p>
+                <div className="space-y-1">
+                  <h3 className="text-sm font-semibold tracking-tight text-foreground">{item.title}</h3>
+                  <p className="text-sm leading-relaxed text-muted-foreground">{item.description}</p>
+                </div>
               </div>
             ))}
           </div>
@@ -298,42 +310,19 @@ const Index = () => {
             </p>
           </div>
 
-          <div className="rounded-lg border border-border bg-card px-6">
+          <div className="mx-auto w-full max-w-3xl border-t border-border">
             <Accordion type="single" collapsible className="w-full">
               {faqs.map((faq, index) => (
                 <AccordionItem key={faq.question} value={`faq-${index}`}>
-                  <AccordionTrigger className="text-left text-sm font-semibold tracking-tight text-foreground hover:no-underline">
+                  <AccordionTrigger className="py-5 text-left text-base font-semibold tracking-tight text-foreground hover:no-underline">
                     {faq.question}
                   </AccordionTrigger>
-                  <AccordionContent className="text-sm leading-relaxed text-muted-foreground">
+                  <AccordionContent className="pb-5 text-sm leading-relaxed text-muted-foreground">
                     {faq.answer}
                   </AccordionContent>
                 </AccordionItem>
               ))}
             </Accordion>
-          </div>
-        </section>
-
-        {/* CTA */}
-        <section className="rounded-lg border border-border bg-card p-8 text-center md:p-12">
-          <div className="mx-auto max-w-2xl space-y-5">
-            <h2 className="text-2xl font-semibold tracking-tight text-foreground md:text-3xl">
-              Start issuing secure certificates
-            </h2>
-            <p className="leading-relaxed text-muted-foreground">
-              Automate certificate generation, ensure trusted verification, and streamline academic or
-              corporate credential workflows.
-            </p>
-            <div className="flex flex-wrap justify-center gap-3">
-              <Link to="/login">
-                <Button size="lg" className="gap-2">
-                  Request access <ArrowRight className="h-4 w-4" />
-                </Button>
-              </Link>
-              <Button size="lg" variant="outline" onClick={() => setVerificationModalOpen(true)}>
-                Verify certificate
-              </Button>
-            </div>
           </div>
         </section>
 
@@ -396,6 +385,34 @@ const Index = () => {
               <Link to="/login" className="block">
                 <Button variant="accent" className="w-full">Upgrade to Pro — ₹499/mo</Button>
               </Link>
+            </div>
+          </div>
+        </section>
+
+        {/* Closing CTA */}
+        <section className="rounded-2xl bg-primary px-6 py-12 text-center text-primary-foreground md:px-12 md:py-16">
+          <div className="mx-auto max-w-2xl space-y-5">
+            <h2 className="text-2xl font-semibold tracking-tight md:text-3xl">
+              Start issuing secure certificates
+            </h2>
+            <p className="leading-relaxed text-primary-foreground/80">
+              Automate certificate generation, ensure trusted verification, and streamline academic or
+              corporate credential workflows.
+            </p>
+            <div className="flex flex-wrap justify-center gap-3">
+              <Link to="/login">
+                <Button size="lg" variant="accent" className="gap-2">
+                  Request workspace access <ArrowRight className="h-4 w-4" />
+                </Button>
+              </Link>
+              <Button
+                size="lg"
+                variant="outline"
+                onClick={() => setVerificationModalOpen(true)}
+                className="border-primary-foreground/30 bg-transparent text-primary-foreground hover:bg-primary-foreground/10 hover:text-primary-foreground"
+              >
+                Verify a certificate
+              </Button>
             </div>
           </div>
         </section>
