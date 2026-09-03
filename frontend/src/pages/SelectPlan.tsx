@@ -158,7 +158,8 @@ const SelectPlan = () => {
                 ))}
               </ul>
               <Button
-                className="w-full gold-gradient text-accent-foreground"
+                variant="accent"
+                className="w-full"
                 onClick={handlePro}
                 disabled={loading !== null}
               >

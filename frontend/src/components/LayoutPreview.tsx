@@ -48,7 +48,7 @@ export const LayoutPreview = ({ templateUrl, templateTitle, layoutConfig }: Layo
 
   return (
     <div
-      className="w-full rounded-lg border border-dashed border-border relative overflow-hidden seal-pattern bg-muted/40"
+      className="w-full rounded-lg border border-dashed border-border relative overflow-hidden bg-muted/40"
       style={{ aspectRatio: `${aspectRatio}` }}
     >
 

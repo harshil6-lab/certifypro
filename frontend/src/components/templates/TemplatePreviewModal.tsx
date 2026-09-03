@@ -26,7 +26,6 @@ export function TemplatePreviewModal({ open, template, onOpenChange }: TemplateP
 
         <div className="rounded-lg border border-border p-4 space-y-4">
           <div className="aspect-[1.414/1] rounded-lg bg-muted/40 border border-dashed border-border relative overflow-hidden">
-            <div className="absolute inset-0 seal-pattern" />
             <div className="absolute inset-0 p-8 flex flex-col justify-between">
               <div className="text-center space-y-2">
                 <p className="text-xs uppercase tracking-wider text-muted-foreground">Certificate Preview</p>

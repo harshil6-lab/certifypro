@@ -120,7 +120,7 @@ const Contact = () => {
         </section>
 
         <section className="grid grid-cols-1 lg:grid-cols-2 gap-5">
-          <Card className="rounded-2xl card-shadow border-border/60 bg-card/80 hover:card-shadow-lg transition-all duration-300">
+          <Card className="rounded-lg border-border/60 bg-card/80">
             <CardContent className="p-6 space-y-4">
               <p className="text-lg font-semibold text-foreground">Email Contacts</p>
               <p className="text-sm text-muted-foreground">Primary destination for all contact requests:</p>
@@ -142,7 +142,7 @@ const Contact = () => {
             </CardContent>
           </Card>
 
-          <Card className="rounded-2xl card-shadow border-border/60 bg-card/80 hover:card-shadow-lg transition-all duration-300">
+          <Card className="rounded-lg border-border/60 bg-card/80">
             <CardContent className="p-6 space-y-4">
               <p className="text-lg font-semibold text-foreground">Send a Message</p>
               <form className="space-y-3" onSubmit={handleSubmit}>
@@ -171,14 +171,14 @@ const Contact = () => {
                   </div>
                 ) : null}
                 {submitted ? (
-                  <div className="rounded-md border border-emerald-300 bg-emerald-50 px-3 py-2 text-xs text-emerald-700">
+                  <div className="rounded-md border border-success/40 bg-success/10 px-3 py-2 text-xs text-success">
                     Your message has been delivered to {supportDestination.label}.
                   </div>
                 ) : null}
                 <Button
                   type="submit"
                   disabled={submitting}
-                  className="w-full gold-gradient text-accent-foreground gap-2 hover:opacity-90 transition-opacity shadow-md"
+                  className="w-full gap-2"
                 >
                   <Send className="w-4 h-4" /> {submitting ? "Sending..." : "Send Message"}
                 </Button>

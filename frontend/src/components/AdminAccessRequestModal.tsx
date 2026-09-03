@@ -478,7 +478,7 @@ setSubmissionSummary({
                 </p>
               ) : null}
             </div>
-            <Button className="gold-gradient text-accent-foreground" onClick={() => handleOpenChange(false)}>
+            <Button onClick={() => handleOpenChange(false)}>
               Close
             </Button>
           </div>
@@ -774,11 +774,11 @@ setSubmissionSummary({
                     Cancel
                   </Button>
                   {currentStep < 4 ? (
-                    <Button type="button" className="gold-gradient text-accent-foreground" onClick={handleNext}>
+                    <Button type="button" onClick={handleNext}>
                       Next Step
                     </Button>
                   ) : (
-                    <Button type="submit" className="gold-gradient text-accent-foreground gap-2" disabled={isSubmitting}>
+                    <Button type="submit" className="gap-2" disabled={isSubmitting}>
                       {isSubmitting ? (
                         <span className="inline-block h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent" />
                       ) : (

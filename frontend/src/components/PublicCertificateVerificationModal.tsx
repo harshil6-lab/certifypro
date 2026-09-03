@@ -185,7 +185,7 @@ const PublicCertificateVerificationModal = ({
                 <Button
                   type="submit"
                   disabled={state === "loading" || !certId.trim()}
-                  className="gap-2 gold-gradient text-accent-foreground hover:opacity-90 transition-all disabled:opacity-60 disabled:cursor-not-allowed"
+                  className="gap-2 disabled:opacity-60 disabled:cursor-not-allowed"
                 >
                   {state === "loading" ? (
                     <>

@@ -35,7 +35,7 @@ export function PublicNavbar() {
   };
 
   return (
-    <header className="sticky top-0 z-30 border-b border-border/70 bg-background/90 backdrop-blur-lg shadow-[0_8px_24px_rgba(15,23,42,0.06)]">
+    <header className="sticky top-0 z-30 border-b border-border bg-background/95 backdrop-blur">
       <div className="mx-auto w-full max-w-7xl px-6 lg:px-8 py-3.5 flex items-center justify-between gap-4">
         <Link to="/" className="flex items-center pr-2 group" aria-label="Go to CertifyPro Home">
           <img src={certifyProLogo} alt="CertifyPro Logo" className="h-10 md:h-11 lg:h-12 w-auto object-contain" />
@@ -60,7 +60,7 @@ export function PublicNavbar() {
 
         <div className="flex items-center justify-end gap-2 shrink-0">
           <Link to="/login" className="hidden sm:block">
-            <Button size="sm" className="gold-gradient text-accent-foreground shadow-[0_8px_20px_rgba(217,169,56,0.25)] hover:opacity-95">
+            <Button size="sm">
               Login / Request Access
             </Button>
           </Link>
@@ -99,7 +99,7 @@ export function PublicNavbar() {
                 <div className="pt-2">
                   <SheetClose asChild>
                     <Link to="/login">
-                      <Button className="w-full gold-gradient text-accent-foreground">Login / Request Access</Button>
+                      <Button className="w-full">Login / Request Access</Button>
                     </Link>
                   </SheetClose>
                 </div>

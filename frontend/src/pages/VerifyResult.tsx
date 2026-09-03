@@ -96,10 +96,10 @@ const VerifyResult = () => {
               <p className="text-muted-foreground mt-1">This certificate is authentic and valid</p>
             </div>
 
-            <Card className="card-shadow-lg text-left transition-all duration-300 hover:shadow-xl hover:-translate-y-1">
+            <Card className="text-left shadow-elevation-2">
               <CardContent className="p-6 space-y-4">
                 <div className="flex items-center gap-3 pb-4 border-b">
-                  <div className="w-10 h-10 rounded-lg gold-gradient flex items-center justify-center shadow-sm">
+                  <div className="w-10 h-10 rounded-lg bg-accent flex items-center justify-center shadow-sm">
                     <ShieldCheck className="w-5 h-5 text-accent-foreground" />
                   </div>
                   <div>

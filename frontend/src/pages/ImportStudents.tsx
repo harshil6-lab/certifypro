@@ -4,6 +4,7 @@ import { supabase } from "@/lib/supabaseClient";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { PageContainer, PageHeader } from "@/components/layout/PageContainer";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -121,10 +122,10 @@ const ImportStudents = () => {
       if (session?.access_token) {
         headers["Authorization"] = `Bearer ${session.access_token}`;
       }
-      const res = await fetch(`${API_BASE}/api/generate/preview`, { 
-        method: "POST", 
+      const res = await fetch(`${API_BASE}/api/generate/preview`, {
+        method: "POST",
         headers,
-        body: form 
+        body: form
       });
       if (!res.ok) {
         const txt = await res.text();
@@ -204,66 +205,70 @@ const ImportStudents = () => {
   };
 
   return (
-    <div className="p-8 max-w-[1200px] mx-auto space-y-6 animate-fade-in">
-      {/* Header */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <div>
-          <h1 className="text-3xl font-heading font-bold text-foreground">Import Student Data</h1>
-          <p className="text-lg text-muted-foreground mt-1">Upload an Excel file containing the list of students for certification.</p>
-        </div>
-        <div className="flex flex-col sm:flex-row gap-3">
-          {rows.length > 0 && (
-            <AlertDialog>
-              <AlertDialogTrigger asChild>
-                <Button
-                  variant="outline"
-                  size="lg"
-                  className="gap-2 h-11 px-6 text-base shadow-sm"
-                >
-                  <XCircle className="w-5 h-5" /> Clear Imported Session
-                </Button>
-              </AlertDialogTrigger>
-              <AlertDialogContent>
-                <AlertDialogHeader>
-                  <AlertDialogTitle>Clear imported student session?</AlertDialogTitle>
-                  <AlertDialogDescription>
-                    This removes the current uploaded sheet preview, validation summary, and unsaved session data from this browser session.
-                  </AlertDialogDescription>
-                </AlertDialogHeader>
-                <AlertDialogFooter>
-                  <AlertDialogCancel>Cancel</AlertDialogCancel>
-                  <AlertDialogAction onClick={clearImportedSession}>Clear Session</AlertDialogAction>
-                </AlertDialogFooter>
-              </AlertDialogContent>
-            </AlertDialog>
-          )}
-          <Button variant="outline" size="lg" className="gap-2 h-11 px-6 text-base shadow-sm hover:bg-background hover:text-foreground hover:border-foreground/40 transition-all" onClick={downloadSampleTemplate}>
-            <FileDown className="w-5 h-5" /> Download Sample Template
-          </Button>
-        </div>
-      </div>
+    <PageContainer className="space-y-6 animate-fade-in">
+      <PageHeader
+        title="Import students"
+        description="Upload an Excel file with student_name, email, and certificate_id columns."
+        actions={
+          <>
+            {rows.length > 0 && (
+              <AlertDialog>
+                <AlertDialogTrigger asChild>
+                  <Button variant="outline" className="gap-2">
+                    <XCircle className="h-4 w-4" /> Clear session
+                  </Button>
+                </AlertDialogTrigger>
+                <AlertDialogContent>
+                  <AlertDialogHeader>
+                    <AlertDialogTitle>Clear imported student session?</AlertDialogTitle>
+                    <AlertDialogDescription>
+                      This removes the current uploaded sheet preview, validation summary, and unsaved session data from this browser session.
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel>Cancel</AlertDialogCancel>
+                    <AlertDialogAction onClick={clearImportedSession}>Clear session</AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
+            )}
+            <Button variant="outline" className="gap-2" onClick={downloadSampleTemplate}>
+              <FileDown className="h-4 w-4" /> Download sample template
+            </Button>
+          </>
+        }
+      />
 
       {/* Upload Area */}
-      <Card className="card-shadow hover:card-shadow-lg transition-all duration-300 border-2 border-transparent hover:border-accent/20">
-        <CardContent className="p-8">
+      <Card>
+        <CardContent className="p-6">
           <div
-            className={`border-2 border-dashed rounded-xl p-14 text-center transition-all duration-300 cursor-pointer seal-pattern group ${dragActive ? "border-accent bg-accent/10" : "border-border hover:border-accent/60 hover:bg-accent/5"}`}
+            role="button"
+            tabIndex={0}
+            aria-label="Upload an Excel file: drag and drop here, or activate to browse files"
+            className={`rounded-lg border-2 border-dashed p-12 text-center transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 ${dragActive ? "border-primary bg-primary/5" : "border-border hover:border-primary/40 hover:bg-muted/40"}`}
             onDragOver={(e) => { e.preventDefault(); setDragActive(true); }}
             onDragLeave={() => setDragActive(false)}
             onDrop={handleDrop}
             onClick={() => fileInputRef.current?.click()}
+            onKeyDown={(e) => {
+              if (e.key === "Enter" || e.key === " ") {
+                e.preventDefault();
+                fileInputRef.current?.click();
+              }
+            }}
           >
-            <div className="w-20 h-20 mx-auto rounded-full bg-accent/10 flex items-center justify-center mb-6 transition-transform group-hover:scale-110 group-hover:bg-accent/20">
-              {parsing ? <Loader2 className="w-10 h-10 text-accent animate-spin" /> : <FileSpreadsheet className="w-10 h-10 text-accent" />}
+            <div className="mx-auto mb-6 flex h-16 w-16 items-center justify-center rounded-full bg-muted text-muted-foreground">
+              {parsing ? <Loader2 className="h-8 w-8 animate-spin" /> : <FileSpreadsheet className="h-8 w-8" />}
             </div>
-            <h3 className="text-xl font-bold text-foreground mb-2">
-              {excelFile ? excelFile.name : "Drag & drop your Excel file here"}
+            <h3 className="mb-2 text-lg font-semibold text-foreground">
+              {excelFile ? excelFile.name : "Drag and drop your Excel file here"}
             </h3>
-            <p className="text-base text-muted-foreground mb-6 max-w-sm mx-auto">
-              {parsing ? "Parsing file…" : "Supports .xlsx and .xls files with student_name, email, certificate_id columns."}
+            <p className="mx-auto mb-6 max-w-sm text-sm text-muted-foreground">
+              {parsing ? "Parsing file…" : "Supports .xlsx and .xls files with student_name, email, and certificate_id columns."}
             </p>
-            <Button size="lg" className="gap-2 gold-gradient text-accent-foreground font-semibold shadow-md hover:opacity-90 transition-all pointer-events-none">
-              <Upload className="w-5 h-5" /> Browse Files
+            <Button size="lg" tabIndex={-1} aria-hidden="true" className="pointer-events-none gap-2">
+              <Upload className="h-4 w-4" /> Browse files
             </Button>
             <input ref={fileInputRef} type="file" accept=".xlsx,.xls" className="hidden" onChange={handleFileInput} />
           </div>
@@ -274,30 +279,30 @@ const ImportStudents = () => {
       {/* Summary — only after parsing */}
       {rows.length > 0 && (
         <>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <Card className="card-shadow border-l-4 border-l-green-500 hover:shadow-lg hover:-translate-y-0.5 transition-all duration-300">
-              <CardContent className="p-4 flex items-center gap-3">
-                <CheckCircle2 className="w-5 h-5 text-green-500" />
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+            <Card>
+              <CardContent className="flex items-center gap-3 p-4">
+                <CheckCircle2 className="h-5 w-5 text-success" />
                 <div>
-                  <p className="text-2xl font-heading font-bold text-foreground">{summary.valid}</p>
-                  <p className="text-xs text-muted-foreground">Valid Records</p>
+                  <p className="text-2xl font-semibold tracking-tight text-foreground">{summary.valid}</p>
+                  <p className="text-xs text-muted-foreground">Valid records</p>
                 </div>
               </CardContent>
             </Card>
-            <Card className="card-shadow border-l-4 border-l-destructive hover:shadow-lg hover:-translate-y-0.5 transition-all duration-300">
-              <CardContent className="p-4 flex items-center gap-3">
-                <XCircle className="w-5 h-5 text-destructive" />
+            <Card>
+              <CardContent className="flex items-center gap-3 p-4">
+                <XCircle className="h-5 w-5 text-destructive" />
                 <div>
-                  <p className="text-2xl font-heading font-bold text-foreground">{summary.errors}</p>
-                  <p className="text-xs text-muted-foreground">Errors Found</p>
+                  <p className="text-2xl font-semibold tracking-tight text-foreground">{summary.errors}</p>
+                  <p className="text-xs text-muted-foreground">Errors found</p>
                 </div>
               </CardContent>
             </Card>
-            <Card className="card-shadow border-l-4 border-l-accent hover:shadow-lg hover:-translate-y-0.5 transition-all duration-300">
-              <CardContent className="p-4 flex items-center gap-3">
-                <AlertCircle className="w-5 h-5 text-accent" />
+            <Card>
+              <CardContent className="flex items-center gap-3 p-4">
+                <AlertCircle className="h-5 w-5 text-warning" />
                 <div>
-                  <p className="text-2xl font-heading font-bold text-foreground">{summary.duplicates}</p>
+                  <p className="text-2xl font-semibold tracking-tight text-foreground">{summary.duplicates}</p>
                   <p className="text-xs text-muted-foreground">Duplicates</p>
                 </div>
               </CardContent>
@@ -305,16 +310,16 @@ const ImportStudents = () => {
           </div>
 
           {/* Validation Table */}
-          <Card className="card-shadow">
+          <Card>
             <CardHeader className="pb-3">
-              <CardTitle className="text-base font-heading">Validation Preview ({summary.total} rows)</CardTitle>
+              <CardTitle className="text-base font-semibold">Validation preview ({summary.total} rows)</CardTitle>
             </CardHeader>
-            <CardContent>
+            <CardContent className="p-0">
               <Table>
                 <TableHeader>
                   <TableRow>
                     <TableHead className="w-12">#</TableHead>
-                    <TableHead>Student Name</TableHead>
+                    <TableHead>Student name</TableHead>
                     <TableHead>Email</TableHead>
                     <TableHead>Certificate ID</TableHead>
                     <TableHead className="text-right">Status</TableHead>
@@ -328,7 +333,7 @@ const ImportStudents = () => {
                         row.status === "error"
                           ? "bg-destructive/5"
                           : row.status === "duplicate"
-                            ? "bg-accent/5"
+                            ? "bg-warning/5"
                             : ""
                       }
                     >
@@ -340,13 +345,13 @@ const ImportStudents = () => {
                       <TableCell className="text-sm font-mono">{row.certificate_id || <span className="italic text-muted-foreground">auto</span>}</TableCell>
                       <TableCell className="text-right">
                         {row.status === "valid" && (
-                          <Badge variant="outline" className="text-green-600 border-green-500/30 bg-green-500/5">Valid</Badge>
+                          <Badge variant="success">Valid</Badge>
                         )}
                         {row.status === "error" && (
                           <Badge variant="destructive" title={row.error}>Error</Badge>
                         )}
                         {row.status === "duplicate" && (
-                          <Badge variant="outline" className="text-accent border-accent/30 bg-accent/5" title={row.error}>Duplicate</Badge>
+                          <Badge variant="warning" title={row.error}>Duplicate</Badge>
                         )}
                       </TableCell>
                     </TableRow>
@@ -357,10 +362,10 @@ const ImportStudents = () => {
           </Card>
 
           {/* Save to Database */}
-          <Card className="card-shadow">
+          <Card>
             <CardHeader className="pb-3">
-              <CardTitle className="text-base font-heading flex items-center gap-2">
-                <Database className="w-4 h-4 text-accent" /> Save to Database
+              <CardTitle className="flex items-center gap-2 text-base font-semibold">
+                <Database className="h-4 w-4 text-muted-foreground" /> Save to database
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
@@ -371,16 +376,16 @@ const ImportStudents = () => {
               {saveError && <p className="text-sm text-destructive">{saveError}</p>}
 
               {saveSuccess > 0 && (
-                <div className="flex items-center gap-2 text-sm text-green-600 bg-green-50/50 border border-green-200/50 rounded-lg p-3">
-                  <CheckCircle2 className="w-4 h-4" />
-                  {saveSuccess} student(s) saved to database successfully.
+                <div className="flex items-center gap-2 rounded-lg border border-success/20 bg-success/10 p-3 text-sm text-success">
+                  <CheckCircle2 className="h-4 w-4" />
+                  {saveSuccess} student(s) saved to the database successfully.
                 </div>
               )}
 
               {saveRejected.length > 0 && (
-                <div className="text-sm text-destructive bg-destructive/5 border border-destructive/20 rounded-lg p-3 space-y-1">
+                <div className="space-y-1 rounded-lg border border-destructive/20 bg-destructive/5 p-3 text-sm text-destructive">
                   <p className="font-semibold">{saveRejected.length} row(s) rejected during save:</p>
-                  <ul className="list-disc list-inside space-y-0.5">
+                  <ul className="list-inside list-disc space-y-0.5">
                     {saveRejected.map((r, i) => (
                       <li key={i}>
                         Row {r.row}{r.student_name ? ` (${r.student_name})` : ""} —{" "}
@@ -392,20 +397,19 @@ const ImportStudents = () => {
               )}
 
               <Button
-                className="w-full gold-gradient text-accent-foreground gap-2 font-semibold"
+                className="w-full gap-2"
                 onClick={saveStudents}
                 disabled={summary.valid === 0 || saving}
               >
-                {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Database className="w-4 h-4" />}
-                {saving ? `Saving ${summary.valid} student(s)…` : `Save ${summary.valid} Valid Student(s)`}
+                {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Database className="h-4 w-4" />}
+                {saving ? `Saving ${summary.valid} student(s)…` : `Save ${summary.valid} valid student(s)`}
               </Button>
             </CardContent>
           </Card>
         </>
       )}
-    </div>
+    </PageContainer>
   );
 };
 
 export default ImportStudents;
-

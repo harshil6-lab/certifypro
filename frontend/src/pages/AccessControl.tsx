@@ -17,6 +17,7 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { PageContainer, PageHeader } from "@/components/layout/PageContainer";
 import {
   Table,
   TableBody,
@@ -191,22 +192,22 @@ const AccessControl = () => {
   };
 
   return (
-    <div className="p-8 max-w-[1200px] mx-auto space-y-6 animate-fade-in">
-      <div className="flex items-start justify-between">
-        <div>
-          <h1 className="text-3xl font-heading font-bold text-foreground">Access Control</h1>
-          <p className="text-muted-foreground mt-1">Manage super admin, admin, and co-admin access without changing auth flow.</p>
-        </div>
-        <Badge variant="outline" className="px-3 py-1 text-sm">
-          Active actor: {actor ? roleLabel(actor) : "Loading"}
-        </Badge>
-      </div>
+    <PageContainer className="space-y-6 animate-fade-in">
+      <PageHeader
+        title="Access control"
+        description="Manage super admin, admin, and co-admin access."
+        actions={
+          <Badge variant="outline" className="px-3 py-1 text-sm">
+            Your role: {actor ? roleLabel(actor) : "Loading…"}
+          </Badge>
+        }
+      />
 
-      <Alert className="border-amber-300 bg-amber-50/70 text-amber-950">
-        <AlertTriangle className="h-4 w-4" />
+      <Alert>
+        <ShieldCheck className="h-4 w-4" />
         <AlertTitle>Reserved super admin</AlertTitle>
         <AlertDescription>
-          The account CERTIFYPRO with email certifyprocare@gmail.com is always treated as the fixed super admin.
+          A reserved super-admin account retains permanent access and cannot be modified or removed from this panel.
         </AlertDescription>
       </Alert>
 
@@ -222,11 +223,11 @@ const AccessControl = () => {
       ) : null}
 
       {degraded ? (
-        <Alert className="border-amber-300 bg-amber-50/70 text-amber-950">
+        <Alert className="border-warning/40 [&>svg]:text-warning">
           <AlertTriangle className="h-4 w-4" />
           <AlertTitle>Read-only fallback mode</AlertTitle>
           <AlertDescription>
-            Role visibility is available, but invite, update, and remove actions stay disabled until the backend storage responds again.
+            Role visibility is available, but invite, update, and remove actions stay disabled until the backend responds again.
           </AlertDescription>
         </Alert>
       ) : null}
@@ -234,16 +235,16 @@ const AccessControl = () => {
       {degraded ? (
         <div className="flex justify-end">
           <Button variant="outline" onClick={() => void refresh()} disabled={loading || submitting}>
-            Retry Access Control
+            Retry
           </Button>
         </div>
       ) : null}
 
       <div className="grid gap-6 lg:grid-cols-[1.15fr_0.85fr]">
-        <Card className="card-shadow border-2 border-dashed border-accent/30 hover:border-accent/50 transition-colors">
+        <Card>
           <CardHeader className="pb-3">
-            <CardTitle className="text-base font-heading flex items-center gap-2">
-              <UserPlus className="w-4 h-4 text-accent" />
+            <CardTitle className="flex items-center gap-2 text-base font-semibold">
+              <UserPlus className="h-4 w-4 text-muted-foreground" />
               Invite administrator
             </CardTitle>
           </CardHeader>
@@ -252,7 +253,7 @@ const AccessControl = () => {
               <div>
                 <Label className="mb-2 block text-sm font-medium">Invite by email</Label>
                 <div className="relative">
-                  <Mail className="absolute left-3 top-2.5 w-4 h-4 text-muted-foreground" />
+                  <Mail className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
                   <Input
                     value={inviteEmail}
                     onChange={(event) => setInviteEmail(event.target.value)}
@@ -279,7 +280,7 @@ const AccessControl = () => {
               </div>
             </div>
 
-            <div className="rounded-xl border border-border bg-muted/20 p-4">
+            <div className="rounded-lg border border-border bg-muted/20 p-4">
               <div className="flex items-center justify-between gap-3">
                 <div>
                   <p className="text-sm font-medium text-foreground">Component permissions</p>
@@ -313,25 +314,25 @@ const AccessControl = () => {
               <Button
                 onClick={() => void handleInvite()}
                 disabled={submitting || !inviteEmail.trim() || !canManageCoAdmins || degraded || !managementAvailable}
-                className="gap-2 gold-gradient text-accent-foreground hover:opacity-90 transition-opacity"
+                className="gap-2"
               >
-                <UserPlus className="w-4 h-4" />
-                {inviteRole === "admin" ? "Invite Admin" : "Invite Co-Admin"}
+                <UserPlus className="h-4 w-4" />
+                {inviteRole === "admin" ? "Invite admin" : "Invite co-admin"}
               </Button>
             </div>
 
             {degraded || !managementAvailable ? (
-              <p className="text-xs text-muted-foreground text-right">
-                Invite actions will unlock automatically once access-control storage responds again.
+              <p className="text-right text-xs text-muted-foreground">
+                Invite actions will unlock automatically once access control responds again.
               </p>
             ) : null}
           </CardContent>
         </Card>
 
-        <Card className="card-shadow">
+        <Card>
           <CardHeader className="pb-3">
-            <CardTitle className="text-base font-heading flex items-center gap-2">
-              <Shield className="w-4 h-4 text-accent" />
+            <CardTitle className="flex items-center gap-2 text-base font-semibold">
+              <Shield className="h-4 w-4 text-muted-foreground" />
               Selected member permissions
             </CardTitle>
           </CardHeader>
@@ -344,7 +345,7 @@ const AccessControl = () => {
                 </div>
                 <div className="flex items-center gap-2">
                   <Badge variant="outline">{roleLabel(selectedMember)}</Badge>
-                  <Badge variant={selectedMember.status === "active" ? "default" : "secondary"}>{selectedMember.status}</Badge>
+                  <Badge variant={selectedMember.status === "active" ? "success" : "neutral"}>{selectedMember.status}</Badge>
                 </div>
                 <div className="space-y-3">
                   {permissionCatalog
@@ -368,11 +369,11 @@ const AccessControl = () => {
                   disabled={submitting || selectedMember.member_type !== "co_admin" || !canManageCoAdmins || degraded || !managementAvailable}
                   className="w-full"
                 >
-                  Save Permissions
+                  Save permissions
                 </Button>
               </>
             ) : (
-              <div className="rounded-xl border border-dashed border-border p-6 text-center text-sm text-muted-foreground">
+              <div className="rounded-lg border border-dashed border-border p-6 text-center text-sm text-muted-foreground">
                 Select a co-admin from the table to edit granular component access.
               </div>
             )}
@@ -380,10 +381,10 @@ const AccessControl = () => {
         </Card>
       </div>
 
-      <Card className="card-shadow">
+      <Card>
         <CardHeader className="pb-3">
-          <CardTitle className="text-base font-heading flex items-center gap-2">
-            <Users className="w-4 h-4 text-accent" />
+          <CardTitle className="flex items-center gap-2 text-base font-semibold">
+            <Users className="h-4 w-4 text-muted-foreground" />
             Approved administrators and co-admins ({members.length})
           </CardTitle>
         </CardHeader>
@@ -403,7 +404,7 @@ const AccessControl = () => {
               {members.map((member) => {
                 const removable = member.member_type === "co_admin" ? canManageCoAdmins : canManageAdmins;
                 return (
-                  <TableRow key={member.id} className="hover:bg-accent/5 transition-colors">
+                  <TableRow key={member.id} className="hover:bg-muted/50 transition-colors">
                     <TableCell>
                       <div className="flex items-center gap-3">
                         <Avatar className="h-9 w-9">
@@ -419,17 +420,17 @@ const AccessControl = () => {
                     </TableCell>
                     <TableCell>
                       {member.member_type === "super_admin" ? (
-                        <Badge className="gap-1 gold-gradient text-accent-foreground border-0">
-                          <Crown className="w-3 h-3" /> Super Admin
+                        <Badge className="gap-1">
+                          <Crown className="h-3 w-3" /> Super Admin
                         </Badge>
                       ) : (
                         <Badge variant="outline" className="gap-1">
-                          <ShieldCheck className="w-3 h-3" /> {roleLabel(member)}
+                          <ShieldCheck className="h-3 w-3" /> {roleLabel(member)}
                         </Badge>
                       )}
                     </TableCell>
                     <TableCell>
-                      <Badge variant={member.status === "active" ? "default" : "secondary"}>{member.status}</Badge>
+                      <Badge variant={member.status === "active" ? "success" : "neutral"}>{member.status}</Badge>
                     </TableCell>
                     <TableCell className="text-sm text-muted-foreground">{formatJoined(member.joined_at)}</TableCell>
                     <TableCell>
@@ -461,7 +462,7 @@ const AccessControl = () => {
                           onClick={() => void handleRemove(member.id)}
                           disabled={!removable || member.is_current_user || loading || submitting || degraded || !managementAvailable}
                         >
-                          <Trash2 className="w-4 h-4" />
+                          <Trash2 className="h-4 w-4" />
                         </Button>
                       </div>
                     </TableCell>
@@ -472,7 +473,7 @@ const AccessControl = () => {
           </Table>
         </CardContent>
       </Card>
-    </div>
+    </PageContainer>
   );
 };
 

@@ -59,7 +59,6 @@ export function BuiltinTemplateGallery({ onSelectTemplate, selectedId }: Builtin
               type="button"
               variant={activeCategory === cat ? "default" : "outline"}
               size="sm"
-              className={activeCategory === cat ? "gold-gradient text-accent-foreground" : ""}
               onClick={() => setActiveCategory(cat)}
             >
               {cat === "All" ? (
@@ -78,7 +77,7 @@ export function BuiltinTemplateGallery({ onSelectTemplate, selectedId }: Builtin
         {filtered.map((template) => {
           const isSelected = Boolean(selectedId && template.id === selectedId);
           return (
-            <Card key={template.id} className={`card-shadow overflow-hidden ${isSelected ? "ring-2 ring-accent/60" : ""}`}>
+            <Card key={template.id} className={`overflow-hidden ${isSelected ? "ring-2 ring-accent/60" : ""}`}>
               <CardContent className="p-4 space-y-3">
                 <div className="flex items-start justify-between gap-2">
                   <div className="min-w-0">
@@ -113,7 +112,7 @@ export function BuiltinTemplateGallery({ onSelectTemplate, selectedId }: Builtin
                   <Button type="button" variant="outline" size="sm" className="gap-2" onClick={() => setPreviewTemplate(template)}>
                     <Eye className="h-4 w-4" /> Preview
                   </Button>
-                  <Button type="button" size="sm" className="gold-gradient text-accent-foreground" onClick={() => onSelectTemplate(template)}>
+                  <Button type="button" size="sm" onClick={() => onSelectTemplate(template)}>
                     Use This
                   </Button>
                 </div>

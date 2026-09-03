@@ -47,24 +47,31 @@ const AdminNavbar = () => {
   const { actor, hasPermission } = useAccessControl();
   const visibleItems = navItems.filter((item) => hasPermission(item.permission));
 
+  const roleLabel =
+    actor?.member_type === "super_admin"
+      ? "Super Admin"
+      : actor?.member_type === "co_admin"
+        ? "Co-Admin"
+        : "Admin";
+
   const handleSignOut = () => {
     void signOutUser();
   };
 
   return (
-    <header className="sticky top-0 z-40 w-full border-b border-sidebar-border bg-sidebar/95 backdrop-blur-md shadow-lg transition-all duration-300">
+    <header className="sticky top-0 z-40 w-full border-b border-sidebar-border bg-sidebar">
       <div className="mx-auto flex min-h-16 max-w-7xl items-center gap-4 px-4 sm:px-6">
-        <div className="flex items-center shrink-0 pr-3 transition-transform hover:scale-105 duration-300">
-          <img src={certifyProLogo} alt="CertifyPro Logo" className="h-9 sm:h-10 w-auto object-contain drop-shadow-md" />
+        <div className="flex shrink-0 items-center pr-3">
+          <img src={certifyProLogo} alt="CertifyPro" className="h-9 w-auto object-contain sm:h-10" />
         </div>
 
-        <nav className="hidden xl:flex flex-1 min-w-0 items-center justify-center gap-1">
+        <nav className="hidden min-w-0 flex-1 items-center justify-center gap-1 xl:flex">
           {visibleItems.map((item) => (
             <NavLink
               key={item.url}
               to={item.url}
-              className="group inline-flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium text-sidebar-foreground transition-all duration-200 hover:bg-sidebar-accent/50 hover:text-sidebar-accent-foreground"
-              activeClassName="bg-sidebar-accent text-sidebar-primary ring-1 ring-sidebar-border shadow-sm"
+              className="group inline-flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium text-sidebar-foreground transition-colors hover:bg-sidebar-accent/50 hover:text-sidebar-accent-foreground"
+              activeClassName="bg-sidebar-accent text-sidebar-primary ring-1 ring-sidebar-border"
             >
               <item.icon className="h-4 w-4 transition-colors group-hover:text-sidebar-primary" />
               <span className="hidden sm:inline">{item.title}</span>
@@ -72,30 +79,30 @@ const AdminNavbar = () => {
           ))}
         </nav>
 
-        <div className="ml-auto flex items-center justify-end gap-3 shrink-0">
+        <div className="ml-auto flex shrink-0 items-center justify-end gap-2">
           <Sheet>
             <SheetTrigger asChild>
               <Button
                 variant="ghost"
                 size="icon"
-                className="xl:hidden text-sidebar-foreground hover:bg-sidebar-accent/50 hover:text-sidebar-accent-foreground"
+                className="text-sidebar-foreground hover:bg-sidebar-accent/50 hover:text-sidebar-accent-foreground xl:hidden"
                 aria-label="Open navigation menu"
               >
                 <Menu className="h-5 w-5" />
               </Button>
             </SheetTrigger>
-            <SheetContent side="left" className="bg-sidebar border-sidebar-border">
+            <SheetContent side="left" className="border-sidebar-border bg-sidebar">
               <SheetHeader>
                 <SheetTitle className="flex items-center gap-2 text-sidebar-accent-foreground">
-                  <img src={certifyProLogo} alt="CertifyPro Logo" className="h-8 w-auto object-contain" />
+                  <img src={certifyProLogo} alt="CertifyPro" className="h-8 w-auto object-contain" />
                 </SheetTitle>
               </SheetHeader>
-              <div className="mt-8 space-y-3">
+              <div className="mt-8 space-y-2">
                 {visibleItems.map((item) => (
                   <SheetClose key={item.url} asChild>
                     <NavLink
                       to={item.url}
-                      className="flex items-center gap-4 rounded-xl px-4 py-3 text-[15px] font-medium text-sidebar-foreground transition-all duration-200 hover:bg-sidebar-accent/10 hover:text-sidebar-accent-foreground"
+                      className="flex items-center gap-4 rounded-lg px-4 py-3 text-sm font-medium text-sidebar-foreground transition-colors hover:bg-sidebar-accent/10 hover:text-sidebar-accent-foreground"
                       activeClassName="bg-sidebar-accent/15 text-sidebar-primary ring-1 ring-sidebar-border"
                     >
                       <item.icon className="h-5 w-5" />
@@ -109,7 +116,7 @@ const AdminNavbar = () => {
                 <SheetClose asChild>
                   <NavLink
                     to="/dashboard/profile"
-                    className="flex items-center gap-4 rounded-xl px-4 py-3 text-[15px] font-medium text-sidebar-foreground hover:bg-sidebar-accent/10 hover:text-sidebar-accent-foreground transition-all duration-200"
+                    className="flex items-center gap-4 rounded-lg px-4 py-3 text-sm font-medium text-sidebar-foreground transition-colors hover:bg-sidebar-accent/10 hover:text-sidebar-accent-foreground"
                     activeClassName="bg-sidebar-accent/15 text-sidebar-primary ring-1 ring-sidebar-border"
                   >
                     <UserCircle className="h-5 w-5" />
@@ -120,7 +127,7 @@ const AdminNavbar = () => {
                 <SheetClose asChild>
                   <NavLink
                     to="/help"
-                    className="flex items-center gap-4 rounded-xl px-4 py-3 text-[15px] font-medium text-sidebar-foreground hover:bg-sidebar-accent/10 hover:text-sidebar-accent-foreground transition-all duration-200"
+                    className="flex items-center gap-4 rounded-lg px-4 py-3 text-sm font-medium text-sidebar-foreground transition-colors hover:bg-sidebar-accent/10 hover:text-sidebar-accent-foreground"
                     activeClassName="bg-sidebar-accent/15 text-sidebar-primary ring-1 ring-sidebar-border"
                   >
                     <HelpCircle className="h-5 w-5" />
@@ -128,11 +135,11 @@ const AdminNavbar = () => {
                   </NavLink>
                 </SheetClose>
 
-                <div className="mt-4 pt-4 border-t border-sidebar-border/60">
+                <div className="mt-4 border-t border-sidebar-border/60 pt-4">
                   <SheetClose asChild>
                     <button
                       onClick={handleSignOut}
-                      className="w-full flex items-center gap-4 rounded-xl px-4 py-3 text-[15px] font-medium text-sidebar-foreground hover:bg-destructive/10 hover:text-destructive transition-all duration-200 text-left"
+                      className="flex w-full items-center gap-4 rounded-lg px-4 py-3 text-left text-sm font-medium text-sidebar-foreground transition-colors hover:bg-destructive/10 hover:text-destructive"
                     >
                       <LogOut className="h-5 w-5" />
                       Sign Out
@@ -145,17 +152,12 @@ const AdminNavbar = () => {
 
           <div className="flex items-center gap-1.5">
             <Button
+              variant="ghost"
               onClick={() => navigate("/dashboard/profile")}
-              className="gap-2 px-3 py-2 rounded-lg border border-slate-600 bg-white/5 hover:bg-white/15 text-slate-200 hover:text-white transition-all duration-200 shadow-md hover:shadow-lg"
+              className="gap-2 border border-sidebar-border bg-sidebar-accent/30 text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
             >
-              <span className="hidden sm:inline text-sm font-medium whitespace-nowrap">
-                {actor?.member_type === "super_admin"
-                  ? "Super Admin"
-                  : actor?.member_type === "co_admin"
-                    ? "Co-Admin"
-                    : "Admin"}
-              </span>
-              <div className="flex h-8 w-8 items-center justify-center rounded-full bg-amber-500/20 ring-1 ring-amber-400/50 text-amber-300">
+              <span className="hidden whitespace-nowrap text-sm font-medium sm:inline">{roleLabel}</span>
+              <div className="flex h-7 w-7 items-center justify-center rounded-full bg-sidebar-accent text-sidebar-primary ring-1 ring-sidebar-border">
                 <UserCircle className="h-5 w-5" />
               </div>
             </Button>
@@ -165,28 +167,28 @@ const AdminNavbar = () => {
                 <Button
                   variant="ghost"
                   size="icon"
-                  className="h-9 w-9 border border-slate-600 bg-white/5 text-slate-300 hover:bg-white/15 hover:text-white"
+                  className="h-9 w-9 border border-sidebar-border bg-sidebar-accent/30 text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
                   aria-label="Open account menu"
                 >
                   <ChevronDown className="h-4 w-4" />
                 </Button>
               </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-48 bg-slate-800 border-slate-700">
+              <DropdownMenuContent align="end" className="w-48">
                 <DropdownMenuItem asChild>
-                  <NavLink to="/dashboard/profile" className="flex items-center gap-2 text-slate-300 hover:text-white hover:bg-white/10">
+                  <NavLink to="/dashboard/profile" className="flex items-center gap-2">
                     <UserCircle className="h-4 w-4" />
                     My Profile
                   </NavLink>
                 </DropdownMenuItem>
                 <DropdownMenuItem asChild>
-                  <NavLink to="/dashboard/profile?section=security" className="flex items-center gap-2 text-slate-300 hover:text-white hover:bg-white/10">
+                  <NavLink to="/dashboard/profile?section=security" className="flex items-center gap-2">
                     <Shield className="h-4 w-4" />
                     Account Settings
                   </NavLink>
                 </DropdownMenuItem>
-                <DropdownMenuSeparator className="bg-slate-700" />
+                <DropdownMenuSeparator />
                 <DropdownMenuItem asChild>
-                  <NavLink to="/" onClick={handleSignOut} className="flex items-center gap-2 text-slate-300 hover:text-white hover:bg-white/10">
+                  <NavLink to="/" onClick={handleSignOut} className="flex items-center gap-2">
                     <LogOut className="h-4 w-4" />
                     Sign Out
                   </NavLink>

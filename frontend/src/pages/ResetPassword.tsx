@@ -215,7 +215,7 @@ const ResetPassword = () => {
       <div className="relative z-10 min-h-screen grid place-items-center px-4 py-10">
         <div className="w-full max-w-md rounded-2xl border-2 border-border/70 bg-card/95 backdrop-blur-sm shadow-[0_10px_35px_rgba(0,0,0,0.08)] p-6 sm:p-7 space-y-6">
           <div className="space-y-3 text-center">
-            <div className="mx-auto h-11 w-11 rounded-xl gold-gradient flex items-center justify-center shadow-sm">
+            <div className="mx-auto h-11 w-11 rounded-xl bg-accent flex items-center justify-center shadow-sm">
               <KeyRound className="h-5 w-5 text-accent-foreground" />
             </div>
             <h1 className="text-2xl font-heading font-bold text-foreground">Reset your password</h1>
@@ -296,7 +296,7 @@ const ResetPassword = () => {
               ) : null}
 
               {submitSuccess ? (
-                <div className="rounded-lg border border-emerald-300/40 bg-emerald-100/60 px-3 py-2 text-xs text-emerald-700 flex items-center gap-2">
+                <div className="rounded-lg border border-success/40 bg-success/10 px-3 py-2 text-xs text-success flex items-center gap-2">
                   <CheckCircle2 className="h-3.5 w-3.5" />
                   <span>{submitSuccess}</span>
                 </div>
@@ -304,7 +304,7 @@ const ResetPassword = () => {
 
               <Button
                 type="button"
-                className="w-full h-11 gold-gradient text-accent-foreground font-semibold hover:opacity-90 transition-opacity"
+                className="w-full h-11 font-semibold"
                 disabled={!canSubmit}
                 onClick={() => void handleSubmit()}
               >
