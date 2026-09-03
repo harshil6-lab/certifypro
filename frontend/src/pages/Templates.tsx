@@ -524,14 +524,14 @@ const Templates = () => {
           <h1 className="text-3xl font-heading font-bold text-foreground">Template Library & Workspace</h1>
           <p className="text-muted-foreground mt-1">Browse official templates, preview them, and save your workspace layout for generation.</p>
         </div>
-        <Button size="sm" className="gold-gradient text-accent-foreground gap-2" onClick={() => (window.location.href = "/generate") }>
+        <Button size="sm" className="gap-2" onClick={() => (window.location.href = "/generate") }>
           Generate Certificates <ArrowRight className="w-4 h-4" />
         </Button>
       </div>
 
       <div className="grid grid-cols-1 xl:grid-cols-5 gap-6">
         <div className="xl:col-span-3 space-y-4">
-          <Card className="card-shadow">
+          <Card>
             <CardHeader className="pb-3">
               <CardTitle className="text-base font-heading flex items-center gap-2">
                 <Sparkles className="w-4 h-4 text-accent" />
@@ -553,7 +553,7 @@ const Templates = () => {
         </div>
 
         <div className="xl:col-span-2 space-y-4">
-          <Card className="card-shadow overflow-hidden">
+          <Card className="overflow-hidden">
             <CardHeader className="pb-3">
               <CardTitle className="text-base font-heading">Template Live Preview & Layout Editor</CardTitle>
             </CardHeader>
@@ -664,7 +664,7 @@ const Templates = () => {
               />
 
               <div className="flex flex-col gap-2">
-                <Button className="flex-1 gold-gradient text-accent-foreground gap-2" onClick={saveLayout}>
+                <Button className="flex-1 gap-2" onClick={saveLayout}>
                   <WandSparkles className="w-4 h-4" /> Save Layout
                 </Button>
                 <p className="text-xs text-muted-foreground">{layoutSaveStatus}</p>

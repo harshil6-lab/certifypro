@@ -4,16 +4,16 @@ import {
   Search,
   ExternalLink,
   Download,
-  Filter,
   CheckCircle2,
   Clock,
   Ban,
   Loader2,
 } from "lucide-react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
+import { PageContainer, PageHeader } from "@/components/layout/PageContainer";
 import {
   Table,
   TableBody,
@@ -34,14 +34,14 @@ import { API_BASE } from "@/services/apiService";
 import { addSessionActivity } from "@/services/sessionActivity";
 
 const statusConfig = {
-  issued: { label: "Active", icon: CheckCircle2, className: "text-success border-success/30 bg-success/5" },
-  active: { label: "Active", icon: CheckCircle2, className: "text-success border-success/30 bg-success/5" },
-  pending: { label: "Pending", icon: Clock, className: "text-accent border-accent/30 bg-accent/5" },
-  inactive: { label: "Non-Active", icon: Clock, className: "text-accent border-accent/30 bg-accent/5" },
-  "non-active": { label: "Non-Active", icon: Clock, className: "text-accent border-accent/30 bg-accent/5" },
-  revoked: { label: "Revoked", icon: Ban, className: "text-destructive border-destructive/30 bg-destructive/5" },
-  expired: { label: "Archived", icon: Clock, className: "text-muted-foreground border-border bg-muted/40" },
-  archived: { label: "Archived", icon: Clock, className: "text-muted-foreground border-border bg-muted/40" },
+  issued: { label: "Active", icon: CheckCircle2, variant: "success" as const },
+  active: { label: "Active", icon: CheckCircle2, variant: "success" as const },
+  pending: { label: "Pending", icon: Clock, variant: "warning" as const },
+  inactive: { label: "Inactive", icon: Clock, variant: "neutral" as const },
+  "non-active": { label: "Inactive", icon: Clock, variant: "neutral" as const },
+  revoked: { label: "Revoked", icon: Ban, variant: "destructive" as const },
+  expired: { label: "Expired", icon: Clock, variant: "neutral" as const },
+  archived: { label: "Archived", icon: Clock, variant: "neutral" as const },
 };
 
 type RegistryCertificate = {
@@ -58,11 +58,11 @@ type RegistryCertificate = {
 };
 
 const formatIssuedTimestamp = (value?: string | null) => {
-  if (!value) return { date: "N/A", time: "" };
+  if (!value) return { date: "—", time: "" };
 
   const parsed = new Date(value);
   if (Number.isNaN(parsed.getTime())) {
-    return { date: "N/A", time: "" };
+    return { date: "—", time: "" };
   }
 
   return {
@@ -130,26 +130,22 @@ const Registry = () => {
   });
 
   return (
-    <div className="p-8 max-w-[1200px] mx-auto space-y-6 animate-fade-in">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-heading font-bold text-foreground">Certificate Registry</h1>
-          <p className="text-muted-foreground mt-1">View, manage, and track all issued certificates</p>
-          <Badge variant="secondary" className="mt-2 text-xs">Connected to backend</Badge>
-          <p className="text-xs text-muted-foreground mt-2">Generated certificate files are automatically removed after 1 week.</p>
-        </div>
-      </div>
+    <PageContainer className="space-y-6 animate-fade-in">
+      <PageHeader
+        title="Certificate registry"
+        description="View, manage, and track all issued certificates."
+      />
 
       {!loading && (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-          <Card className="card-shadow border-l-4 border-l-accent hover:shadow-lg transition-all duration-300">
-            <CardContent className="p-4 flex items-center gap-3">
-              <div className="w-10 h-10 rounded-lg bg-accent/10 flex items-center justify-center">
-                <Download className="w-5 h-5 text-accent" />
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+          <Card>
+            <CardContent className="flex items-center gap-3 p-4">
+              <div className="flex h-10 w-10 items-center justify-center rounded-md bg-muted text-muted-foreground">
+                <Download className="h-5 w-5" />
               </div>
               <div>
-                <p className="text-2xl font-heading font-bold text-foreground">{certificates.length}</p>
-                <p className="text-xs text-muted-foreground">Generated Certificates</p>
+                <p className="text-2xl font-semibold tracking-tight text-foreground">{certificates.length}</p>
+                <p className="text-xs text-muted-foreground">Generated certificates</p>
               </div>
             </CardContent>
           </Card>
@@ -157,34 +153,31 @@ const Registry = () => {
       )}
 
       {/* Filters */}
-      <Card className="card-shadow">
+      <Card>
         <CardContent className="p-4">
           <div className="flex flex-wrap items-center gap-3">
-            <div className="relative flex-1 min-w-[240px]">
-              <Search className="absolute left-3 top-2.5 w-4 h-4 text-muted-foreground" />
+            <div className="relative min-w-[240px] flex-1">
+              <Search className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
               <Input
-                placeholder="Search by certificate ID or student..."
-                className="pl-10 focus:ring-2 focus:ring-accent/20 transition-shadow"
+                placeholder="Search by certificate ID or student…"
+                className="pl-10"
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
               />
             </div>
             <Select value={statusFilter} onValueChange={setStatusFilter}>
-              <SelectTrigger className="w-40 hover:border-accent/50 transition-colors">
+              <SelectTrigger className="w-40">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">All Status</SelectItem>
+                <SelectItem value="all">All statuses</SelectItem>
                 <SelectItem value="issued">Active</SelectItem>
                 <SelectItem value="pending">Pending</SelectItem>
-                <SelectItem value="inactive">Non-Active</SelectItem>
+                <SelectItem value="inactive">Inactive</SelectItem>
                 <SelectItem value="revoked">Revoked</SelectItem>
                 <SelectItem value="archived">Archived</SelectItem>
               </SelectContent>
             </Select>
-            <Button variant="outline" size="sm" className="gap-2 hover:bg-accent/5 hover:border-accent/50 transition-colors">
-              <Filter className="w-4 h-4" /> More Filters
-            </Button>
           </div>
         </CardContent>
       </Card>
@@ -200,17 +193,17 @@ const Registry = () => {
 
       {/* Loading State */}
       {loading && (
-        <Card className="card-shadow">
-          <CardContent className="p-12 flex flex-col items-center justify-center gap-4">
-            <Loader2 className="w-8 h-8 text-accent animate-spin" />
-            <p className="text-muted-foreground">Loading certificates...</p>
+        <Card>
+          <CardContent className="flex flex-col items-center justify-center gap-4 p-12">
+            <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+            <p className="text-muted-foreground">Loading certificates…</p>
           </CardContent>
         </Card>
       )}
 
       {/* Table */}
       {!loading && (
-        <Card className="card-shadow">
+        <Card>
           <CardContent className="p-0">
             <Table>
               <TableHeader>
@@ -230,24 +223,24 @@ const Registry = () => {
                     const status = statusConfig[certificateStatus as keyof typeof statusConfig] || statusConfig.pending;
                     const issuedAt = formatIssuedTimestamp(cert.created_at);
                     return (
-                      <TableRow key={cert.id || cert.external_id} className="hover:bg-accent/5 transition-colors">
-                        <TableCell className="font-mono text-sm">{cert.external_id || "N/A"}</TableCell>
-                        <TableCell className="font-medium text-sm">{cert.full_name || "N/A"}</TableCell>
-                        <TableCell className="text-sm text-muted-foreground">{cert.email || "N/A"}</TableCell>
+                      <TableRow key={cert.id || cert.external_id} className="hover:bg-muted/50 transition-colors">
+                        <TableCell className="font-mono text-sm">{cert.external_id || "—"}</TableCell>
+                        <TableCell className="font-medium text-sm">{cert.full_name || "—"}</TableCell>
+                        <TableCell className="text-sm text-muted-foreground">{cert.email || "—"}</TableCell>
                         <TableCell className="text-sm text-muted-foreground">
                           <div>{issuedAt.date}</div>
-                          <div className="text-xs text-muted-foreground/80">{issuedAt.time || "Time unavailable"}</div>
+                          {issuedAt.time ? <div className="text-xs text-muted-foreground/80">{issuedAt.time}</div> : null}
                         </TableCell>
                         <TableCell>
-                          <Badge variant="outline" className={`gap-1 ${status.className}`}>
-                            <status.icon className="w-3 h-3" />
+                          <Badge variant={status.variant} className="gap-1">
+                            <status.icon className="h-3 w-3" />
                             {status.label}
                           </Badge>
                         </TableCell>
                         <TableCell className="text-right">
                           <div className="flex items-center justify-end gap-2">
                             {cert.download_url ? (
-                              <Button asChild variant="ghost" size="sm" className="hover:bg-accent/10 transition-colors gap-2">
+                              <Button asChild variant="ghost" size="sm" className="gap-2">
                                 <a
                                   href={cert.download_url}
                                   target="_blank"
@@ -256,11 +249,11 @@ const Registry = () => {
                                     certificateId: cert.external_id,
                                   })}
                                 >
-                                  <Download className="w-4 h-4" /> Download
+                                  <Download className="h-4 w-4" /> Download
                                 </a>
                               </Button>
                             ) : null}
-                            <Button asChild variant="ghost" size="sm" className="hover:bg-accent/10 transition-colors gap-2">
+                            <Button asChild variant="ghost" size="sm" className="gap-2">
                               <a
                                 href={`/verify/${encodeURIComponent(cert.external_id)}`}
                                 target="_blank"
@@ -269,7 +262,7 @@ const Registry = () => {
                                   certificateId: cert.external_id,
                                 })}
                               >
-                                <ExternalLink className="w-4 h-4" /> Verify
+                                <ExternalLink className="h-4 w-4" /> Verify
                               </a>
                             </Button>
                           </div>
@@ -282,7 +275,7 @@ const Registry = () => {
                   })
                 ) : (
                   <TableRow>
-                    <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
+                    <TableCell colSpan={6} className="text-center py-10 text-muted-foreground">
                       No certificates found
                     </TableCell>
                   </TableRow>
@@ -294,15 +287,11 @@ const Registry = () => {
       )}
 
       {!loading && filtered.length > 0 && (
-        <div className="flex items-center justify-between text-sm text-muted-foreground">
-          <span>Showing {filtered.length} of {certificates.length} certificates</span>
-          <div className="flex gap-2">
-            <Button variant="outline" size="sm" disabled className="hover:bg-accent/5 transition-colors">Previous</Button>
-            <Button variant="outline" size="sm" className="hover:bg-accent/5 hover:border-accent/50 transition-colors">Next</Button>
-          </div>
-        </div>
+        <p className="text-sm text-muted-foreground">
+          Showing {filtered.length} of {certificates.length} certificates
+        </p>
       )}
-    </div>
+    </PageContainer>
   );
 };
 

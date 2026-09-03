@@ -105,7 +105,6 @@ export function openRazorpayCheckout(
     },
   };
 
-  // @ts-ignore — Razorpay is loaded via script tag in index.html
   const rzp = new window.Razorpay(options);
   rzp.on("payment.failed", (response: { error: { description: string } }) => {
     onFailure(response.error?.description || "Payment failed.");

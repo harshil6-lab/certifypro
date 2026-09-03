@@ -73,7 +73,8 @@ const UpgradeModal = ({ open, onOpenChange, creditsUsed = 12, creditsLimit = 12 
           )}
           <div className="space-y-2">
             <Button
-              className="w-full gold-gradient text-accent-foreground"
+              variant="accent"
+              className="w-full"
               onClick={handleUpgrade}
               disabled={loading}
             >

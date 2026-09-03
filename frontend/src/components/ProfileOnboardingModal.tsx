@@ -124,7 +124,7 @@ export function ProfileOnboardingModal({
         {/* Progress bar */}
         <div className="absolute top-0 left-0 right-0 h-1 bg-border rounded-t-lg overflow-hidden">
           <div
-            className="h-full gold-gradient transition-all duration-300"
+            className="h-full bg-primary transition-all duration-300"
             style={{ width: `${progressPercent}%` }}
           />
         </div>
@@ -237,7 +237,7 @@ export function ProfileOnboardingModal({
             <Button
               onClick={handleNext}
               disabled={!isStepComplete() || isLoading}
-              className="gap-2 gold-gradient text-accent-foreground hover:shadow-lg hover:shadow-amber-500/30 disabled:opacity-50"
+              className="gap-2 disabled:opacity-50"
             >
               {step === 3 ? (
                 <>

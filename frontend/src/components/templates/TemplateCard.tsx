@@ -17,7 +17,6 @@ export function TemplateCard({ template, selectedId, onPreview, onSelect, onFavo
   return (
     <div className={`rounded-xl border p-4 space-y-4 transition-all ${isSelected ? "border-accent bg-accent/5" : "border-border bg-card hover:border-accent/40"}`}>
       <div className="aspect-[1.414/1] rounded-lg border border-dashed border-border bg-muted/40 p-4 flex items-center justify-center text-center relative overflow-hidden">
-        <div className="absolute inset-0 seal-pattern" />
         <div className="relative z-10 space-y-2">
           <p className="text-sm font-semibold text-foreground">{template.title}</p>
           <p className="text-xs text-muted-foreground">{template.previewLabel} • {template.aspectRatio}</p>

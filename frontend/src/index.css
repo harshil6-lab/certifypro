@@ -59,11 +59,6 @@
     --font-body: 'Inter', -apple-system, sans-serif;
     --font-signature: 'Dancing Script', 'Brush Script MT', cursive;
 
-    --gold-gradient: linear-gradient(135deg, hsl(43 90% 52%), hsl(38 85% 45%));
-    --navy-gradient: linear-gradient(135deg, hsl(220 50% 15%), hsl(220 45% 22%));
-    --card-shadow: 0 1px 3px hsl(220 40% 13% / 0.06), 0 4px 12px hsl(220 40% 13% / 0.04);
-    --card-shadow-lg: 0 4px 12px hsl(220 40% 13% / 0.08), 0 12px 32px hsl(220 40% 13% / 0.06);
-
     /* Elevation scale — 3 meaningful levels. Level 1: resting surfaces;
        Level 2: raised/interactive surfaces; Level 3: floating overlays
        (dialogs, dropdowns, popovers). */
@@ -125,31 +120,6 @@
 }
 
 @layer utilities {
-  .gold-gradient {
-    background: var(--gold-gradient);
-  }
-  .navy-gradient {
-    background: var(--navy-gradient);
-  }
-  .card-shadow {
-    box-shadow: var(--card-shadow);
-  }
-  .card-shadow-lg {
-    box-shadow: var(--card-shadow-lg);
-  }
-  .seal-pattern {
-    background-image: radial-gradient(circle at 50% 50%, hsl(43 90% 52% / 0.03) 0%, transparent 70%);
-  }
-
-  /* Glass morphism effect */
-  .glass {
-    @apply backdrop-blur-xl bg-white/10 border border-white/20;
-  }
-
-  .glass-dark {
-    @apply backdrop-blur-xl bg-black/20 border border-white/10;
-  }
-
   /* Refined button interactions */
   .transition-smooth {
     @apply transition-all duration-300 ease-out;

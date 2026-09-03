@@ -1,6 +1,6 @@
 import { useState } from "react";
-import { Link, useNavigate, useSearchParams } from "react-router-dom";
-import { Lock, Mail, ShieldCheck, UserPlus, CheckCircle, ArrowRight, XCircle, Loader2, Eye, EyeOff } from "lucide-react";
+import { useNavigate, useSearchParams } from "react-router-dom";
+import { Lock, Mail, UserPlus, CheckCircle, ArrowRight, XCircle, Loader2, Eye, EyeOff } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import loginBg from "@/assets/login-bg.jpg";
@@ -81,248 +81,203 @@ const Login = () => {
   };
 
   return (
-    <div className="min-h-screen flex bg-background overflow-hidden">
+    <div className="flex min-h-screen bg-background">
       {/* Left panel — branding */}
       <div
-        className="hidden lg:flex lg:w-1/2 relative items-center justify-center p-12"
+        className="relative hidden w-1/2 items-center justify-center p-12 lg:flex"
         style={{ backgroundImage: `url(${loginBg})`, backgroundSize: "cover", backgroundPosition: "center" }}
       >
-        {/* Gradient overlay for better text contrast */}
-        <div className="absolute inset-0 navy-gradient opacity-85" />
+        {/* Navy overlay for legible, calm contrast */}
+        <div className="absolute inset-0 bg-primary/90" />
 
-        {/* Decorative pattern overlay */}
-        <div className="absolute inset-0 opacity-20">
-          <div className="absolute top-20 left-10 w-64 h-64 rounded-full bg-amber-400 blur-3xl opacity-10" />
-          <div className="absolute bottom-10 right-20 w-80 h-80 rounded-full bg-blue-400 blur-3xl opacity-10" />
-        </div>
+        <div className="relative z-10 max-w-md space-y-8 text-center">
+          <img
+            src={whiteCertifyProLogo}
+            alt="CertifyPro"
+            className="mx-auto h-12 w-auto object-contain"
+          />
 
-        {/* Branding content */}
-        <div className="relative z-10 max-w-md text-center space-y-10">
-          {/* Logo badge */}
-          <div className="flex justify-center mb-4">
-            <img src={whiteCertifyProLogo} alt="CertifyPro Logo" className="h-12 lg:h-14 w-auto object-contain opacity-100" />
-          </div>
-
-          {/* Heading */}
           <div className="space-y-3">
-            <h1 className="text-5xl lg:text-6xl font-heading font-bold text-primary-foreground leading-tight drop-shadow-sm">
+            <h1 className="text-4xl font-semibold tracking-tight text-primary-foreground">
               Admin Portal
             </h1>
-            <p className="text-xl text-primary-foreground/90 font-body font-light tracking-wide">
-              Certificate Automation & Verification
+            <p className="text-base text-primary-foreground/80">
+              Certificate automation &amp; verification
             </p>
           </div>
 
-          {/* Tagline */}
-          <p className="text-base text-primary-foreground/70 font-body leading-relaxed max-w-sm mx-auto">
-            Enterprise-grade certificate management trusted by leading institutions worldwide. Secure, scalable, and intelligent.
+          <p className="mx-auto max-w-sm text-sm leading-relaxed text-primary-foreground/70">
+            Manage certificate issuance, templates, student records, and public verification from one secure workspace.
           </p>
 
-          {/* Trust indicator */}
-          <div className="flex items-center justify-center gap-3 text-primary-foreground/70 text-sm">
-            <ShieldCheck className="w-5 h-5 flex-shrink-0 text-accent" />
-            <span className="font-medium">Trusted by 200+ institutions</span>
-          </div>
-
-          {/* Footer note */}
-          <div className="pt-8 border-t border-white/20">
-            <p className="text-xs text-primary-foreground/60 uppercase tracking-widest font-semibold">
-              Secure Certificate Management Platform
+          <div className="border-t border-primary-foreground/15 pt-8">
+            <p className="text-xs font-medium uppercase tracking-widest text-primary-foreground/60">
+              Secure certificate management platform
             </p>
           </div>
         </div>
       </div>
 
       {/* Right panel — login form */}
-      <div className="flex-1 flex items-center justify-center p-6 sm:p-8 lg:p-12 min-h-screen relative overflow-y-auto">
-        {/* Subtle gradient background */}
-        <div className="absolute inset-0 pointer-events-none">
-          <div className="absolute top-0 right-0 w-96 h-96 bg-amber-100/10 dark:bg-amber-900/5 rounded-full blur-3xl" />
-          <div className="absolute bottom-0 left-0 w-96 h-96 bg-blue-100/10 dark:bg-blue-900/5 rounded-full blur-3xl" />
-        </div>
-
-        {/* Form container with glass effect */}
-        <div className="w-full max-w-md space-y-6 animate-fade-in relative z-10">
+      <div className="relative flex flex-1 items-center justify-center overflow-y-auto p-6 sm:p-8 lg:p-12">
+        <div className="w-full max-w-md space-y-8 animate-fade-in">
           {/* Mobile header */}
-          <div className="lg:hidden flex flex-col items-center gap-2 text-center mb-4">
-            <img src={certifyProIcon} alt="CertifyPro Logo" className="h-12 w-12 object-contain" />
+          <div className="flex flex-col items-center gap-2 text-center lg:hidden">
+            <img src={certifyProIcon} alt="CertifyPro" className="h-12 w-12 object-contain" />
             <div>
-              <h1 className="text-2xl font-heading font-bold text-foreground">Admin Portal</h1>
-              <p className="text-xs text-muted-foreground mt-1 font-medium">Secure Access</p>
+              <h1 className="text-2xl font-semibold tracking-tight text-foreground">Admin Portal</h1>
+              <p className="mt-1 text-xs text-muted-foreground">Secure access</p>
             </div>
           </div>
 
           {/* Page heading */}
           <div className="space-y-2 text-center lg:text-left">
-            <h2 className="text-3xl lg:text-3xl font-heading font-bold text-foreground leading-tight">
-              Welcome Back
+            <h2 className="text-2xl font-semibold tracking-tight text-foreground">
+              Welcome back
             </h2>
-            <p className="text-sm text-muted-foreground/90 font-body leading-relaxed">
-              Sign in to manage certificates, templates, student records, and secure verifications
+            <p className="text-sm leading-relaxed text-muted-foreground">
+              Sign in to manage certificates, templates, student records, and verifications.
             </p>
             {templateRedirect ? (
-              <div className="rounded-xl border border-accent/30 bg-accent/10 px-4 py-3 text-sm text-foreground">
-                Please login to access certificate templates.
+              <div className="rounded-md border border-accent/30 bg-accent/10 px-4 py-3 text-sm text-foreground">
+                Please sign in to access certificate templates.
               </div>
             ) : null}
           </div>
 
-          {/* Admin Login Section */}
-          <div className="space-y-4">
-            {/* Email and Password inputs */}
-            <div className="space-y-4">
-              <div className="relative group">
-                <Mail className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground/60 group-focus-within:text-accent transition-colors" />
+          {/* Sign-in form */}
+          <form
+            className="space-y-4"
+            onSubmit={(e) => {
+              e.preventDefault();
+              void handleSignIn();
+            }}
+          >
+            <div className="space-y-2">
+              <label htmlFor="email" className="text-sm font-medium text-foreground">
+                Email
+              </label>
+              <div className="relative">
+                <Mail className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
                 <Input
+                  id="email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   placeholder="admin@institution.edu"
                   type="email"
                   autoComplete="email"
-                  className="pl-12 h-14 border-2 border-border bg-background/50 focus:bg-background focus:border-accent/50 focus:ring-1 focus:ring-accent/20 transition-all duration-300 placeholder:text-muted-foreground/50 font-body text-base"
+                  className="h-11 pl-10"
                 />
               </div>
-              <div className="relative group">
-                <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground/60 group-focus-within:text-accent transition-colors" />
-                <div className="relative">
-                  <Input
-                    id="password"
-                    type={showPassword ? "text" : "password"}
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    autoComplete="current-password"
-                    placeholder="Enter your password"
-                    className="pr-10 pl-12 h-14 border-2 border-border bg-background/50 focus:bg-background focus:border-accent/50 focus:ring-1 focus:ring-accent/20 transition-all duration-300 placeholder:text-muted-foreground/50 font-body text-base"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setShowPassword((prev) => !prev)}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground focus:outline-none"
-                    aria-label={showPassword ? "Hide password" : "Show password"}
-                    tabIndex={-1}
-                  >
-                    {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
-                  </button>
-                </div>
-              </div>
-              <div className="flex justify-between items-center px-1">
-                <div className="flex items-center gap-2">
-                  {/* Add Remember Me check here if needed later */}
-                </div>
+            </div>
+
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <label htmlFor="password" className="text-sm font-medium text-foreground">
+                  Password
+                </label>
                 <button
                   type="button"
                   onClick={() => void handlePasswordReset()}
-                  className="text-sm font-medium text-muted-foreground hover:text-accent transition-colors py-1"
+                  className="rounded-sm text-sm font-medium text-muted-foreground underline-offset-4 transition-colors hover:text-foreground hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
                 >
                   Forgot password?
                 </button>
               </div>
-
-              {authError ? (
-                <div className="rounded-lg border-2 border-destructive/40 bg-destructive/10 px-4 py-3 text-base text-destructive font-medium flex items-start gap-2">
-                  <XCircle className="w-5 h-5 mt-0.5 flex-shrink-0" />
-                  <span>{authError}</span>
-                </div>
-              ) : null}
-              {resetMessage ? (
-                <div className="rounded-lg border-2 border-emerald-300/50 bg-emerald-100/60 px-4 py-3 text-sm text-emerald-700 font-medium flex items-start gap-2">
-                  <CheckCircle className="w-4 h-4 mt-0.5 flex-shrink-0" />
-                  <span>{resetMessage}</span>
-                </div>
-              ) : null}
-              {!isSupabaseConfigured ? (
-                <div className="rounded-lg border border-amber-300/40 bg-amber-100/60 px-3 py-2 text-xs text-amber-800">
-                  Authentication is not fully configured. Ask an admin to set Supabase environment values.
-                </div>
-              ) : null}
+              <div className="relative">
+                <Lock className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                <Input
+                  id="password"
+                  type={showPassword ? "text" : "password"}
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  autoComplete="current-password"
+                  placeholder="Enter your password"
+                  className="h-11 pl-10 pr-10"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword((prev) => !prev)}
+                  className="absolute right-2 top-1/2 flex h-7 w-7 -translate-y-1/2 items-center justify-center rounded-sm text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                  aria-label={showPassword ? "Hide password" : "Show password"}
+                >
+                  {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                </button>
+              </div>
             </div>
 
-            {/* Sign In Button */}
-            <div className="block pt-2">
-              <Button
-                type="button"
-                className="w-full h-14 text-lg font-bold gold-gradient text-accent-foreground hover:shadow-lg hover:shadow-amber-500/30 active:scale-[0.98] transition-all duration-300"
-                onClick={() => void handleSignIn()}
-                disabled={isSigningIn}
-              >
-                {isSigningIn ? (
-                  <span className="flex items-center gap-2">
-                    <Loader2 className="w-5 h-5 animate-spin" />
-                    Signing In...
-                  </span>
-                ) : (
-                  "Sign In"
-                )}
-              </Button>
-            </div>
-          </div>
+            {authError ? (
+              <div className="flex items-start gap-2 rounded-md border border-destructive/40 bg-destructive/10 px-4 py-3 text-sm font-medium text-destructive">
+                <XCircle className="mt-0.5 h-4 w-4 flex-shrink-0" />
+                <span>{authError}</span>
+              </div>
+            ) : null}
+            {resetMessage ? (
+              <div className="flex items-start gap-2 rounded-md border border-success/40 bg-success/10 px-4 py-3 text-sm font-medium text-success">
+                <CheckCircle className="mt-0.5 h-4 w-4 flex-shrink-0" />
+                <span>{resetMessage}</span>
+              </div>
+            ) : null}
+            {!isSupabaseConfigured ? (
+              <div className="rounded-md border border-warning/40 bg-warning/10 px-4 py-3 text-xs text-warning">
+                Authentication is not fully configured. Ask an administrator to set the required environment values.
+              </div>
+            ) : null}
 
-          {/* Security notice */}
-          <div className="flex items-center justify-center gap-2 text-xs text-muted-foreground/70 font-medium py-1">
-            <Lock className="w-3.5 h-3.5 flex-shrink-0" />
-            <span>SHA‑256 encrypted • HIPAA compliant</span>
-          </div>
+            <Button type="submit" size="lg" className="w-full" disabled={isSigningIn}>
+              {isSigningIn ? (
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  Signing in…
+                </>
+              ) : (
+                "Sign in"
+              )}
+            </Button>
+          </form>
 
-          {/* Request Admin Access */}
-          <div className="py-2">
-            <button
-              type="button"
-              onClick={() => setAdminModalOpen(true)}
-              className="group relative w-full inline-flex items-center justify-center gap-2 rounded-xl border-2 border-accent/30 bg-gradient-to-br from-accent/8 to-transparent px-6 py-3.5 text-sm font-semibold text-accent hover:border-accent/60 hover:bg-gradient-to-br hover:from-accent/15 hover:to-accent/5 hover:shadow-[0_8px_24px_rgba(217,169,56,0.15)] dark:hover:shadow-[0_8px_24px_rgba(217,169,56,0.25)] active:scale-95 transition-all duration-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/50 focus-visible:ring-offset-2 dark:focus-visible:ring-offset-background"
-            >
-              <span className="flex h-6 w-6 items-center justify-center rounded-lg gold-gradient shadow-md transition-transform duration-300 group-hover:scale-110">
-                <UserPlus className="h-3.5 w-3.5 text-accent-foreground" />
-              </span>
-              <span>Request Admin Access</span>
-            </button>
-          </div>
+          {/* Request admin access */}
+          <Button
+            type="button"
+            variant="outline"
+            className="w-full"
+            onClick={() => setAdminModalOpen(true)}
+          >
+            <UserPlus className="h-4 w-4" />
+            Request admin access
+          </Button>
 
           {/* Divider */}
-          <div className="relative py-4">
+          <div className="relative">
             <div className="absolute inset-0 flex items-center">
-              <div className="w-full border-t border-border/50" />
+              <div className="w-full border-t border-border" />
             </div>
             <div className="relative flex justify-center">
-              <span className="bg-background dark:bg-background px-3 text-xs uppercase tracking-widest font-semibold text-muted-foreground/60">
-                Public Portal
+              <span className="bg-background px-3 text-xs font-medium uppercase tracking-widest text-muted-foreground">
+                Public portal
               </span>
             </div>
           </div>
 
-          {/* Public Verification Section */}
-          <div
-            className="group rounded-2xl border-2 border-border/60 bg-gradient-to-br from-card/40 to-card/20 dark:from-slate-800/40 dark:to-slate-900/40 backdrop-blur-sm p-6 sm:p-7 space-y-5 cursor-pointer transition-all duration-500 hover:border-accent/40 hover:bg-gradient-to-br hover:from-card/60 hover:to-card/40 hover:shadow-[0_16px_40px_rgba(217,169,56,0.12)] dark:hover:shadow-[0_16px_40px_rgba(217,169,56,0.2)]"
-            onClick={() => setVerificationModalOpen(true)}
-            role="button"
-            tabIndex={0}
-            onKeyDown={(e) => e.key === "Enter" && setVerificationModalOpen(true)}
-          >
-            {/* Header */}
-            <div className="space-y-3">
-              <div className="flex items-center gap-3">
-                <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-gradient-to-br from-emerald-100 to-emerald-50 dark:from-emerald-900/40 dark:to-emerald-900/20 ring-1 ring-emerald-200/50 dark:ring-emerald-800/50">
-                  <CheckCircle className="w-5 h-5 text-emerald-600 dark:text-emerald-400" />
-                </div>
-                <h3 className="text-sm font-semibold text-foreground">Verify a Certificate</h3>
+          {/* Public verification */}
+          <div className="rounded-lg border border-border bg-card p-6 space-y-4">
+            <div className="flex items-center gap-3">
+              <div className="flex h-10 w-10 items-center justify-center rounded-md bg-success/10 text-success">
+                <CheckCircle className="h-5 w-5" />
               </div>
-              <p className="text-xs text-muted-foreground/80 leading-relaxed">
-                Students, employers, & institutions can verify certificate authenticity instantly. No account necessary.
-              </p>
+              <h3 className="text-sm font-semibold text-foreground">Verify a certificate</h3>
             </div>
-
-            {/* Bottom action */}
-            <div className="flex items-center justify-between pt-2">
-              <span className="text-xs font-medium text-muted-foreground/60 uppercase tracking-wider">
-                Public verification portal
-              </span>
-              <ArrowRight className="w-4 h-4 text-accent/70 transition-transform duration-300 group-hover:translate-x-1" />
-            </div>
-
-            {/* Button */}
+            <p className="text-sm leading-relaxed text-muted-foreground">
+              Students, employers, and institutions can confirm certificate authenticity instantly — no account required.
+            </p>
             <Button
-              className="w-full h-10 text-sm font-semibold gold-gradient text-accent-foreground hover:shadow-md hover:shadow-amber"
+              type="button"
+              variant="outline"
+              className="w-full justify-between"
+              onClick={() => setVerificationModalOpen(true)}
             >
-              Verify Now
+              Verify now
+              <ArrowRight className="h-4 w-4" />
             </Button>
           </div>
 
@@ -342,4 +297,3 @@ const Login = () => {
 };
 
 export default Login;
-

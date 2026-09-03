@@ -116,7 +116,18 @@ export async function generateCertificate(template_id: string, student_id: strin
 
 // Future API helpers (auth, user) can be added here.
 
-export async function verifyCertificate(token: string): Promise<Record<string, unknown>> {
+/**
+ * Shape of the certificate verification response. `valid` and `external_id`
+ * are the fields the UI relies on; any other backend-provided fields remain
+ * available as `unknown` via the index signature.
+ */
+export interface CertificateVerificationResult {
+  valid?: boolean;
+  external_id?: string;
+  [key: string]: unknown;
+}
+
+export async function verifyCertificate(token: string): Promise<CertificateVerificationResult> {
   const url = `${API_BASE}/verify/${encodeURIComponent(token)}`;
   const res = await fetch(url, { method: "GET" });
   if (!res.ok) {
@@ -124,5 +135,5 @@ export async function verifyCertificate(token: string): Promise<Record<string, u
     const txt = await res.text();
     throw new Error(`Verification failed: ${res.status} ${txt}`);
   }
-  return (await res.json()) as Record<string, unknown>;
+  return (await res.json()) as CertificateVerificationResult;
 }

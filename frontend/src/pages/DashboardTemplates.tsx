@@ -96,7 +96,7 @@ const DashboardTemplates = () => {
         ))}
       </div>
 
-      <Card className="card-shadow">
+      <Card>
         <CardHeader className="pb-3">
           <CardTitle>Template Collection</CardTitle>
         </CardHeader>

@@ -18,6 +18,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { PageContainer } from "@/components/layout/PageContainer";
 import { useToast } from "@/hooks/use-toast";
 import { API_BASE, getAuthHeaders } from "@/services/apiService";
 import {
@@ -77,7 +78,7 @@ const emptyProfile: ProfileForm = {
   fullName: "",
   email: "",
   role: "Admin",
-  joined: "Unavailable",
+  joined: "—",
   lastLoginAt: "",
   organization: "",
 };
@@ -96,12 +97,12 @@ const roleLabelMap: Record<UserProfile["role"], ProfileForm["role"]> = {
 
 function formatJoinedDate(value?: string | null): string {
   if (!value) {
-    return "Unavailable";
+    return "—";
   }
 
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) {
-    return "Unavailable";
+    return "—";
   }
 
   return new Intl.DateTimeFormat(undefined, {
@@ -112,12 +113,12 @@ function formatJoinedDate(value?: string | null): string {
 
 function formatDateTime(value?: string | null): string {
   if (!value) {
-    return "Unavailable";
+    return "—";
   }
 
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) {
-    return "Unavailable";
+    return "—";
   }
 
   return date.toLocaleString();
@@ -459,18 +460,18 @@ const Profile = () => {
   };
 
   return (
-    <div className="p-8 max-w-[1240px] mx-auto space-y-6">
-      <div className="grid grid-cols-1 lg:grid-cols-4 gap-6 items-start">
-        <Card className="card-shadow lg:col-span-1 lg:sticky lg:top-24 h-fit transition-all duration-300">
-          <CardHeader className="pb-3 border-b border-border/40">
-            <CardTitle className="text-base font-heading font-semibold">Profile Menu</CardTitle>
+    <PageContainer className="animate-fade-in">
+      <div className="grid grid-cols-1 items-start gap-6 lg:grid-cols-4">
+        <Card className="h-fit lg:sticky lg:top-24">
+          <CardHeader className="pb-3">
+            <CardTitle className="text-base font-semibold">Sections</CardTitle>
           </CardHeader>
-          <CardContent className="space-y-1 pt-4">
+          <CardContent className="space-y-1">
             {sectionLinks.map((item) => (
               <a
                 key={item.id}
                 href={`#${item.id}`}
-                className="flex items-center gap-2 rounded-md px-3 py-2 text-sm font-medium text-muted-foreground transition-all hover:bg-accent/10 hover:text-accent hover:pl-4 focus:bg-accent/10 focus:text-accent"
+                className="block rounded-md px-3 py-2 text-sm font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
               >
                 {item.label}
               </a>
@@ -478,82 +479,78 @@ const Profile = () => {
           </CardContent>
         </Card>
 
-        <div className="lg:col-span-3 space-y-8 animate-fade-in">
-          <Card id="overview" className="card-shadow overflow-hidden">
-            <div className="h-32 bg-gradient-to-r from-primary/10 via-accent/5 to-background border-b border-border/50"></div>
-            <CardContent className="p-6 relative">
-              <div className="flex flex-col md:flex-row md:items-end gap-6 -mt-16 mb-6">
-                <Avatar className="h-32 w-32 border-4 border-background shadow-xl">
-                  <AvatarFallback className="bg-primary/10 text-primary text-4xl font-heading font-bold">{getAvatarInitials(profile)}</AvatarFallback>
+        <div className="space-y-6 lg:col-span-3">
+          <Card id="overview">
+            <CardContent className="p-6">
+              <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
+                <Avatar className="h-20 w-20 border border-border">
+                  <AvatarFallback className="bg-muted text-xl font-semibold text-foreground">{getAvatarInitials(profile)}</AvatarFallback>
                 </Avatar>
-
-                <div className="space-y-2 pb-2">
-                  <h1 className="text-3xl font-heading font-bold text-foreground">{profile.fullName || "Unnamed User"}</h1>
+                <div className="space-y-2">
+                  <h1 className="text-2xl font-semibold tracking-tight text-foreground">{profile.fullName || "Unnamed user"}</h1>
                   <div className="flex flex-wrap items-center gap-2">
-                    <Badge className={profile.role === "Super Admin" ? "gold-gradient text-accent-foreground shadow-sm" : "bg-secondary text-secondary-foreground"}>
-                      {profile.role}
-                    </Badge>
-                    <Badge variant="outline" className="border-accent/40 text-muted-foreground bg-accent/5">Enterprise Account</Badge>
+                    <Badge variant={profile.role === "Super Admin" ? "default" : "secondary"}>{profile.role}</Badge>
+                    {profile.email ? <span className="text-sm text-muted-foreground">{profile.email}</span> : null}
                   </div>
                 </div>
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
-                <div className="flex items-center gap-3 p-3 rounded-lg border border-border/50 bg-muted/20">
-                  <Building2 className="w-5 h-5 text-muted-foreground" />
+              <div className="mt-6 grid grid-cols-1 gap-4 md:grid-cols-2">
+                <div className="flex items-center gap-3 rounded-lg border border-border bg-muted/20 p-3">
+                  <Building2 className="h-5 w-5 text-muted-foreground" />
                   <div>
                     <p className="text-xs text-muted-foreground">Organization</p>
-                    <p className="text-sm font-medium">{profile.organization || "Unavailable"}</p>
+                    <p className="text-sm font-medium text-foreground">{profile.organization || "—"}</p>
                   </div>
                 </div>
-                <div className="flex items-center gap-3 p-3 rounded-lg border border-border/50 bg-muted/20">
-                  <CalendarDays className="w-5 h-5 text-muted-foreground" />
+                <div className="flex items-center gap-3 rounded-lg border border-border bg-muted/20 p-3">
+                  <CalendarDays className="h-5 w-5 text-muted-foreground" />
                   <div>
-                    <p className="text-xs text-muted-foreground">Member Since</p>
-                    <p className="text-sm font-medium">{profile.joined}</p>
+                    <p className="text-xs text-muted-foreground">Member since</p>
+                    <p className="text-sm font-medium text-foreground">{profile.joined}</p>
                   </div>
                 </div>
               </div>
 
-              <div className="space-y-3">
+              <div className="mt-6 space-y-2">
                 <div className="flex items-center justify-between text-sm">
-                  <span className="font-medium text-muted-foreground">Profile Completion</span>
-                  <span className="font-bold text-accent">{completionScore}%</span>
+                  <span className="font-medium text-muted-foreground">Profile completion</span>
+                  <span className="font-semibold text-foreground">{completionScore}%</span>
                 </div>
                 <Progress value={completionScore} className="h-2" />
               </div>
 
-              <div className="mt-8 grid grid-cols-1 sm:grid-cols-3 gap-4">
-                <Card className="group border border-border/60 bg-card hover:border-accent/30 hover:shadow-lg hover:-translate-y-1 transition-all duration-300">
-                  <CardContent className="p-5 flex items-center justify-between">
+              <div className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-3">
+                <Card>
+                  <CardContent className="flex items-center justify-between p-4">
                     <div>
-                      <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Templates</p>
-                      <p className="text-2xl font-heading font-bold text-foreground mt-1">{stats.templates}</p>
+                      <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">Templates</p>
+                      <p className="mt-1 text-2xl font-semibold tracking-tight text-foreground">{stats.templates}</p>
                     </div>
-                    <div className="h-10 w-10 rounded-full bg-accent/10 flex items-center justify-center group-hover:bg-accent/20 transition-colors">
-                      <FileText className="w-5 h-5 text-accent" />
+                    <div className="flex h-10 w-10 items-center justify-center rounded-md bg-muted text-muted-foreground">
+                      <FileText className="h-5 w-5" />
                     </div>
                   </CardContent>
                 </Card>
-                <Card className="group border border-border/60 bg-card hover:border-accent/30 hover:shadow-lg hover:-translate-y-1 transition-all duration-300">
-                  <CardContent className="p-5 flex items-center justify-between">
+                <Card>
+                  <CardContent className="flex items-center justify-between p-4">
                     <div>
-                      <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Certificates</p>
-                      <p className="text-2xl font-heading font-bold text-foreground mt-1">{stats.certificates}</p>
+                      <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">Certificates</p>
+                      <p className="mt-1 text-2xl font-semibold tracking-tight text-foreground">{stats.certificates}</p>
                     </div>
-                    <div className="h-10 w-10 rounded-full bg-accent/10 flex items-center justify-center group-hover:bg-accent/20 transition-colors">
-                      <Shield className="w-5 h-5 text-accent" />
+                    <div className="flex h-10 w-10 items-center justify-center rounded-md bg-muted text-muted-foreground">
+                      <Shield className="h-5 w-5" />
                     </div>
                   </CardContent>
                 </Card>
-                <Card className="group border border-border/60 bg-card hover:border-accent/30 hover:shadow-lg hover:-translate-y-1 transition-all duration-300">
-                  <CardContent className="p-5 flex items-center justify-between">
+                <Card>
+                  <CardContent className="flex items-center justify-between p-4">
                     <div>
-                      <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Admins</p>
-                      <p className="text-2xl font-heading font-bold text-foreground mt-1">{stats.admins}</p>
+                      <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">Admins</p>
+                      <p className="mt-1 text-2xl font-semibold tracking-tight text-foreground">{stats.admins}</p>
                     </div>
-                    <div className="h-10 w-10 rounded-full bg-accent/10 flex items-center justify-center group-hover:bg-accent/20 transition-colors">
-                      <Users className="w-5 h-5 text-accent" />
+                    <div className="flex h-10 w-10 items-center justify-center rounded-md bg-muted text-muted-foreground">
+                      <Users className="h-5 w-5" />
                     </div>
                   </CardContent>
                 </Card>
@@ -561,24 +558,24 @@ const Profile = () => {
             </CardContent>
           </Card>
 
-          <Card id="subscription" className="card-shadow">
+          <Card id="subscription">
             <CardHeader>
-              <CardTitle className="text-lg font-heading">Subscription</CardTitle>
+              <CardTitle className="text-base font-semibold">Subscription</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
               {subscription ? (
                 <>
-                  <div className="flex items-center justify-between p-4 rounded-lg border border-border bg-muted/20">
+                  <div className="flex items-center justify-between rounded-lg border border-border bg-muted/20 p-4">
                     <div className="flex items-center gap-3">
-                      <div className={`h-10 w-10 rounded-full flex items-center justify-center ${subscription.plan === "pro" ? "gold-gradient" : "bg-accent/10"}`}>
+                      <div className="flex h-10 w-10 items-center justify-center rounded-md bg-muted text-muted-foreground">
                         {subscription.plan === "pro" ? (
-                          <Zap className="w-5 h-5 text-accent-foreground" />
+                          <Zap className="h-5 w-5" />
                         ) : (
-                          <Shield className="w-5 h-5 text-accent" />
+                          <Shield className="h-5 w-5" />
                         )}
                       </div>
                       <div>
-                        <p className="text-sm font-semibold capitalize">{subscription.plan} Plan</p>
+                        <p className="text-sm font-semibold capitalize text-foreground">{subscription.plan} plan</p>
                         <p className="text-xs text-muted-foreground">
                           {subscription.plan === "pro"
                             ? "Unlimited certificate generations"
@@ -586,7 +583,7 @@ const Profile = () => {
                         </p>
                       </div>
                     </div>
-                    <Badge className={subscription.plan === "pro" ? "gold-gradient text-accent-foreground" : "bg-secondary text-secondary-foreground"}>
+                    <Badge variant={subscription.plan === "pro" ? "default" : "secondary"}>
                       {subscription.plan === "pro" ? "PRO" : "FREE"}
                     </Badge>
                   </div>
@@ -594,8 +591,8 @@ const Profile = () => {
                   {subscription.plan === "free" && (
                     <div className="space-y-3">
                       <div className="flex items-center justify-between text-sm">
-                        <span className="font-medium text-muted-foreground">Certificate Generations</span>
-                        <span className="font-bold text-foreground">
+                        <span className="font-medium text-muted-foreground">Certificate generations</span>
+                        <span className="font-semibold text-foreground">
                           {subscription.credits_used} / {subscription.credits_limit || 12}
                         </span>
                       </div>
@@ -604,15 +601,15 @@ const Profile = () => {
                       {!subscription.plan_selected ? (
                         <div className="flex gap-3 pt-2">
                           <Button variant="outline" className="flex-1" onClick={handleSelectFree} disabled={isUpgrading}>
-                            {isUpgrading ? "Processing..." : "Continue with Free"}
+                            {isUpgrading ? "Processing…" : "Continue with Free"}
                           </Button>
-                          <Button className="flex-1 gold-gradient text-accent-foreground" onClick={handleUpgradeToPro} disabled={isUpgrading}>
-                            {isUpgrading ? "Processing..." : "Upgrade to Pro — ₹499/mo"}
+                          <Button variant="accent" className="flex-1" onClick={handleUpgradeToPro} disabled={isUpgrading}>
+                            {isUpgrading ? "Processing…" : "Upgrade to Pro — ₹499/mo"}
                           </Button>
                         </div>
                       ) : (
-                        <Button className="w-full gold-gradient text-accent-foreground" onClick={handleUpgradeToPro} disabled={isUpgrading}>
-                          {isUpgrading ? "Processing..." : "Upgrade to Pro — ₹499/mo"}
+                        <Button variant="accent" className="w-full" onClick={handleUpgradeToPro} disabled={isUpgrading}>
+                          {isUpgrading ? "Processing…" : "Upgrade to Pro — ₹499/mo"}
                         </Button>
                       )}
                     </div>
@@ -620,23 +617,23 @@ const Profile = () => {
 
                   {subscription.plan === "pro" && (
                     <div className="flex items-center gap-2 text-sm text-success">
-                      <CheckCircle className="w-4 h-4" />
-                      <span>Your Pro subscription is active</span>
+                      <CheckCircle className="h-4 w-4" />
+                      <span>Your Pro subscription is active.</span>
                     </div>
                   )}
                 </>
               ) : (
-                <div className="text-center py-8">
-                  <div className="h-16 w-16 mx-auto mb-4 rounded-full bg-muted/20 flex items-center justify-center">
-                    <Shield className="w-8 h-8 text-muted-foreground" />
+                <div className="py-8 text-center">
+                  <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-md bg-muted text-muted-foreground">
+                    <Shield className="h-6 w-6" />
                   </div>
-                  <p className="text-sm text-muted-foreground mb-4">Loading subscription information...</p>
+                  <p className="mb-4 text-sm text-muted-foreground">Loading subscription information…</p>
                   <div className="flex justify-center gap-3">
                     <Button variant="outline" onClick={() => void loadSubscription()} disabled={isUpgrading}>
                       Retry
                     </Button>
-                    <Button className="gold-gradient text-accent-foreground" onClick={() => navigate("/select-plan")}>
-                      Select Plan
+                    <Button onClick={() => navigate("/select-plan")}>
+                      Select plan
                     </Button>
                   </div>
                 </div>
@@ -644,42 +641,42 @@ const Profile = () => {
             </CardContent>
           </Card>
 
-          <Card id="security" className="card-shadow">
+          <Card id="security">
             <CardHeader>
-              <CardTitle className="text-lg font-heading">Security</CardTitle>
+              <CardTitle className="text-base font-semibold">Security</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
               {firstLoginMode ? (
-                <div className="rounded-md border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+                <div className="rounded-md border border-warning/40 bg-warning/10 px-4 py-3 text-sm text-warning">
                   First login detected. Please reset your password before continuing.
                 </div>
               ) : null}
 
               <div className="flex flex-wrap items-center gap-3">
                 <Button variant="outline" className="gap-2" onClick={() => void handlePasswordReset()}>
-                  <KeyRound className="w-4 h-4" /> Change Password
+                  <KeyRound className="h-4 w-4" /> Change password
                 </Button>
                 {firstLoginMode ? (
                   <Button className="gap-2" onClick={() => void handleFinishFirstLogin()}>
-                    <KeyRound className="w-4 h-4" /> I Have Reset My Password
+                    <KeyRound className="h-4 w-4" /> I've reset my password
                   </Button>
                 ) : null}
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <Card className="border border-border">
+              <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                <Card>
                   <CardContent className="p-4">
-                    <p className="text-xs text-muted-foreground">Last Login</p>
-                    <p className="text-sm font-medium mt-1 flex items-center gap-1.5">
-                      <Clock3 className="w-4 h-4 text-muted-foreground" /> {formatDateTime(profile.lastLoginAt)}
+                    <p className="text-xs text-muted-foreground">Last login</p>
+                    <p className="mt-1 flex items-center gap-1.5 text-sm font-medium text-foreground">
+                      <Clock3 className="h-4 w-4 text-muted-foreground" /> {formatDateTime(profile.lastLoginAt)}
                     </p>
                   </CardContent>
                 </Card>
-                <Card className="border border-border">
+                <Card>
                   <CardContent className="p-4">
-                    <p className="text-xs text-muted-foreground">Primary Email</p>
-                    <p className="text-sm font-medium mt-1 flex items-center gap-1.5">
-                      <Mail className="w-4 h-4 text-muted-foreground" /> {profile.email || "Unavailable"}
+                    <p className="text-xs text-muted-foreground">Primary email</p>
+                    <p className="mt-1 flex items-center gap-1.5 text-sm font-medium text-foreground">
+                      <Mail className="h-4 w-4 text-muted-foreground" /> {profile.email || "—"}
                     </p>
                   </CardContent>
                 </Card>
@@ -687,24 +684,24 @@ const Profile = () => {
             </CardContent>
           </Card>
 
-          <Card id="activity" className="card-shadow">
+          <Card id="activity">
             <CardHeader>
-              <CardTitle className="text-lg font-heading">Account Activity</CardTitle>
+              <CardTitle className="text-base font-semibold">Account activity</CardTitle>
             </CardHeader>
             <CardContent className="space-y-3">
               {isLoading ? (
-                <div className="rounded-md border border-border p-4 text-sm text-muted-foreground">Loading profile activity...</div>
+                <div className="rounded-md border border-border p-4 text-sm text-muted-foreground">Loading profile activity…</div>
               ) : activityLog.length > 0 ? (
                 activityLog.map((entry) => (
-                  <div key={`${entry.event}-${entry.time}`} className="rounded-md border border-border p-3 flex items-start justify-between gap-3">
+                  <div key={`${entry.event}-${entry.time}`} className="flex items-start justify-between gap-3 rounded-md border border-border p-3">
                     <div>
-                      <p className="text-sm font-medium flex items-center gap-1.5">
-                        <UserCircle2 className="w-4 h-4 text-muted-foreground" /> {entry.event}
+                      <p className="flex items-center gap-1.5 text-sm font-medium text-foreground">
+                        <UserCircle2 className="h-4 w-4 text-muted-foreground" /> {entry.event}
                       </p>
-                      <p className="text-xs text-muted-foreground mt-0.5">{entry.detail}</p>
+                      <p className="mt-0.5 text-xs text-muted-foreground">{entry.detail}</p>
                     </div>
-                    <div className="text-xs text-muted-foreground shrink-0 flex items-center gap-1">
-                      <Clock3 className="w-3.5 h-3.5" /> {entry.time}
+                    <div className="flex shrink-0 items-center gap-1 text-xs text-muted-foreground">
+                      <Clock3 className="h-3.5 w-3.5" /> {entry.time}
                     </div>
                   </div>
                 ))
@@ -717,7 +714,7 @@ const Profile = () => {
           </Card>
         </div>
       </div>
-    </div>
+    </PageContainer>
   );
 };
 

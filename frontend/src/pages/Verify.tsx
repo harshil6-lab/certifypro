@@ -58,7 +58,7 @@ const Verify = () => {
           </p>
         </div>
 
-        <Card className="rounded-2xl card-shadow border-border/60 max-w-xl mx-auto hover:card-shadow-lg transition-shadow">
+        <Card className="rounded-lg border-border/60 max-w-xl mx-auto">
           <CardContent className="p-6 space-y-5">
             <div className="relative">
               <Search className="absolute left-4 top-3.5 w-5 h-5 text-muted-foreground" />
@@ -71,7 +71,7 @@ const Verify = () => {
             </div>
 
             <Button
-              className="w-full h-12 text-base gold-gradient text-accent-foreground hover:opacity-90 transition-opacity gap-2 shadow-md"
+              className="w-full h-12 text-base gap-2"
               disabled={!certId}
               onClick={handleVerify}
             >

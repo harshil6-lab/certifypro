@@ -9,11 +9,11 @@ import {
   ArrowRight,
   ArrowLeft,
   Loader2,
-  AlertCircle,
 } from "lucide-react";
 import UpgradeModal from "@/components/UpgradeModal";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { PageContainer, PageHeader } from "@/components/layout/PageContainer";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
@@ -54,7 +54,7 @@ const Generate = () => {
   const [currentStep, setCurrentStep] = useState(1);
   const [generating, setGenerating] = useState(false);
   const [progress, setProgress] = useState(0);
-  
+
   // State for data loading
   const [students, setStudents] = useState<StudentRecord[]>([]);
   const [loadingData, setLoadingData] = useState(true);
@@ -173,7 +173,7 @@ const Generate = () => {
 
   const handleGenerate = async () => {
     if (!selectedTemplate) {
-      setGenerateError("Please , Select or Uplaod template");
+      setGenerateError("Please select or upload a template.");
       return;
     }
     if (selectedStudentIds.length === 0) {
@@ -226,7 +226,7 @@ const Generate = () => {
       const maxWait = 15 * 60 * 1000; // 15 minutes
       const startTime = Date.now();
 
-      const result = await new Promise<{certificates: any[], zip_url: string}>((resolve, reject) => {
+      const result = await new Promise<{ certificates: Array<Record<string, unknown>>; zip_url: string }>((resolve, reject) => {
         const poll = async () => {
           if (Date.now() - startTime > maxWait) {
             reject(new Error("Generation timed out after 15 minutes."));
@@ -238,13 +238,13 @@ const Generate = () => {
               timeout: 10000,
             });
             const job = statusRes.data;
-            
+
             // Update progress bar
             if (job.total > 0) {
               const pct = Math.min(95, Math.round((job.progress / job.total) * 90) + 5);
               setProgress(pct);
             }
-            
+
             if (job.status === "done") {
               resolve({ certificates: job.certificates, zip_url: job.zip_url });
             } else if (job.status === "error") {
@@ -286,8 +286,9 @@ const Generate = () => {
 
       // Check for 403 credits_exhausted response
       if (status === 403 && typeof detail === "object" && detail !== null && "error" in detail && detail.error === "credits_exhausted") {
-        const creditsUsed = typeof (detail as any).credits_used === "number" ? (detail as any).credits_used : undefined;
-        const creditsLimit = typeof (detail as any).credits_limit === "number" ? (detail as any).credits_limit : undefined;
+        const detailObj = detail as { credits_used?: unknown; credits_limit?: unknown };
+        const creditsUsed = typeof detailObj.credits_used === "number" ? detailObj.credits_used : undefined;
+        const creditsLimit = typeof detailObj.credits_limit === "number" ? detailObj.credits_limit : undefined;
         setCreditInfo({
           used: creditsUsed,
           limit: creditsLimit,
@@ -317,61 +318,58 @@ const Generate = () => {
       : null;
 
   return (
-    <div className="p-8 max-w-[1200px] mx-auto space-y-6 animate-fade-in">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-heading font-bold text-foreground">Generate Certificates</h1>
-          <p className="text-muted-foreground mt-1">Follow the wizard to generate certificates</p>
-        </div>
-        <Badge variant="secondary" className="text-xs">Connected to backend</Badge>
-      </div>
+    <PageContainer className="space-y-6 animate-fade-in">
+      <PageHeader
+        title="Generate certificates"
+        description="Follow the guided steps to create and download a batch of certificates."
+      />
 
       {/* Step Indicator */}
-      <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3 py-6">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
         {steps.map((step, i) => (
-          <div key={step.id} className="flex items-center gap-3 flex-1 w-full sm:w-auto">
-            <div className={`flex items-center gap-3 px-5 py-3 rounded-xl border-2 transition-all duration-300 flex-1 ${currentStep === step.id
-              ? "border-accent bg-accent/5 shadow-md scale-[1.02]"
+          <div key={step.id} className="flex w-full items-center gap-3 sm:w-auto sm:flex-1">
+            <div className={`flex flex-1 items-center gap-3 rounded-lg border px-4 py-3 ${currentStep === step.id
+              ? "border-accent bg-accent/5"
               : currentStep > step.id
-                ? "border-success/30 bg-success/5 opacity-80"
-                : "border-border/60 bg-card hover:border-border"
+                ? "border-success/40 bg-success/5"
+                : "border-border bg-card"
               }`}>
-              <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold shrink-0 shadow-sm ${currentStep > step.id
+              <div className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-sm font-semibold ${currentStep > step.id
                 ? "bg-success text-success-foreground"
                 : currentStep === step.id
-                  ? "gold-gradient text-accent-foreground"
+                  ? "bg-primary text-primary-foreground"
                   : "bg-muted text-muted-foreground"
                 }`}>
-                {currentStep > step.id ? <CheckCircle2 className="w-5 h-5" /> : step.id}
+                {currentStep > step.id ? <CheckCircle2 className="h-4 w-4" /> : step.id}
               </div>
-              <span className={`text-base font-semibold whitespace-nowrap ${currentStep === step.id ? "text-foreground" : "text-muted-foreground"}`}>
+              <span className={`whitespace-nowrap text-sm font-semibold ${currentStep === step.id ? "text-foreground" : "text-muted-foreground"}`}>
                 {step.title}
               </span>
             </div>
-            {i < steps.length - 1 && <ArrowRight className="hidden sm:block w-5 h-5 text-muted-foreground/30 shrink-0" />}
+            {i < steps.length - 1 && <ArrowRight className="hidden h-5 w-5 shrink-0 text-muted-foreground/30 sm:block" />}
           </div>
         ))}
       </div>
 
       {/* Step Content */}
-      <Card className="card-shadow border-t-4 border-t-accent min-h-[400px]">
+      <Card className="min-h-[400px]">
         <CardContent className="p-8">
           {currentStep === 1 && (
             <div className="space-y-6 max-w-2xl">
               <div>
-                <h3 className="text-2xl font-heading font-bold text-foreground">Select Certificate Template</h3>
-                <p className="text-base text-muted-foreground mt-2">
-                  Template is pre-selected from your workspace.
+                <h3 className="text-xl font-semibold text-foreground">Select certificate template</h3>
+                <p className="mt-1 text-sm text-muted-foreground">
+                  Your certificate template is pre-selected from your workspace.
                 </p>
               </div>
 
 {selectedTemplate ? (
                 <div className="space-y-4">
-                  <div className="rounded-xl border border-accent/30 bg-accent/5 p-4 flex items-center gap-3">
-                    <CheckCircle2 className="w-5 h-5 text-accent shrink-0" />
+                  <div className="flex items-center gap-3 rounded-lg border border-border bg-muted/40 p-4">
+                    <CheckCircle2 className="h-5 w-5 shrink-0 text-success" />
                     <div>
                       <p className="font-medium text-foreground">Template loaded from workspace</p>
-                      <p className="text-xs text-muted-foreground font-mono mt-0.5">{workspaceTemplate?.template_id || selectedTemplate}</p>
+                      <p className="mt-0.5 font-mono text-xs text-muted-foreground">{workspaceTemplate?.template_id || selectedTemplate}</p>
                     </div>
                     {workspaceTemplateSourceBadge && (
                       <Badge variant={workspaceTemplateSourceBadge.variant} className="ml-auto">
@@ -388,7 +386,7 @@ const Generate = () => {
                         templateTitle="workspace template"
                         layoutConfig={resolvedLayoutConfig}
                       />
-                      <div className="rounded-xl border border-border/60 bg-card p-4 space-y-4">
+                      <div className="rounded-lg border border-border bg-card p-4 space-y-4">
                         <div>
                           <p className="text-sm font-semibold text-foreground">Saved Layout Coordinates</p>
                           <p className="text-xs text-muted-foreground mt-1">Verify the workspace layout values before generating certificates.</p>
@@ -431,14 +429,14 @@ const Generate = () => {
                         </div>
                       </div>
                     </div>
-                    <div className="rounded-lg border border-border/60 bg-muted/20 px-4 py-3 text-sm text-muted-foreground">
+                    <div className="rounded-lg border border-border bg-muted/20 px-4 py-3 text-sm text-muted-foreground">
                       Preview includes placeholder overlays for <strong>student_name</strong>, <strong>certificate_id</strong>, and <strong>qr</strong> using the saved workspace layout.
                     </div>
                   </div>
                 </div>
               ) : (
-                <div className="rounded-xl border border-amber-300 bg-amber-50 p-4 text-sm text-amber-800">
-                  Please , Select or Uplaod template
+                <div className="rounded-lg border border-warning/40 bg-warning/10 p-4 text-sm text-warning">
+                  Please select or upload a template to continue.
                 </div>
               )}
             </div>
@@ -447,14 +445,14 @@ const Generate = () => {
           {currentStep === 2 && (
             <div className="space-y-6 max-w-2xl">
               <div>
-                <h3 className="text-2xl font-heading font-bold text-foreground">Choose Student</h3>
-                <p className="text-base text-muted-foreground mt-2">
+                <h3 className="text-xl font-semibold text-foreground">Choose students</h3>
+                <p className="mt-1 text-sm text-muted-foreground">
                   Select one student or generate certificates for the full imported list.
                 </p>
               </div>
 
               <div className="space-y-3">
-                <div className="flex items-center gap-3 rounded-lg border border-border/50 bg-muted/20 px-4 py-3">
+                <div className="flex items-center gap-3 rounded-lg border border-border bg-muted/20 px-4 py-3">
                   <Checkbox
                     id="select-all-students"
                     checked={selectAllStudents}
@@ -476,7 +474,7 @@ const Generate = () => {
                     Loading students...
                   </div>
                 ) : (
-                  <div className="max-h-[320px] overflow-y-auto rounded-xl border border-border/60 bg-background/70 divide-y divide-border/60">
+                  <div className="max-h-[320px] overflow-y-auto rounded-lg border border-border bg-background/70 divide-y divide-border/60">
                     {students.length > 0 ? (
                       students.map((student) => {
                         const isChecked = selectedStudentIds.includes(student.id);
@@ -484,7 +482,7 @@ const Generate = () => {
                           <label
                             key={student.id}
                             htmlFor={`student-${student.id}`}
-                            className="flex items-start gap-3 px-4 py-3 cursor-pointer hover:bg-accent/5 transition-colors"
+                            className="flex items-start gap-3 px-4 py-3 cursor-pointer hover:bg-muted transition-colors"
                           >
                             <Checkbox
                               id={`student-${student.id}`}
@@ -512,8 +510,8 @@ const Generate = () => {
                     )}
                   </div>
                 )}
-                <div className="flex items-center gap-2 px-1 text-sm text-muted-foreground bg-muted/30 p-3 rounded-lg border border-border/50">
-                  <Users className="w-4 h-4 text-accent" />
+                <div className="flex items-center gap-2 rounded-lg border border-border bg-muted/30 p-3 text-sm text-muted-foreground">
+                  <Users className="h-4 w-4 shrink-0 text-muted-foreground" />
                   <span>
                     {selectAllStudents
                       ? `All ${students.length} imported students will receive certificates with the chosen template.`
@@ -526,57 +524,57 @@ const Generate = () => {
 
           {currentStep === 3 && (
             <div className="space-y-8 max-w-2xl mx-auto py-4">
-              <div className="text-center space-y-2">
-                <h3 className="text-2xl font-heading font-bold text-foreground">Review & Generate</h3>
-                <p className="text-base text-muted-foreground">
+              <div className="space-y-2 text-center">
+                <h3 className="text-xl font-semibold text-foreground">Review &amp; generate</h3>
+                <p className="text-sm text-muted-foreground">
                   Ready to generate {selectedStudentRecords.length} certificate{selectedStudentRecords.length !== 1 ? "s" : ""}.
                 </p>
               </div>
 
               {!generating && progress === 0 && (
-                <div className="text-center py-6 space-y-8 border-2 border-dashed border-border/60 rounded-xl bg-muted/20">
-                  <div className="w-24 h-24 mx-auto rounded-full bg-accent/10 flex items-center justify-center animate-pulse">
-                    <Printer className="w-10 h-10 text-accent" />
+                <div className="space-y-8 rounded-lg border border-dashed border-border bg-muted/20 py-8 text-center">
+                  <div className="mx-auto flex h-20 w-20 items-center justify-center rounded-full bg-muted text-muted-foreground">
+                    <Printer className="h-9 w-9" />
                   </div>
 
                   <div className="space-y-1">
-                    <p className="text-xl font-medium text-foreground">Ready to process</p>
-                    <p className="text-base text-muted-foreground">Estimated time: {Math.max(5, selectedStudentRecords.length * 2)} seconds</p>
+                    <p className="text-lg font-semibold text-foreground">Ready to process</p>
+                    <p className="text-sm text-muted-foreground">Estimated time: {Math.max(5, selectedStudentRecords.length * 2)} seconds</p>
                   </div>
 
-                  <div className="flex flex-col sm:flex-row gap-4 justify-center px-6">
+                  <div className="flex flex-col justify-center gap-3 px-6 sm:flex-row">
                     <Button
                       variant="outline"
                       size="lg"
-                      className="gap-2 h-12 text-base border-foreground/20 hover:bg-background shadow-sm"
+                      className="gap-2"
                       onClick={() => setCurrentStep(2)}
                     >
-                      <ArrowLeft className="w-5 h-5" /> Back
+                      <ArrowLeft className="h-5 w-5" /> Back
                     </Button>
                     <Button
                       onClick={handleGenerate}
                       disabled={!selectedTemplate || selectedStudentRecords.length === 0}
                       size="lg"
-                      className="gold-gradient text-accent-foreground font-bold h-12 text-base px-8 shadow-md hover:shadow-lg hover:brightness-110 transition-all disabled:opacity-50"
+                      className="gap-2"
                     >
-                      <Printer className="w-5 h-5" /> Generate {selectedStudentRecords.length > 1 ? "Certificates" : "Certificate"}
+                      <Printer className="h-5 w-5" /> Generate {selectedStudentRecords.length > 1 ? "certificates" : "certificate"}
                     </Button>
                   </div>
                 </div>
               )}
               {(generating || progress > 0) && (
-                <div className="space-y-6 p-6 border rounded-xl bg-card shadow-sm">
+                <div className="space-y-6 rounded-lg border border-border bg-card p-6">
                   <div className="flex items-center justify-between">
-                    <span className="text-base font-medium text-foreground">
-                      {generating ? "Generating Certificate..." : "Generation Complete!"}
+                    <span className="text-sm font-medium text-foreground">
+                      {generating ? "Generating certificates…" : "Generation complete"}
                     </span>
-                    <span className="font-mono text-lg font-bold text-accent">{progress}%</span>
+                    <span className="font-mono text-lg font-semibold text-foreground">{progress}%</span>
                   </div>
-                  <Progress value={progress} className="h-4 rounded-full bg-muted" />
+                  <Progress value={progress} className="h-3 rounded-full bg-muted" />
                   {generating && (
-                    <div className="flex items-center gap-3 text-base text-muted-foreground bg-muted/30 p-3 rounded-lg">
-                      <Loader2 className="w-5 h-5 animate-spin text-accent" />
-                      Processing certificate...
+                    <div className="flex items-center gap-3 rounded-lg bg-muted/40 p-3 text-sm text-muted-foreground">
+                      <Loader2 className="h-5 w-5 animate-spin text-accent" />
+                      Processing certificate…
                     </div>
                   )}
                   {generateError && (
@@ -586,15 +584,15 @@ const Generate = () => {
                   )}
                   {progress === 100 && !generateError && (
                     <div className="flex flex-col gap-4">
-                      <div className="flex items-center gap-3 text-base text-success font-medium bg-success/10 p-4 rounded-lg border border-success/20">
-                        <CheckCircle2 className="w-6 h-6 text-success" />
-                        {generatedCerts.length} certificate{generatedCerts.length !== 1 ? "s" : ""} generated successfully!
+                      <div className="flex items-center gap-3 rounded-lg border border-success/20 bg-success/10 p-4 text-sm font-medium text-success">
+                        <CheckCircle2 className="h-5 w-5 shrink-0" />
+                        {generatedCerts.length} certificate{generatedCerts.length !== 1 ? "s" : ""} generated successfully.
                       </div>
                       {zipUrl && (
                         <div className="flex justify-center pt-2">
                           <a href={zipUrl} download>
-                            <Button className="gold-gradient text-accent-foreground font-bold shadow-md gap-2 h-12 px-8 text-base">
-                              <Download className="w-5 h-5" /> Download ZIP
+                            <Button size="lg" className="gap-2">
+                              <Download className="h-5 w-5" /> Download ZIP
                             </Button>
                           </a>
                         </div>
@@ -609,23 +607,23 @@ const Generate = () => {
       </Card>
 
       {/* Navigation */}
-      <div className="flex justify-between mt-8">
+      <div className="mt-2 flex justify-between">
         <Button
           variant="outline"
           size="lg"
           onClick={() => setCurrentStep((s) => Math.max(1, s - 1))}
           disabled={currentStep === 1 || generating}
-          className="hover:bg-accent/5 transition-colors h-12 px-6 text-base gap-2"
+          className="gap-2"
         >
-          <ArrowLeft className="w-5 h-5" /> Previous Step
+          <ArrowLeft className="h-5 w-5" /> Previous
         </Button>
         {currentStep < 3 && (
           <Button
             size="lg"
             onClick={() => setCurrentStep((s) => Math.min(3, s + 1))}
-            className="gap-2 gold-gradient text-accent-foreground hover:opacity-90 transition-opacity h-12 px-8 text-base shadow-md"
+            className="gap-2"
           >
-            Next Step <ArrowRight className="w-5 h-5" />
+            Next <ArrowRight className="h-5 w-5" />
           </Button>
         )}
       </div>
@@ -636,7 +634,7 @@ const Generate = () => {
         creditsUsed={creditInfo.used}
         creditsLimit={creditInfo.limit}
       />
-    </div>
+    </PageContainer>
   );
 };
 
