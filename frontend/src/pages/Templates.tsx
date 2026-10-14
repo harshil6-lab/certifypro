@@ -1,6 +1,6 @@
-import { useEffect, useState, type DragEvent } from "react";
+import { useEffect, useState } from "react";
 import axios from "axios";
-import { Sparkles, WandSparkles, Eye, LayoutGrid, Upload, ArrowRight, ExternalLink, Maximize2, X } from "lucide-react";
+import { Sparkles, WandSparkles, Eye, LayoutGrid, ArrowRight, ExternalLink, Maximize2, X } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -15,6 +15,8 @@ import {
   TemplateLayoutConfig,
 } from "@/components/certificates/types";
 import { LayoutPreview } from "@/components/LayoutPreview";
+import { FileDropzone } from "@/components/FileDropzone";
+import { PageContainer, PageToolbar } from "@/components/layout/PageContainer";
 import { addSessionActivity } from "@/services/sessionActivity";
 import { getTemplates, API_BASE } from "@/services/apiService";
 import {
@@ -135,7 +137,6 @@ const Templates = () => {
   const [selectedTemplate, setSelectedTemplate] = useState<CertificateTemplateMeta | null>(null);
   const [modalMode, setModalMode] = useState<"preview" | "edit">("preview");
   const [draftByTemplate, setDraftByTemplate] = useState<Record<string, CertificateDraft>>({});
-  const [isDraggingUpload, setIsDraggingUpload] = useState(false);
   const [uploadStatus, setUploadStatus] = useState("Upload custom background image");
 
   const [layoutSaveStatus, setLayoutSaveStatus] = useState("Ready");
@@ -455,25 +456,6 @@ const Templates = () => {
     }
   };
 
-  const onUploadFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (!file) {
-      return;
-    }
-    void uploadTemplate(file);
-    event.currentTarget.value = "";
-  };
-
-  const onDropUpload = (event: DragEvent<HTMLDivElement>) => {
-    event.preventDefault();
-    setIsDraggingUpload(false);
-    const file = event.dataTransfer.files?.[0];
-    if (!file) {
-      return;
-    }
-    void uploadTemplate(file);
-  };
-
   // --- Templated.io Integration ---
   async function openTemplatedEditor() {
     setTemplatedPreviewLoading(true);
@@ -518,30 +500,31 @@ const Templates = () => {
   }
 
   return (
-    <div className="p-8 max-w-[1280px] mx-auto space-y-6 animate-fade-in">
-      <div className="flex flex-wrap items-start justify-between gap-3">
-        <div>
-          <h1 className="text-3xl font-heading font-bold text-foreground">Template Library & Workspace</h1>
-          <p className="text-muted-foreground mt-1">Browse official templates, preview them, and save your workspace layout for generation.</p>
-        </div>
-        <Button size="sm" className="gap-2" onClick={() => (window.location.href = "/generate") }>
-          Generate Certificates <ArrowRight className="w-4 h-4" />
-        </Button>
-      </div>
+    <PageContainer className="space-y-6 animate-fade-in">
+      <PageToolbar
+        crumbs={[{ label: "Dashboard", href: "/dashboard" }, { label: "Templates" }]}
+        title={<span className="font-heading">Template Library & Workspace</span>}
+        description="Browse official templates, preview them, and save your workspace layout for generation."
+        actions={
+          <Button size="sm" className="gap-2" onClick={() => (window.location.href = "/generate") }>
+            Generate Certificates <ArrowRight className="w-4 h-4" aria-hidden="true" />
+          </Button>
+        }
+      />
 
       <div className="grid grid-cols-1 xl:grid-cols-5 gap-6">
         <div className="xl:col-span-3 space-y-4">
           <Card>
             <CardHeader className="pb-3">
               <CardTitle className="text-base font-heading flex items-center gap-2">
-                <Sparkles className="w-4 h-4 text-accent" />
+                <Sparkles className="w-4 h-4 text-accent" aria-hidden="true" />
                 Template Gallery
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="flex flex-col items-center justify-center min-h-[400px] space-y-4 p-8 text-center rounded-xl border-2 border-dashed border-border/50 bg-muted/20">
                 <div className="w-16 h-16 rounded-full bg-accent/10 flex items-center justify-center mx-auto mb-4">
-                  <Sparkles className="w-8 h-8 text-accent" />
+                  <Sparkles className="w-8 h-8 text-accent" aria-hidden="true" />
                 </div>
                 <h3 className="text-xl font-heading font-bold text-foreground">COMING SOON</h3>
                 <p className="text-muted-foreground max-w-md">
@@ -566,17 +549,17 @@ const Templates = () => {
               )}
 
               {!workspaceTemplate && (
-                <div className="rounded-md border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-800">
+                <div className="rounded-md border border-warning/40 bg-warning/10 px-3 py-2 text-sm text-foreground">
                   Please , Select or Uplaod template
                 </div>
               )}
 
 
               {/* Templated.io Renderer Panel */}
-              <div className="rounded-lg border border-blue-200 dark:border-blue-800 bg-blue-50/40 dark:bg-blue-950/20 px-3 py-3">
+              <div className="rounded-lg border border-info/40 bg-info/10 px-3 py-3">
                 <div className="flex items-center justify-between mb-2">
                   <div className="flex items-center gap-2">
-                    <ExternalLink className="w-3.5 h-3.5 text-blue-500" />
+                    <ExternalLink className="w-3.5 h-3.5 text-info" aria-hidden="true" />
                     <span className="text-xs font-semibold text-foreground">Templated.io Template Renderer</span>
                   </div>
                   <Badge variant="outline" className="text-[10px]">API</Badge>
@@ -584,76 +567,67 @@ const Templates = () => {
                 <p className="text-xs text-muted-foreground mb-2">Template previews are generated automatically using Templated.io rendering API.</p>
               </div>
 
-              <div
-                onDragOver={(event) => {
-                  event.preventDefault();
-                  setIsDraggingUpload(true);
+              <FileDropzone
+                accept="image/*"
+                acceptList={["image/"]}
+                label="Upload custom template image"
+                hint="PNG/JPG supported. This becomes your workspace template."
+                onFiles={(files) => {
+                  const file = files[0];
+                  if (file) void uploadTemplate(file);
                 }}
-                onDragLeave={() => setIsDraggingUpload(false)}
-                onDrop={onDropUpload}
-                className={`rounded-xl border-2 border-dashed px-4 py-5 text-center transition-colors ${isDraggingUpload ? "border-accent bg-accent/5" : "border-border bg-muted/20"}`}
-              >
-                <Upload className="w-5 h-5 mx-auto mb-2 text-muted-foreground" />
-                <p className="text-sm text-foreground">Upload custom template image</p>
-                <p className="text-xs text-muted-foreground mt-1">PNG/JPG supported. This becomes your workspace template.</p>
-                <label className="inline-block mt-3">
-                  <input type="file" accept="image/*" className="hidden" onChange={onUploadFileChange} />
-                  <span className="inline-flex items-center rounded-md border border-input bg-background px-3 py-1.5 text-xs hover:bg-accent/5 cursor-pointer">
-                    Choose file
-                  </span>
-                </label>
-                <p className="text-xs text-muted-foreground mt-2">{uploadStatus}</p>
-              </div>
+              />
+              <p className="text-xs text-muted-foreground mt-2" aria-live="polite">{uploadStatus}</p>
 
               <div className="space-y-3">
                 <div className="flex items-center justify-between rounded-md border border-border bg-muted/30 px-3 py-2">
-                  <label className="text-xs text-muted-foreground">Student Name placeholder visibility</label>
-                  <input type="checkbox" checked={layoutConfig.showStudentName} onChange={(event) => setLayoutConfig((prev) => ({ ...prev, showStudentName: event.target.checked }))} />
+                  <label htmlFor="layout-show-name" className="text-xs text-muted-foreground">Student Name placeholder visibility</label>
+                  <input id="layout-show-name" type="checkbox" checked={layoutConfig.showStudentName} onChange={(event) => setLayoutConfig((prev) => ({ ...prev, showStudentName: event.target.checked }))} />
                 </div>
 
                 <div className="flex items-center justify-between rounded-md border border-border bg-muted/30 px-3 py-2">
-                  <label className="text-xs text-muted-foreground">QR placeholder visibility</label>
-                  <input type="checkbox" checked={layoutConfig.showQR} onChange={(event) => setLayoutConfig((prev) => ({ ...prev, showQR: event.target.checked }))} />
+                  <label htmlFor="layout-show-qr" className="text-xs text-muted-foreground">QR placeholder visibility</label>
+                  <input id="layout-show-qr" type="checkbox" checked={layoutConfig.showQR} onChange={(event) => setLayoutConfig((prev) => ({ ...prev, showQR: event.target.checked }))} />
                 </div>
 
                 <div className="flex items-center justify-between rounded-md border border-border bg-muted/30 px-3 py-2">
-                  <label className="text-xs text-muted-foreground">Certificate ID visibility</label>
-                  <input type="checkbox" checked={layoutConfig.showID} onChange={(event) => setLayoutConfig((prev) => ({ ...prev, showID: event.target.checked }))} />
+                  <label htmlFor="layout-show-id" className="text-xs text-muted-foreground">Certificate ID visibility</label>
+                  <input id="layout-show-id" type="checkbox" checked={layoutConfig.showID} onChange={(event) => setLayoutConfig((prev) => ({ ...prev, showID: event.target.checked }))} />
                 </div>
 
                 <div>
-                  <label className="text-xs text-muted-foreground">Placeholder Label</label>
-                  <Input value={layoutConfig.placeholderField} onChange={(event) => setLayoutConfig((prev) => ({ ...prev, placeholderField: event.target.value.toUpperCase() }))} />
+                  <label htmlFor="layout-placeholder-field" className="text-xs text-muted-foreground">Placeholder Label</label>
+                  <Input id="layout-placeholder-field" value={layoutConfig.placeholderField} onChange={(event) => setLayoutConfig((prev) => ({ ...prev, placeholderField: event.target.value.toUpperCase() }))} />
                 </div>
 
                 <div>
-                  <label className="text-xs text-muted-foreground">Placeholder X Position ({layoutConfig.placeholderX}%)</label>
-                  <input type="range" min={10} max={90} value={layoutConfig.placeholderX} onChange={(event) => setLayoutConfig((prev) => ({ ...prev, placeholderX: Number(event.target.value) }))} className="w-full" />
+                  <label htmlFor="layout-placeholder-x" className="text-xs text-muted-foreground">Placeholder X Position ({layoutConfig.placeholderX}%)</label>
+                  <input id="layout-placeholder-x" type="range" min={10} max={90} value={layoutConfig.placeholderX} onChange={(event) => setLayoutConfig((prev) => ({ ...prev, placeholderX: Number(event.target.value) }))} className="w-full" />
                 </div>
 
                 <div>
-                  <label className="text-xs text-muted-foreground">Placeholder Y Position ({layoutConfig.placeholderY}%)</label>
-                  <input type="range" min={12} max={86} value={layoutConfig.placeholderY} onChange={(event) => setLayoutConfig((prev) => ({ ...prev, placeholderY: Number(event.target.value) }))} className="w-full" />
+                  <label htmlFor="layout-placeholder-y" className="text-xs text-muted-foreground">Placeholder Y Position ({layoutConfig.placeholderY}%)</label>
+                  <input id="layout-placeholder-y" type="range" min={12} max={86} value={layoutConfig.placeholderY} onChange={(event) => setLayoutConfig((prev) => ({ ...prev, placeholderY: Number(event.target.value) }))} className="w-full" />
                 </div>
 
                 <div>
-                  <label className="text-xs text-muted-foreground">QR X Position ({layoutConfig.qrX}%)</label>
-                  <input type="range" min={10} max={90} value={layoutConfig.qrX} onChange={(event) => setLayoutConfig((prev) => ({ ...prev, qrX: Number(event.target.value) }))} className="w-full" />
+                  <label htmlFor="layout-qr-x" className="text-xs text-muted-foreground">QR X Position ({layoutConfig.qrX}%)</label>
+                  <input id="layout-qr-x" type="range" min={10} max={90} value={layoutConfig.qrX} onChange={(event) => setLayoutConfig((prev) => ({ ...prev, qrX: Number(event.target.value) }))} className="w-full" />
                 </div>
 
                 <div>
-                  <label className="text-xs text-muted-foreground">QR Y Position ({layoutConfig.qrY}%)</label>
-                  <input type="range" min={10} max={90} value={layoutConfig.qrY} onChange={(event) => setLayoutConfig((prev) => ({ ...prev, qrY: Number(event.target.value) }))} className="w-full" />
+                  <label htmlFor="layout-qr-y" className="text-xs text-muted-foreground">QR Y Position ({layoutConfig.qrY}%)</label>
+                  <input id="layout-qr-y" type="range" min={10} max={90} value={layoutConfig.qrY} onChange={(event) => setLayoutConfig((prev) => ({ ...prev, qrY: Number(event.target.value) }))} className="w-full" />
                 </div>
 
                 <div>
-                  <label className="text-xs text-muted-foreground">ID X Position ({layoutConfig.idX}%)</label>
-                  <input type="range" min={5} max={90} value={layoutConfig.idX} onChange={(event) => setLayoutConfig((prev) => ({ ...prev, idX: Number(event.target.value) }))} className="w-full" />
+                  <label htmlFor="layout-id-x" className="text-xs text-muted-foreground">ID X Position ({layoutConfig.idX}%)</label>
+                  <input id="layout-id-x" type="range" min={5} max={90} value={layoutConfig.idX} onChange={(event) => setLayoutConfig((prev) => ({ ...prev, idX: Number(event.target.value) }))} className="w-full" />
                 </div>
 
                 <div>
-                  <label className="text-xs text-muted-foreground">ID Y Position ({layoutConfig.idY}%)</label>
-                  <input type="range" min={5} max={95} value={layoutConfig.idY} onChange={(event) => setLayoutConfig((prev) => ({ ...prev, idY: Number(event.target.value) }))} className="w-full" />
+                  <label htmlFor="layout-id-y" className="text-xs text-muted-foreground">ID Y Position ({layoutConfig.idY}%)</label>
+                  <input id="layout-id-y" type="range" min={5} max={95} value={layoutConfig.idY} onChange={(event) => setLayoutConfig((prev) => ({ ...prev, idY: Number(event.target.value) }))} className="w-full" />
                 </div>
               </div>
 
@@ -665,7 +639,7 @@ const Templates = () => {
 
               <div className="flex flex-col gap-2">
                 <Button className="flex-1 gap-2" onClick={saveLayout}>
-                  <WandSparkles className="w-4 h-4" /> Save Layout
+                  <WandSparkles className="w-4 h-4" aria-hidden="true" /> Save Layout
                 </Button>
                 <p className="text-xs text-muted-foreground">{layoutSaveStatus}</p>
               </div>
@@ -689,7 +663,7 @@ const Templates = () => {
         onUpdateField={updateDraftField}
         onSave={saveDraft}
       />
-    </div>
+    </PageContainer>
   );
 };
 

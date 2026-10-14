@@ -1,8 +1,11 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link, Navigate, useNavigate } from "react-router-dom";
-import { AlertTriangle, CheckCircle2, KeyRound, Loader2, ShieldCheck, Eye, EyeOff } from "lucide-react";
+import { CheckCircle2, KeyRound, Loader2, ShieldCheck, Eye, EyeOff } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { SectionCard } from "@/components/SectionCard";
+import { ErrorState } from "@/components/States";
 import { isSupabaseConfigured, supabase } from "@/lib/supabaseClient";
 
 const MIN_PASSWORD_LENGTH = 8;
@@ -194,7 +197,7 @@ const ResetPassword = () => {
     return (
       <div className="min-h-screen bg-background grid place-items-center px-4">
         <div className="rounded-2xl border border-border bg-card p-8 shadow-sm text-center space-y-3 w-full max-w-md">
-          <Loader2 className="h-6 w-6 animate-spin mx-auto text-accent" />
+          <Loader2 className="h-6 w-6 animate-spin mx-auto text-accent" aria-hidden="true" />
           <p className="text-sm text-muted-foreground">Validating reset link...</p>
         </div>
       </div>
@@ -213,10 +216,11 @@ const ResetPassword = () => {
       </div>
 
       <div className="relative z-10 min-h-screen grid place-items-center px-4 py-10">
-        <div className="w-full max-w-md rounded-2xl border-2 border-border/70 bg-card/95 backdrop-blur-sm shadow-[0_10px_35px_rgba(0,0,0,0.08)] p-6 sm:p-7 space-y-6">
+        <SectionCard className="w-full max-w-md border-2 border-border/70 bg-card/95 p-6 backdrop-blur-sm sm:p-7">
+          <div className="space-y-6">
           <div className="space-y-3 text-center">
             <div className="mx-auto h-11 w-11 rounded-xl bg-accent flex items-center justify-center shadow-sm">
-              <KeyRound className="h-5 w-5 text-accent-foreground" />
+              <KeyRound className="h-5 w-5 text-accent-foreground" aria-hidden="true" />
             </div>
             <h1 className="text-2xl font-heading font-bold text-foreground">Reset your password</h1>
             <p className="text-sm text-muted-foreground">
@@ -225,10 +229,7 @@ const ResetPassword = () => {
           </div>
 
           {invalidLinkError ? (
-            <div className="rounded-xl border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-destructive flex items-start gap-2">
-              <AlertTriangle className="h-4 w-4 mt-0.5 shrink-0" />
-              <span>{invalidLinkError}</span>
-            </div>
+            <ErrorState title="Reset link invalid" description={invalidLinkError} />
           ) : (
             <div className="space-y-4">
               <div className="space-y-2">
@@ -251,7 +252,7 @@ const ResetPassword = () => {
                     aria-label={showNewPassword ? "Hide password" : "Show password"}
                     className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground/70 hover:text-accent focus-visible:outline-none focus-visible:text-accent transition-colors"
                   >
-                    {showNewPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                    {showNewPassword ? <EyeOff className="w-4 h-4" aria-hidden="true" /> : <Eye className="w-4 h-4" aria-hidden="true" />}
                   </button>
                 </div>
               </div>
@@ -276,7 +277,7 @@ const ResetPassword = () => {
                     aria-label={showConfirmPassword ? "Hide password" : "Show password"}
                     className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground/70 hover:text-accent focus-visible:outline-none focus-visible:text-accent transition-colors"
                   >
-                    {showConfirmPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                    {showConfirmPassword ? <EyeOff className="w-4 h-4" aria-hidden="true" /> : <Eye className="w-4 h-4" aria-hidden="true" />}
                   </button>
                 </div>
               </div>
@@ -290,16 +291,22 @@ const ResetPassword = () => {
               {passwordMismatch ? <p className="text-xs text-destructive">Passwords do not match.</p> : null}
 
               {submitError ? (
-                <div className="rounded-lg border border-destructive/30 bg-destructive/10 px-3 py-2 text-xs text-destructive">
-                  {submitError}
-                </div>
+                <Alert variant="destructive">
+                  <AlertTitle>Update failed</AlertTitle>
+                  <AlertDescription>{submitError}</AlertDescription>
+                </Alert>
               ) : null}
 
               {submitSuccess ? (
-                <div className="rounded-lg border border-success/40 bg-success/10 px-3 py-2 text-xs text-success flex items-center gap-2">
-                  <CheckCircle2 className="h-3.5 w-3.5" />
-                  <span>{submitSuccess}</span>
-                </div>
+                <Alert variant="success">
+                  <AlertTitle>Success</AlertTitle>
+                  <AlertDescription>
+                    <span className="flex items-center gap-2">
+                      <CheckCircle2 className="h-3.5 w-3.5" aria-hidden="true" />
+                      <span>{submitSuccess}</span>
+                    </span>
+                  </AlertDescription>
+                </Alert>
               ) : null}
 
               <Button
@@ -315,7 +322,7 @@ const ResetPassword = () => {
 
           <div className="pt-2 border-t border-border/60 space-y-3">
             <div className="flex items-center justify-center gap-2 text-xs text-muted-foreground/80">
-              <ShieldCheck className="h-3.5 w-3.5" />
+              <ShieldCheck className="h-3.5 w-3.5" aria-hidden="true" />
               <span>Secure password update via Supabase Auth</span>
             </div>
             <p className="text-center text-sm text-muted-foreground">
@@ -325,7 +332,8 @@ const ResetPassword = () => {
               </Link>
             </p>
           </div>
-        </div>
+          </div>
+        </SectionCard>
       </div>
     </div>
   );

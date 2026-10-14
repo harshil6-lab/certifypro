@@ -1,10 +1,10 @@
-import { useEffect, useRef, useState, type DragEvent } from "react";
-import { Upload, FileSpreadsheet, AlertCircle, CheckCircle2, XCircle, Loader2, FileDown, Database } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
+import { AlertCircle, CheckCircle2, XCircle, Loader2, FileDown, Database } from "lucide-react";
 import { supabase } from "@/lib/supabaseClient";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { PageContainer, PageHeader } from "@/components/layout/PageContainer";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { PageContainer, PageToolbar } from "@/components/layout/PageContainer";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -16,14 +16,9 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
+import { DataTable, type DataColumn } from "@/components/DataTable";
+import { StatusBadge } from "@/components/StatusBadge";
+import { FileDropzone } from "@/components/FileDropzone";
 import { addSessionActivity } from "@/services/sessionActivity";
 
 const API_BASE = (import.meta.env.VITE_API_BASE_URL ?? "").replace(/\/$/, "");
@@ -43,7 +38,6 @@ const ImportStudents = () => {
 
   // File + parse state
   const [excelFile, setExcelFile] = useState<File | null>(null);
-  const [dragActive, setDragActive] = useState(false);
   const [parsing, setParsing] = useState(false);
   const [parseError, setParseError] = useState("");
   const [rows, setRows] = useState<PreviewRow[]>([]);
@@ -89,7 +83,6 @@ const ImportStudents = () => {
 
   const clearImportedSession = () => {
     setExcelFile(null);
-    setDragActive(false);
     setParsing(false);
     setParseError("");
     setRows([]);
@@ -141,15 +134,8 @@ const ImportStudents = () => {
     }
   };
 
-  const handleFileInput = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) await parseFile(file);
-  };
-
-  const handleDrop = async (e: DragEvent<HTMLDivElement>) => {
-    e.preventDefault();
-    setDragActive(false);
-    const file = e.dataTransfer.files[0];
+  const handleFiles = async (files: File[]) => {
+    const file = files[0];
     if (file) await parseFile(file);
   };
 
@@ -204,9 +190,59 @@ const ImportStudents = () => {
     URL.revokeObjectURL(url);
   };
 
+  const previewColumns: DataColumn<PreviewRow>[] = [
+    {
+      key: "row",
+      header: "#",
+      accessor: (row) => row.row,
+      sortable: true,
+      render: (row) => <span className="font-mono text-xs">{row.row}</span>,
+    },
+    {
+      key: "student_name",
+      header: "Student name",
+      accessor: (row) => row.student_name,
+      sortable: true,
+      render: (row) => (
+        <span className={`font-medium ${!row.student_name ? "text-destructive italic" : ""}`}>
+          {row.student_name || "Missing name"}
+        </span>
+      ),
+    },
+    {
+      key: "email",
+      header: "Email",
+      accessor: (row) => row.email,
+      sortable: true,
+      render: (row) =>
+        row.email ? <span className="text-sm">{row.email}</span> : <span className="italic text-muted-foreground">—</span>,
+    },
+    {
+      key: "certificate_id",
+      header: "Certificate ID",
+      accessor: (row) => row.certificate_id,
+      sortable: true,
+      render: (row) =>
+        row.certificate_id ? (
+          <span className="text-sm font-mono">{row.certificate_id}</span>
+        ) : (
+          <span className="italic text-muted-foreground">auto</span>
+        ),
+    },
+    {
+      key: "status",
+      header: "Status",
+      accessor: (row) => row.status,
+      sortable: true,
+      className: "text-right",
+      render: (row) => <StatusBadge status={row.status} label={row.status === "valid" ? "Valid" : row.status === "error" ? "Error" : "Duplicate"} title={row.error || undefined} />,
+    },
+  ];
+
   return (
     <PageContainer className="space-y-6 animate-fade-in">
-      <PageHeader
+      <PageToolbar
+        crumbs={[{ label: "Dashboard", href: "/dashboard" }, { label: "Import students" }]}
         title="Import students"
         description="Upload an Excel file with student_name, email, and certificate_id columns."
         actions={
@@ -215,7 +251,7 @@ const ImportStudents = () => {
               <AlertDialog>
                 <AlertDialogTrigger asChild>
                   <Button variant="outline" className="gap-2">
-                    <XCircle className="h-4 w-4" /> Clear session
+                    <XCircle className="h-4 w-4" aria-hidden="true" /> Clear session
                   </Button>
                 </AlertDialogTrigger>
                 <AlertDialogContent>
@@ -233,7 +269,7 @@ const ImportStudents = () => {
               </AlertDialog>
             )}
             <Button variant="outline" className="gap-2" onClick={downloadSampleTemplate}>
-              <FileDown className="h-4 w-4" /> Download sample template
+              <FileDown className="h-4 w-4" aria-hidden="true" /> Download sample template
             </Button>
           </>
         }
@@ -242,37 +278,25 @@ const ImportStudents = () => {
       {/* Upload Area */}
       <Card>
         <CardContent className="p-6">
-          <div
-            role="button"
-            tabIndex={0}
-            aria-label="Upload an Excel file: drag and drop here, or activate to browse files"
-            className={`rounded-lg border-2 border-dashed p-12 text-center transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 ${dragActive ? "border-primary bg-primary/5" : "border-border hover:border-primary/40 hover:bg-muted/40"}`}
-            onDragOver={(e) => { e.preventDefault(); setDragActive(true); }}
-            onDragLeave={() => setDragActive(false)}
-            onDrop={handleDrop}
-            onClick={() => fileInputRef.current?.click()}
-            onKeyDown={(e) => {
-              if (e.key === "Enter" || e.key === " ") {
-                e.preventDefault();
-                fileInputRef.current?.click();
-              }
-            }}
-          >
-            <div className="mx-auto mb-6 flex h-16 w-16 items-center justify-center rounded-full bg-muted text-muted-foreground">
-              {parsing ? <Loader2 className="h-8 w-8 animate-spin" /> : <FileSpreadsheet className="h-8 w-8" />}
-            </div>
-            <h3 className="mb-2 text-lg font-semibold text-foreground">
-              {excelFile ? excelFile.name : "Drag and drop your Excel file here"}
-            </h3>
-            <p className="mx-auto mb-6 max-w-sm text-sm text-muted-foreground">
-              {parsing ? "Parsing file…" : "Supports .xlsx and .xls files with student_name, email, and certificate_id columns."}
+          <FileDropzone
+            accept=".xlsx,.xls"
+            acceptList={[".xlsx", ".xls"]}
+            label={parsing ? "Parsing file…" : excelFile ? excelFile.name : "Drag and drop your Excel file here"}
+            hint="Supports .xlsx and .xls files with student_name, email, and certificate_id columns."
+            inputRef={fileInputRef}
+            onFiles={(files) => void handleFiles(files)}
+          />
+          {parsing ? (
+            <p className="mt-3 flex items-center gap-2 text-sm text-muted-foreground" aria-live="polite">
+              <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" /> Parsing file…
             </p>
-            <Button size="lg" tabIndex={-1} aria-hidden="true" className="pointer-events-none gap-2">
-              <Upload className="h-4 w-4" /> Browse files
-            </Button>
-            <input ref={fileInputRef} type="file" accept=".xlsx,.xls" className="hidden" onChange={handleFileInput} />
-          </div>
-          {parseError && <p className="mt-3 text-sm text-destructive">{parseError}</p>}
+          ) : null}
+          {parseError && (
+            <Alert variant="destructive" className="mt-3">
+              <AlertTitle>Parse failed</AlertTitle>
+              <AlertDescription>{parseError}</AlertDescription>
+            </Alert>
+          )}
         </CardContent>
       </Card>
 
@@ -282,7 +306,7 @@ const ImportStudents = () => {
           <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
             <Card>
               <CardContent className="flex items-center gap-3 p-4">
-                <CheckCircle2 className="h-5 w-5 text-success" />
+                <CheckCircle2 className="h-5 w-5 text-success" aria-hidden="true" />
                 <div>
                   <p className="text-2xl font-semibold tracking-tight text-foreground">{summary.valid}</p>
                   <p className="text-xs text-muted-foreground">Valid records</p>
@@ -291,7 +315,7 @@ const ImportStudents = () => {
             </Card>
             <Card>
               <CardContent className="flex items-center gap-3 p-4">
-                <XCircle className="h-5 w-5 text-destructive" />
+                <XCircle className="h-5 w-5 text-destructive" aria-hidden="true" />
                 <div>
                   <p className="text-2xl font-semibold tracking-tight text-foreground">{summary.errors}</p>
                   <p className="text-xs text-muted-foreground">Errors found</p>
@@ -300,7 +324,7 @@ const ImportStudents = () => {
             </Card>
             <Card>
               <CardContent className="flex items-center gap-3 p-4">
-                <AlertCircle className="h-5 w-5 text-warning" />
+                <AlertCircle className="h-5 w-5 text-warning" aria-hidden="true" />
                 <div>
                   <p className="text-2xl font-semibold tracking-tight text-foreground">{summary.duplicates}</p>
                   <p className="text-xs text-muted-foreground">Duplicates</p>
@@ -314,50 +338,23 @@ const ImportStudents = () => {
             <CardHeader className="pb-3">
               <CardTitle className="text-base font-semibold">Validation preview ({summary.total} rows)</CardTitle>
             </CardHeader>
-            <CardContent className="p-0">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead className="w-12">#</TableHead>
-                    <TableHead>Student name</TableHead>
-                    <TableHead>Email</TableHead>
-                    <TableHead>Certificate ID</TableHead>
-                    <TableHead className="text-right">Status</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {rows.map((row) => (
-                    <TableRow
-                      key={row.row}
-                      className={
-                        row.status === "error"
-                          ? "bg-destructive/5"
-                          : row.status === "duplicate"
-                            ? "bg-warning/5"
-                            : ""
-                      }
-                    >
-                      <TableCell className="font-mono text-xs">{row.row}</TableCell>
-                      <TableCell className={`font-medium ${!row.student_name ? "text-destructive italic" : ""}`}>
-                        {row.student_name || "Missing name"}
-                      </TableCell>
-                      <TableCell className="text-sm">{row.email || <span className="italic text-muted-foreground">—</span>}</TableCell>
-                      <TableCell className="text-sm font-mono">{row.certificate_id || <span className="italic text-muted-foreground">auto</span>}</TableCell>
-                      <TableCell className="text-right">
-                        {row.status === "valid" && (
-                          <Badge variant="success">Valid</Badge>
-                        )}
-                        {row.status === "error" && (
-                          <Badge variant="destructive" title={row.error}>Error</Badge>
-                        )}
-                        {row.status === "duplicate" && (
-                          <Badge variant="warning" title={row.error}>Duplicate</Badge>
-                        )}
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
+            <CardContent>
+              <DataTable<PreviewRow>
+                columns={previewColumns}
+                rows={rows}
+                rowKey={(row) => String(row.row)}
+                searchPlaceholder="Search rows…"
+                rowClassName={(row) =>
+                  row.status === "error"
+                    ? "bg-destructive/5"
+                    : row.status === "duplicate"
+                      ? "bg-warning/5"
+                      : undefined
+                }
+                emptyTitle="No rows to preview"
+                emptyDescription="Upload an Excel file to validate student records."
+                caption="Validation preview"
+              />
             </CardContent>
           </Card>
 
@@ -365,35 +362,45 @@ const ImportStudents = () => {
           <Card>
             <CardHeader className="pb-3">
               <CardTitle className="flex items-center gap-2 text-base font-semibold">
-                <Database className="h-4 w-4 text-muted-foreground" /> Save to database
+                <Database className="h-4 w-4 text-muted-foreground" aria-hidden="true" /> Save to database
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
               {summary.valid === 0 && (
-                <p className="text-xs text-destructive">No valid rows found. Fix errors in your Excel file and re-upload.</p>
+                <Alert variant="destructive">
+                  <AlertDescription>No valid rows found. Fix errors in your Excel file and re-upload.</AlertDescription>
+                </Alert>
               )}
 
-              {saveError && <p className="text-sm text-destructive">{saveError}</p>}
+              {saveError && (
+                <Alert variant="destructive">
+                  <AlertTitle>Save failed</AlertTitle>
+                  <AlertDescription>{saveError}</AlertDescription>
+                </Alert>
+              )}
 
               {saveSuccess > 0 && (
-                <div className="flex items-center gap-2 rounded-lg border border-success/20 bg-success/10 p-3 text-sm text-success">
-                  <CheckCircle2 className="h-4 w-4" />
-                  {saveSuccess} student(s) saved to the database successfully.
-                </div>
+                <Alert variant="success">
+                  <AlertDescription>
+                    {saveSuccess} student(s) saved to the database successfully.
+                  </AlertDescription>
+                </Alert>
               )}
 
               {saveRejected.length > 0 && (
-                <div className="space-y-1 rounded-lg border border-destructive/20 bg-destructive/5 p-3 text-sm text-destructive">
-                  <p className="font-semibold">{saveRejected.length} row(s) rejected during save:</p>
-                  <ul className="list-inside list-disc space-y-0.5">
-                    {saveRejected.map((r, i) => (
-                      <li key={i}>
-                        Row {r.row}{r.student_name ? ` (${r.student_name})` : ""} —{" "}
-                        {r.missing ? `missing: ${r.missing.join(", ")}` : r.error}
-                      </li>
-                    ))}
-                  </ul>
-                </div>
+                <Alert variant="destructive">
+                  <AlertTitle>{saveRejected.length} row(s) rejected during save:</AlertTitle>
+                  <AlertDescription>
+                    <ul className="list-inside list-disc space-y-0.5">
+                      {saveRejected.map((r, i) => (
+                        <li key={i}>
+                          Row {r.row}{r.student_name ? ` (${r.student_name})` : ""} —{" "}
+                          {r.missing ? `missing: ${r.missing.join(", ")}` : r.error}
+                        </li>
+                      ))}
+                    </ul>
+                  </AlertDescription>
+                </Alert>
               )}
 
               <Button
@@ -401,7 +408,7 @@ const ImportStudents = () => {
                 onClick={saveStudents}
                 disabled={summary.valid === 0 || saving}
               >
-                {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Database className="h-4 w-4" />}
+                {saving ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" /> : <Database className="h-4 w-4" aria-hidden="true" />}
                 {saving ? `Saving ${summary.valid} student(s)…` : `Save ${summary.valid} valid student(s)`}
               </Button>
             </CardContent>

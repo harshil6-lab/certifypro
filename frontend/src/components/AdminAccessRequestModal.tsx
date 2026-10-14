@@ -456,19 +456,19 @@ setSubmissionSummary({
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
-      <DialogContent className="sm:max-w-[720px] max-h-[90vh] overflow-y-auto border-slate-200 bg-gradient-to-b from-white via-slate-50/60 to-white">
+      <DialogContent className="sm:max-w-[720px] max-h-[90vh] overflow-y-auto border-border bg-gradient-to-b from-card via-muted/60 to-card">
         {submitted ? (
           <div className="py-8 px-2 text-center space-y-5 animate-fade-in">
-            <div className="mx-auto h-14 w-14 rounded-full bg-emerald-100 ring-8 ring-emerald-50 flex items-center justify-center">
-              <CheckCircle2 className="h-7 w-7 text-emerald-600" />
+            <div className="mx-auto h-14 w-14 rounded-full bg-success/15 ring-8 ring-success/10 flex items-center justify-center">
+              <CheckCircle2 className="h-7 w-7 text-success" />
             </div>
             <DialogHeader className="items-center space-y-2">
               <DialogTitle className="text-2xl font-heading">Access Request Submitted</DialogTitle>
-              <DialogDescription className="text-sm text-slate-600 max-w-lg">
+              <DialogDescription className="text-sm text-muted-foreground max-w-lg">
                 Your institutional access request has been recorded and processed through automated validation.
               </DialogDescription>
             </DialogHeader>
-            <div className="mx-auto w-full max-w-xl rounded-xl border border-slate-200 bg-white p-4 text-left text-sm text-slate-600 space-y-2">
+            <div className="mx-auto w-full max-w-xl rounded-xl border border-border bg-card p-4 text-left text-sm text-muted-foreground space-y-2">
               <p className="font-semibold text-foreground">Future-compatible request payload</p>
               <p>Integrated with request scoring, auto-approval workflow, and admin dashboard review compatibility.</p>
               {submissionSummary ? (
@@ -486,12 +486,12 @@ setSubmissionSummary({
           <>
             <DialogHeader className="space-y-2">
               <DialogTitle className="text-xl font-heading">Request Institutional Access</DialogTitle>
-              <DialogDescription className="text-slate-600">
+              <DialogDescription className="text-muted-foreground">
                 Submit your organization-verified profile to request platform access.
               </DialogDescription>
             </DialogHeader>
 
-            <div className="rounded-xl border border-slate-200 bg-white/90 px-4 py-4">
+            <div className="rounded-xl border border-border bg-card/90 px-4 py-4">
               <div className="flex flex-wrap items-center gap-3">
                 {STEPS.map((item, index) => {
                   const isDone = item.step < currentStep;
@@ -502,29 +502,29 @@ setSubmissionSummary({
                       <div className="flex items-center gap-2 min-w-0">
                         <div
                           className={`h-8 w-8 rounded-full border flex items-center justify-center ${isDone
-                            ? "border-emerald-500 bg-emerald-500 text-white"
+                            ? "border-success bg-success text-success-foreground"
                             : isActive
                               ? "border-accent bg-accent/10 text-accent"
-                              : "border-slate-300 bg-white text-slate-400"
+                              : "border-border bg-card text-muted-foreground"
                             }`}
                         >
                           <item.icon className="h-4 w-4" />
                         </div>
                         <span
-                          className={`text-xs sm:text-sm ${isActive ? "text-foreground font-medium" : "text-slate-500"
+                          className={`text-xs sm:text-sm ${isActive ? "text-foreground font-medium" : "text-muted-foreground"
                             }`}
                         >
                           {item.title}
                         </span>
                       </div>
                       {index < STEPS.length - 1 ? (
-                        <div className="hidden md:block h-px w-8 bg-slate-200" />
+                        <div className="hidden md:block h-px w-8 bg-border" />
                       ) : null}
                     </div>
                   );
                 })}
               </div>
-              <p className="mt-3 text-xs text-slate-500">Step {currentStep} of 4 · {currentStepTitle}</p>
+              <p className="mt-3 text-xs text-muted-foreground">Step {currentStep} of 4 · {currentStepTitle}</p>
             </div>
 
             <form className="space-y-5" onSubmit={handleSubmit} noValidate>
@@ -552,7 +552,7 @@ setSubmissionSummary({
                       placeholder="name@institution.edu"
                       aria-invalid={!!errors.organizationalEmail}
                     />
-                    <p className="text-xs text-slate-500">No personal emails preferred.</p>
+                    <p className="text-xs text-muted-foreground">No personal emails preferred.</p>
                     {errors.organizationalEmail ? <p className="text-xs text-destructive">{errors.organizationalEmail}</p> : null}
                   </div>
 
@@ -677,7 +677,7 @@ setSubmissionSummary({
                       onChange={(e) => setField("organizationalIdFile", e.target.files?.[0] ?? null)}
                       aria-invalid={!!errors.organizationalIdFile}
                     />
-                    <p className="text-xs text-slate-500">Allowed formats: PDF / PNG / JPG.</p>
+                    <p className="text-xs text-muted-foreground">Allowed formats: PDF / PNG / JPG.</p>
                     {form.organizationalIdFile ? (
                       <p className="text-xs text-foreground">Selected file: {form.organizationalIdFile.name}</p>
                     ) : null}
@@ -699,7 +699,7 @@ setSubmissionSummary({
 
               {currentStep === 4 ? (
                 <div className="space-y-4">
-                  <div className="rounded-xl border border-slate-200 bg-white p-4 text-sm text-slate-600 space-y-2">
+                  <div className="rounded-xl border border-border bg-card p-4 text-sm text-muted-foreground space-y-2">
                     <p className="font-semibold text-foreground">Confirmation</p>
                     <p>
                       Review your information and confirm declarations before submitting your access request.

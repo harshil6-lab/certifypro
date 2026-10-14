@@ -18,7 +18,9 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { PageContainer } from "@/components/layout/PageContainer";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { PageContainer, PageToolbar } from "@/components/layout/PageContainer";
+import { EmptyState, LoadingState } from "@/components/States";
 import { useToast } from "@/hooks/use-toast";
 import { API_BASE, getAuthHeaders } from "@/services/apiService";
 import {
@@ -460,7 +462,12 @@ const Profile = () => {
   };
 
   return (
-    <PageContainer className="animate-fade-in">
+    <PageContainer className="animate-fade-in space-y-6">
+      <PageToolbar
+        crumbs={[{ label: "Dashboard", href: "/dashboard" }, { label: "Profile" }]}
+        title="Profile"
+        description="Manage your account details, subscription, security, and activity."
+      />
       <div className="grid grid-cols-1 items-start gap-6 lg:grid-cols-4">
         <Card className="h-fit lg:sticky lg:top-24">
           <CardHeader className="pb-3">
@@ -497,14 +504,14 @@ const Profile = () => {
 
               <div className="mt-6 grid grid-cols-1 gap-4 md:grid-cols-2">
                 <div className="flex items-center gap-3 rounded-lg border border-border bg-muted/20 p-3">
-                  <Building2 className="h-5 w-5 text-muted-foreground" />
+                  <Building2 className="h-5 w-5 text-muted-foreground" aria-hidden="true" />
                   <div>
                     <p className="text-xs text-muted-foreground">Organization</p>
                     <p className="text-sm font-medium text-foreground">{profile.organization || "—"}</p>
                   </div>
                 </div>
                 <div className="flex items-center gap-3 rounded-lg border border-border bg-muted/20 p-3">
-                  <CalendarDays className="h-5 w-5 text-muted-foreground" />
+                  <CalendarDays className="h-5 w-5 text-muted-foreground" aria-hidden="true" />
                   <div>
                     <p className="text-xs text-muted-foreground">Member since</p>
                     <p className="text-sm font-medium text-foreground">{profile.joined}</p>
@@ -528,7 +535,7 @@ const Profile = () => {
                       <p className="mt-1 text-2xl font-semibold tracking-tight text-foreground">{stats.templates}</p>
                     </div>
                     <div className="flex h-10 w-10 items-center justify-center rounded-md bg-muted text-muted-foreground">
-                      <FileText className="h-5 w-5" />
+                      <FileText className="h-5 w-5" aria-hidden="true" />
                     </div>
                   </CardContent>
                 </Card>
@@ -539,7 +546,7 @@ const Profile = () => {
                       <p className="mt-1 text-2xl font-semibold tracking-tight text-foreground">{stats.certificates}</p>
                     </div>
                     <div className="flex h-10 w-10 items-center justify-center rounded-md bg-muted text-muted-foreground">
-                      <Shield className="h-5 w-5" />
+                      <Shield className="h-5 w-5" aria-hidden="true" />
                     </div>
                   </CardContent>
                 </Card>
@@ -550,7 +557,7 @@ const Profile = () => {
                       <p className="mt-1 text-2xl font-semibold tracking-tight text-foreground">{stats.admins}</p>
                     </div>
                     <div className="flex h-10 w-10 items-center justify-center rounded-md bg-muted text-muted-foreground">
-                      <Users className="h-5 w-5" />
+                      <Users className="h-5 w-5" aria-hidden="true" />
                     </div>
                   </CardContent>
                 </Card>
@@ -569,9 +576,9 @@ const Profile = () => {
                     <div className="flex items-center gap-3">
                       <div className="flex h-10 w-10 items-center justify-center rounded-md bg-muted text-muted-foreground">
                         {subscription.plan === "pro" ? (
-                          <Zap className="h-5 w-5" />
+                          <Zap className="h-5 w-5" aria-hidden="true" />
                         ) : (
-                          <Shield className="h-5 w-5" />
+                          <Shield className="h-5 w-5" aria-hidden="true" />
                         )}
                       </div>
                       <div>
@@ -617,7 +624,7 @@ const Profile = () => {
 
                   {subscription.plan === "pro" && (
                     <div className="flex items-center gap-2 text-sm text-success">
-                      <CheckCircle className="h-4 w-4" />
+                      <CheckCircle className="h-4 w-4" aria-hidden="true" />
                       <span>Your Pro subscription is active.</span>
                     </div>
                   )}
@@ -625,7 +632,7 @@ const Profile = () => {
               ) : (
                 <div className="py-8 text-center">
                   <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-md bg-muted text-muted-foreground">
-                    <Shield className="h-6 w-6" />
+                    <Shield className="h-6 w-6" aria-hidden="true" />
                   </div>
                   <p className="mb-4 text-sm text-muted-foreground">Loading subscription information…</p>
                   <div className="flex justify-center gap-3">
@@ -647,18 +654,18 @@ const Profile = () => {
             </CardHeader>
             <CardContent className="space-y-4">
               {firstLoginMode ? (
-                <div className="rounded-md border border-warning/40 bg-warning/10 px-4 py-3 text-sm text-warning">
-                  First login detected. Please reset your password before continuing.
-                </div>
+                <Alert variant="warning">
+                  <AlertDescription>First login detected. Please reset your password before continuing.</AlertDescription>
+                </Alert>
               ) : null}
 
               <div className="flex flex-wrap items-center gap-3">
                 <Button variant="outline" className="gap-2" onClick={() => void handlePasswordReset()}>
-                  <KeyRound className="h-4 w-4" /> Change password
+                  <KeyRound className="h-4 w-4" aria-hidden="true" /> Change password
                 </Button>
                 {firstLoginMode ? (
                   <Button className="gap-2" onClick={() => void handleFinishFirstLogin()}>
-                    <KeyRound className="h-4 w-4" /> I've reset my password
+                    <KeyRound className="h-4 w-4" aria-hidden="true" /> I've reset my password
                   </Button>
                 ) : null}
               </div>
@@ -668,7 +675,7 @@ const Profile = () => {
                   <CardContent className="p-4">
                     <p className="text-xs text-muted-foreground">Last login</p>
                     <p className="mt-1 flex items-center gap-1.5 text-sm font-medium text-foreground">
-                      <Clock3 className="h-4 w-4 text-muted-foreground" /> {formatDateTime(profile.lastLoginAt)}
+                      <Clock3 className="h-4 w-4 text-muted-foreground" aria-hidden="true" /> {formatDateTime(profile.lastLoginAt)}
                     </p>
                   </CardContent>
                 </Card>
@@ -676,7 +683,7 @@ const Profile = () => {
                   <CardContent className="p-4">
                     <p className="text-xs text-muted-foreground">Primary email</p>
                     <p className="mt-1 flex items-center gap-1.5 text-sm font-medium text-foreground">
-                      <Mail className="h-4 w-4 text-muted-foreground" /> {profile.email || "—"}
+                      <Mail className="h-4 w-4 text-muted-foreground" aria-hidden="true" /> {profile.email || "—"}
                     </p>
                   </CardContent>
                 </Card>
@@ -690,25 +697,26 @@ const Profile = () => {
             </CardHeader>
             <CardContent className="space-y-3">
               {isLoading ? (
-                <div className="rounded-md border border-border p-4 text-sm text-muted-foreground">Loading profile activity…</div>
+                <LoadingState rows={3} />
               ) : activityLog.length > 0 ? (
                 activityLog.map((entry) => (
                   <div key={`${entry.event}-${entry.time}`} className="flex items-start justify-between gap-3 rounded-md border border-border p-3">
                     <div>
                       <p className="flex items-center gap-1.5 text-sm font-medium text-foreground">
-                        <UserCircle2 className="h-4 w-4 text-muted-foreground" /> {entry.event}
+                        <UserCircle2 className="h-4 w-4 text-muted-foreground" aria-hidden="true" /> {entry.event}
                       </p>
                       <p className="mt-0.5 text-xs text-muted-foreground">{entry.detail}</p>
                     </div>
                     <div className="flex shrink-0 items-center gap-1 text-xs text-muted-foreground">
-                      <Clock3 className="h-3.5 w-3.5" /> {entry.time}
+                      <Clock3 className="h-3.5 w-3.5" aria-hidden="true" /> {entry.time}
                     </div>
                   </div>
                 ))
               ) : (
-                <div className="rounded-md border border-border p-4 text-sm text-muted-foreground">
-                  No activity has been recorded for this account yet.
-                </div>
+                <EmptyState
+                  title="No activity yet"
+                  description="No activity has been recorded for this account yet."
+                />
               )}
             </CardContent>
           </Card>

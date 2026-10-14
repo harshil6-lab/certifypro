@@ -13,7 +13,8 @@ import {
 import { Link } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { PageContainer, PageHeader } from "@/components/layout/PageContainer";
+import { PageContainer, PageToolbar } from "@/components/layout/PageContainer";
+import { EmptyState } from "@/components/States";
 import { ProfileOnboardingModal } from "@/components/ProfileOnboardingModal";
 import { useAdminOnboarding, type OnboardingProfile } from "@/hooks/useAdminOnboarding";
 import { API_BASE, getAuthHeaders } from "@/services/apiService";
@@ -94,13 +95,14 @@ const Dashboard = () => {
   return (
     <>
       <PageContainer className="space-y-8 animate-fade-in">
-        <PageHeader
+        <PageToolbar
+          crumbs={[{ label: "Dashboard" }]}
           title="Welcome back"
           description="Overview of your certificate issuance and verification activity."
           actions={
             <Link to="/help">
               <Button variant="outline" className="gap-2">
-                <HelpCircle className="h-4 w-4" />
+                <HelpCircle className="h-4 w-4" aria-hidden="true" />
                 User guide
               </Button>
             </Link>
@@ -150,7 +152,7 @@ const Dashboard = () => {
                       <div className={`flex h-9 w-9 items-center justify-center rounded-full text-sm font-semibold ${
                         step.done ? "bg-success text-success-foreground" : "bg-secondary text-secondary-foreground"
                       }`}>
-                        {step.done ? <CheckCircle2 className="h-4 w-4" /> : step.step}
+                        {step.done ? <CheckCircle2 className="h-4 w-4" aria-hidden="true" /> : step.step}
                       </div>
                       <step.icon className={`h-5 w-5 transition-colors ${step.done ? "text-success" : "text-muted-foreground group-hover:text-accent"}`} />
                     </div>
@@ -162,7 +164,7 @@ const Dashboard = () => {
 
                   {i < workflowSteps.length - 1 && (
                     <div className="absolute -right-2 top-1/2 z-10 hidden -translate-y-1/2 rounded-full border border-border bg-background p-1 md:block">
-                      <ArrowRight className="h-3.5 w-3.5 text-muted-foreground/60" />
+                      <ArrowRight className="h-3.5 w-3.5 text-muted-foreground/60" aria-hidden="true" />
                     </div>
                   )}
                 </Link>
@@ -212,10 +214,10 @@ const Dashboard = () => {
                 })}
               </div>
             ) : (
-              <div className="py-10 text-center">
-                <p className="text-sm font-medium text-foreground">No recent activity yet</p>
-                <p className="mt-1 text-xs text-muted-foreground">Your latest actions will appear here.</p>
-              </div>
+              <EmptyState
+                title="No recent activity yet"
+                description="Your latest actions will appear here."
+              />
             )}
           </CardContent>
         </Card>

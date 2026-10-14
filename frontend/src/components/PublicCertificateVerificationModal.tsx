@@ -98,7 +98,7 @@ const PublicCertificateVerificationModal = ({
             {/* Header */}
             <DialogHeader>
               <DialogTitle className="flex items-center gap-2 text-xl">
-                <ShieldCheck className="w-5 h-5 text-amber-500" />
+                <ShieldCheck className="w-5 h-5 text-accent" aria-hidden="true" />
                 Verify Certificate
               </DialogTitle>
               <DialogDescription>
@@ -107,9 +107,9 @@ const PublicCertificateVerificationModal = ({
             </DialogHeader>
 
             {/* Trust Banner */}
-            <div className="rounded-lg bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 p-4 flex gap-3">
-              <Lock className="w-5 h-5 text-blue-600 dark:text-blue-400 flex-shrink-0 mt-0.5" />
-              <p className="text-sm text-blue-900 dark:text-blue-200">
+            <div className="rounded-lg bg-info/10 border border-info/40 p-4 flex gap-3">
+              <Lock className="w-5 h-5 text-info flex-shrink-0 mt-0.5" aria-hidden="true" />
+              <p className="text-sm text-foreground">
                 This verification uses encrypted authentication. Your data is secure and private.
               </p>
             </div>
@@ -133,7 +133,7 @@ const PublicCertificateVerificationModal = ({
                       setError("");
                     }}
                     disabled={state === "loading"}
-                    className="pl-10 h-10 transition-colors focus:ring-2 focus:ring-amber-400/50"
+                    className="pl-10 h-10 transition-colors"
                     autoComplete="off"
                   />
                 </div>
@@ -153,7 +153,7 @@ const PublicCertificateVerificationModal = ({
               </div>
 
               {/* QR Placeholder */}
-              <div className="border-2 border-dashed border-border rounded-lg p-6 hover:border-amber-400/50 hover:bg-amber-50/30 dark:hover:bg-amber-900/10 transition-colors text-center cursor-pointer">
+              <div className="border-2 border-dashed border-border rounded-lg p-6 hover:border-accent/50 hover:bg-accent/5 transition-colors text-center cursor-pointer">
                 <QrCode className="w-8 h-8 text-muted-foreground/40 mx-auto mb-2" />
                 <p className="text-sm text-muted-foreground font-medium">Scan QR Code</p>
                 <p className="text-xs text-muted-foreground/60 mt-1">

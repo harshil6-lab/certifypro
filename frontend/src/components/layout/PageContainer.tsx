@@ -1,6 +1,14 @@
 import * as React from "react";
 
 import { cn } from "@/lib/utils";
+import {
+  Breadcrumb,
+  BreadcrumbItem,
+  BreadcrumbLink,
+  BreadcrumbList,
+  BreadcrumbPage,
+  BreadcrumbSeparator,
+} from "@/components/ui/breadcrumb";
 
 /**
  * PageContainer
@@ -77,3 +85,50 @@ const Section = React.forwardRef<HTMLElement, SectionProps>(
 Section.displayName = "Section";
 
 export { PageContainer, PageHeader, Section };
+
+export interface PageCrumb {
+  label: string;
+  href?: string;
+}
+
+interface PageToolbarProps extends Omit<React.HTMLAttributes<HTMLDivElement>, "title"> {
+  crumbs?: PageCrumb[];
+  title: React.ReactNode;
+  description?: React.ReactNode;
+  actions?: React.ReactNode;
+}
+
+/**
+ * PageToolbar
+ * Enterprise page heading: optional breadcrumb trail above the standard
+ * PageHeader (title + description + trailing actions). Additive — existing
+ * PageHeader usages are untouched.
+ */
+const PageToolbar = React.forwardRef<HTMLDivElement, PageToolbarProps>(
+  ({ crumbs, title, description, actions, className, ...props }, ref) => (
+    <div ref={ref} className={cn("space-y-2", className)} {...props}>
+      {crumbs && crumbs.length > 0 ? (
+        <Breadcrumb>
+          <BreadcrumbList>
+            {crumbs.map((crumb, index) => (
+              <React.Fragment key={`${crumb.label}-${index}`}>
+                {index > 0 ? <BreadcrumbSeparator /> : null}
+                <BreadcrumbItem>
+                  {index < crumbs.length - 1 && crumb.href ? (
+                    <BreadcrumbLink href={crumb.href}>{crumb.label}</BreadcrumbLink>
+                  ) : (
+                    <BreadcrumbPage>{crumb.label}</BreadcrumbPage>
+                  )}
+                </BreadcrumbItem>
+              </React.Fragment>
+            ))}
+          </BreadcrumbList>
+        </Breadcrumb>
+      ) : null}
+      <PageHeader title={title} description={description} actions={actions} />
+    </div>
+  ),
+);
+PageToolbar.displayName = "PageToolbar";
+
+export { PageToolbar };

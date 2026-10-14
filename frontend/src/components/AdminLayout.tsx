@@ -1,5 +1,6 @@
 import { Outlet } from "react-router-dom";
 import AdminNavbar from "./AdminNavbar";
+import { SectionCard } from "./SectionCard";
 import { AccessControlProvider, useAccessControl } from "@/context/AccessControlContext";
 
 import { useEffect } from "react";
@@ -36,12 +37,12 @@ function AdminLayoutShell() {
       <div className="flex min-h-screen w-full flex-col bg-background">
         <AdminNavbar />
         <main className="grid flex-1 place-items-center px-6">
-          <div className="max-w-lg rounded-2xl border border-border bg-card p-6 text-center shadow-sm">
+          <SectionCard className="max-w-lg text-center">
             <h1 className="text-lg font-semibold text-foreground">Administrator access removed</h1>
             <p className="mt-2 text-sm text-muted-foreground">
               This account can still sign in, but administrator pages are no longer available.
             </p>
-          </div>
+          </SectionCard>
         </main>
       </div>
     );
@@ -52,12 +53,12 @@ function AdminLayoutShell() {
       <div className="flex min-h-screen w-full flex-col bg-background">
         <AdminNavbar />
         <main className="grid flex-1 place-items-center px-6">
-          <div className="max-w-lg rounded-2xl border border-border bg-card p-6 text-center shadow-sm">
+          <SectionCard className="max-w-lg text-center">
             <h1 className="text-lg font-semibold text-foreground">Permission required</h1>
             <p className="mt-2 text-sm text-muted-foreground">
               Your current access level does not include this module.
             </p>
-          </div>
+          </SectionCard>
         </main>
       </div>
     );

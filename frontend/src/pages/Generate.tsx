@@ -13,10 +13,12 @@ import {
 import UpgradeModal from "@/components/UpgradeModal";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { PageContainer, PageHeader } from "@/components/layout/PageContainer";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { PageContainer, PageToolbar } from "@/components/layout/PageContainer";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
+import { EmptyState } from "@/components/States";
 import { supabase } from "@/lib/supabaseClient";
 import { LayoutPreview } from "@/components/LayoutPreview";
 import { addSessionActivity } from "@/services/sessionActivity";
@@ -319,7 +321,8 @@ const Generate = () => {
 
   return (
     <PageContainer className="space-y-6 animate-fade-in">
-      <PageHeader
+      <PageToolbar
+        crumbs={[{ label: "Dashboard", href: "/dashboard" }, { label: "Generate" }]}
         title="Generate certificates"
         description="Follow the guided steps to create and download a batch of certificates."
       />
@@ -340,13 +343,13 @@ const Generate = () => {
                   ? "bg-primary text-primary-foreground"
                   : "bg-muted text-muted-foreground"
                 }`}>
-                {currentStep > step.id ? <CheckCircle2 className="h-4 w-4" /> : step.id}
+                {currentStep > step.id ? <CheckCircle2 className="h-4 w-4" aria-hidden="true" /> : step.id}
               </div>
               <span className={`whitespace-nowrap text-sm font-semibold ${currentStep === step.id ? "text-foreground" : "text-muted-foreground"}`}>
                 {step.title}
               </span>
             </div>
-            {i < steps.length - 1 && <ArrowRight className="hidden h-5 w-5 shrink-0 text-muted-foreground/30 sm:block" />}
+            {i < steps.length - 1 && <ArrowRight className="hidden h-5 w-5 shrink-0 text-muted-foreground/30 sm:block" aria-hidden="true" />}
           </div>
         ))}
       </div>
@@ -366,7 +369,7 @@ const Generate = () => {
 {selectedTemplate ? (
                 <div className="space-y-4">
                   <div className="flex items-center gap-3 rounded-lg border border-border bg-muted/40 p-4">
-                    <CheckCircle2 className="h-5 w-5 shrink-0 text-success" />
+                    <CheckCircle2 className="h-5 w-5 shrink-0 text-success" aria-hidden="true" />
                     <div>
                       <p className="font-medium text-foreground">Template loaded from workspace</p>
                       <p className="mt-0.5 font-mono text-xs text-muted-foreground">{workspaceTemplate?.template_id || selectedTemplate}</p>
@@ -435,9 +438,9 @@ const Generate = () => {
                   </div>
                 </div>
               ) : (
-                <div className="rounded-lg border border-warning/40 bg-warning/10 p-4 text-sm text-warning">
-                  Please select or upload a template to continue.
-                </div>
+                <Alert variant="warning">
+                  <AlertDescription>Please select or upload a template to continue.</AlertDescription>
+                </Alert>
               )}
             </div>
           )}
@@ -467,14 +470,14 @@ const Generate = () => {
                     {selectedStudentIds.length} selected
                   </Badge>
                 </div>
-                <label className="text-sm font-medium text-foreground px-1">Available Students</label>
+                <p className="text-sm font-medium text-foreground px-1" id="available-students-label">Available Students</p>
                 {loadingData ? (
                   <div className="flex items-center gap-2 p-3 text-sm text-muted-foreground">
-                    <Loader2 className="w-4 h-4 animate-spin" />
+                    <Loader2 className="w-4 h-4 animate-spin" aria-hidden="true" />
                     Loading students...
                   </div>
                 ) : (
-                  <div className="max-h-[320px] overflow-y-auto rounded-lg border border-border bg-background/70 divide-y divide-border/60">
+                  <div className="max-h-[320px] overflow-y-auto rounded-lg border border-border bg-background/70 divide-y divide-border/60" role="group" aria-labelledby="available-students-label">
                     {students.length > 0 ? (
                       students.map((student) => {
                         const isChecked = selectedStudentIds.includes(student.id);
@@ -506,12 +509,17 @@ const Generate = () => {
                         );
                       })
                     ) : (
-                      <div className="p-4 text-sm text-muted-foreground">No students available</div>
+                      <div className="p-2">
+                        <EmptyState
+                          title="No students available"
+                          description="Import students first, then return here to generate certificates."
+                        />
+                      </div>
                     )}
                   </div>
                 )}
                 <div className="flex items-center gap-2 rounded-lg border border-border bg-muted/30 p-3 text-sm text-muted-foreground">
-                  <Users className="h-4 w-4 shrink-0 text-muted-foreground" />
+                  <Users className="h-4 w-4 shrink-0 text-muted-foreground" aria-hidden="true" />
                   <span>
                     {selectAllStudents
                       ? `All ${students.length} imported students will receive certificates with the chosen template.`
@@ -534,7 +542,7 @@ const Generate = () => {
               {!generating && progress === 0 && (
                 <div className="space-y-8 rounded-lg border border-dashed border-border bg-muted/20 py-8 text-center">
                   <div className="mx-auto flex h-20 w-20 items-center justify-center rounded-full bg-muted text-muted-foreground">
-                    <Printer className="h-9 w-9" />
+                    <Printer className="h-9 w-9" aria-hidden="true" />
                   </div>
 
                   <div className="space-y-1">
@@ -549,7 +557,7 @@ const Generate = () => {
                       className="gap-2"
                       onClick={() => setCurrentStep(2)}
                     >
-                      <ArrowLeft className="h-5 w-5" /> Back
+                      <ArrowLeft className="h-5 w-5" aria-hidden="true" /> Back
                     </Button>
                     <Button
                       onClick={handleGenerate}
@@ -557,7 +565,7 @@ const Generate = () => {
                       size="lg"
                       className="gap-2"
                     >
-                      <Printer className="h-5 w-5" /> Generate {selectedStudentRecords.length > 1 ? "certificates" : "certificate"}
+                      <Printer className="h-5 w-5" aria-hidden="true" /> Generate {selectedStudentRecords.length > 1 ? "certificates" : "certificate"}
                     </Button>
                   </div>
                 </div>
@@ -573,26 +581,33 @@ const Generate = () => {
                   <Progress value={progress} className="h-3 rounded-full bg-muted" />
                   {generating && (
                     <div className="flex items-center gap-3 rounded-lg bg-muted/40 p-3 text-sm text-muted-foreground">
-                      <Loader2 className="h-5 w-5 animate-spin text-accent" />
+                      <Loader2 className="h-5 w-5 animate-spin text-accent" aria-hidden="true" />
                       Processing certificate…
                     </div>
                   )}
                   {generateError && (
-                    <div className="rounded-lg border border-destructive/40 bg-destructive/10 p-4 text-sm text-destructive">
-                      {generateError}
-                    </div>
+                    <Alert variant="destructive">
+                      <AlertTitle>Generation failed</AlertTitle>
+                      <AlertDescription>{generateError}</AlertDescription>
+                    </Alert>
                   )}
                   {progress === 100 && !generateError && (
                     <div className="flex flex-col gap-4">
-                      <div className="flex items-center gap-3 rounded-lg border border-success/20 bg-success/10 p-4 text-sm font-medium text-success">
-                        <CheckCircle2 className="h-5 w-5 shrink-0" />
-                        {generatedCerts.length} certificate{generatedCerts.length !== 1 ? "s" : ""} generated successfully.
-                      </div>
+                      <Alert variant="success">
+                        <AlertDescription>
+                          <span className="flex items-center gap-3">
+                            <CheckCircle2 className="h-5 w-5 shrink-0" aria-hidden="true" />
+                            <span>
+                              {generatedCerts.length} certificate{generatedCerts.length !== 1 ? "s" : ""} generated successfully.
+                            </span>
+                          </span>
+                        </AlertDescription>
+                      </Alert>
                       {zipUrl && (
                         <div className="flex justify-center pt-2">
                           <a href={zipUrl} download>
                             <Button size="lg" className="gap-2">
-                              <Download className="h-5 w-5" /> Download ZIP
+                              <Download className="h-5 w-5" aria-hidden="true" /> Download ZIP
                             </Button>
                           </a>
                         </div>
@@ -615,7 +630,7 @@ const Generate = () => {
           disabled={currentStep === 1 || generating}
           className="gap-2"
         >
-          <ArrowLeft className="h-5 w-5" /> Previous
+          <ArrowLeft className="h-5 w-5" aria-hidden="true" /> Previous
         </Button>
         {currentStep < 3 && (
           <Button
@@ -623,7 +638,7 @@ const Generate = () => {
             onClick={() => setCurrentStep((s) => Math.min(3, s + 1))}
             className="gap-2"
           >
-            Next <ArrowRight className="h-5 w-5" />
+            Next <ArrowRight className="h-5 w-5" aria-hidden="true" />
           </Button>
         )}
       </div>

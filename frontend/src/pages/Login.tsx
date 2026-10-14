@@ -1,8 +1,10 @@
 import { useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
-import { Lock, Mail, UserPlus, CheckCircle, ArrowRight, XCircle, Loader2, Eye, EyeOff } from "lucide-react";
+import { Lock, Mail, UserPlus, CheckCircle, ArrowRight, Loader2, Eye, EyeOff } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { SectionCard } from "@/components/SectionCard";
 import loginBg from "@/assets/login-bg.jpg";
 import whiteCertifyProLogo from "@/assets/white_certify_pro_logo.png";
 import certifyProIcon from "@/assets/certify_pro_icon.png";
@@ -14,6 +16,7 @@ import {
   signInWithEmailPassword,
 } from "@/lib/auth";
 import { useCaptchaToken } from "@/hooks/useCaptchaToken";
+import { getMySubscription } from "@/services/subscriptionService";
 
 const Login = () => {
   const navigate = useNavigate();
@@ -57,7 +60,6 @@ const Login = () => {
 
       // Check if user needs to select a plan
       try {
-        const { getMySubscription } = await import("@/services/subscriptionService");
         const sub = await getMySubscription();
         console.log("Subscription check result:", sub); // Debug log
         if (!sub.plan_selected) {
@@ -156,9 +158,9 @@ const Login = () => {
               Sign in to manage certificates, templates, student records, and verifications.
             </p>
             {templateRedirect ? (
-              <div className="rounded-md border border-accent/30 bg-accent/10 px-4 py-3 text-sm text-foreground">
-                Please sign in to access certificate templates.
-              </div>
+              <Alert variant="info">
+                <AlertDescription>Please sign in to access certificate templates.</AlertDescription>
+              </Alert>
             ) : null}
           </div>
 
@@ -175,7 +177,7 @@ const Login = () => {
                 Email
               </label>
               <div className="relative">
-                <Mail className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                <Mail className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" aria-hidden="true" />
                 <Input
                   id="email"
                   value={email}
@@ -183,7 +185,7 @@ const Login = () => {
                   placeholder="admin@institution.edu"
                   type="email"
                   autoComplete="email"
-                  className="h-11 pl-10"
+                  className="pl-10"
                 />
               </div>
             </div>
@@ -203,7 +205,7 @@ const Login = () => {
                 </button>
               </div>
               <div className="relative">
-                <Lock className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                <Lock className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" aria-hidden="true" />
                 <Input
                   id="password"
                   type={showPassword ? "text" : "password"}
@@ -211,7 +213,7 @@ const Login = () => {
                   onChange={(e) => setPassword(e.target.value)}
                   autoComplete="current-password"
                   placeholder="Enter your password"
-                  className="h-11 pl-10 pr-10"
+                  className="pl-10 pr-10"
                 />
                 <button
                   type="button"
@@ -219,22 +221,22 @@ const Login = () => {
                   className="absolute right-2 top-1/2 flex h-7 w-7 -translate-y-1/2 items-center justify-center rounded-sm text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                   aria-label={showPassword ? "Hide password" : "Show password"}
                 >
-                  {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                  {showPassword ? <EyeOff className="h-4 w-4" aria-hidden="true" /> : <Eye className="h-4 w-4" aria-hidden="true" />}
                 </button>
               </div>
             </div>
 
             {authError ? (
-              <div className="flex items-start gap-2 rounded-md border border-destructive/40 bg-destructive/10 px-4 py-3 text-sm font-medium text-destructive">
-                <XCircle className="mt-0.5 h-4 w-4 flex-shrink-0" />
-                <span>{authError}</span>
-              </div>
+              <Alert variant="destructive">
+                <AlertTitle>Sign-in failed</AlertTitle>
+                <AlertDescription>{authError}</AlertDescription>
+              </Alert>
             ) : null}
             {resetMessage ? (
-              <div className="flex items-start gap-2 rounded-md border border-success/40 bg-success/10 px-4 py-3 text-sm font-medium text-success">
-                <CheckCircle className="mt-0.5 h-4 w-4 flex-shrink-0" />
-                <span>{resetMessage}</span>
-              </div>
+              <Alert variant="success">
+                <AlertTitle>Check your inbox</AlertTitle>
+                <AlertDescription>{resetMessage}</AlertDescription>
+              </Alert>
             ) : null}
             {captcha.isConfigured ? (
               <div className="flex flex-col items-center gap-1">
@@ -247,9 +249,10 @@ const Login = () => {
               </div>
             ) : null}
             {!isSupabaseConfigured ? (
-              <div className="rounded-md border border-warning/40 bg-warning/10 px-4 py-3 text-xs text-warning">
-                Authentication is not fully configured. Ask an administrator to set the required environment values.
-              </div>
+              <Alert variant="warning">
+                <AlertTitle>Not configured</AlertTitle>
+                <AlertDescription>Authentication is not fully configured. Ask an administrator to set the required environment values.</AlertDescription>
+              </Alert>
             ) : null}
 
             <Button
@@ -260,7 +263,7 @@ const Login = () => {
             >
               {isSigningIn ? (
                 <>
-                  <Loader2 className="h-4 w-4 animate-spin" />
+                  <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
                   Signing in…
                 </>
               ) : (
@@ -276,7 +279,7 @@ const Login = () => {
             className="w-full"
             onClick={() => setAdminModalOpen(true)}
           >
-            <UserPlus className="h-4 w-4" />
+            <UserPlus className="h-4 w-4" aria-hidden="true" />
             Request admin access
           </Button>
 
@@ -293,26 +296,26 @@ const Login = () => {
           </div>
 
           {/* Public verification */}
-          <div className="rounded-lg border border-border bg-card p-6 space-y-4">
+          <SectionCard>
             <div className="flex items-center gap-3">
               <div className="flex h-10 w-10 items-center justify-center rounded-md bg-success/10 text-success">
-                <CheckCircle className="h-5 w-5" />
+                <CheckCircle className="h-5 w-5" aria-hidden="true" />
               </div>
               <h3 className="text-sm font-semibold text-foreground">Verify a certificate</h3>
             </div>
-            <p className="text-sm leading-relaxed text-muted-foreground">
+            <p className="mt-4 text-sm leading-relaxed text-muted-foreground">
               Students, employers, and institutions can confirm certificate authenticity instantly — no account required.
             </p>
             <Button
               type="button"
               variant="outline"
-              className="w-full justify-between"
+              className="mt-4 w-full justify-between"
               onClick={() => setVerificationModalOpen(true)}
             >
               Verify now
-              <ArrowRight className="h-4 w-4" />
+              <ArrowRight className="h-4 w-4" aria-hidden="true" />
             </Button>
-          </div>
+          </SectionCard>
 
           {/* Modals */}
           <AdminAccessRequestModal

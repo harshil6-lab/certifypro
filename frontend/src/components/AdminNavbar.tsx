@@ -60,7 +60,7 @@ const AdminNavbar = () => {
 
   return (
     <header className="sticky top-0 z-40 w-full border-b border-sidebar-border bg-sidebar">
-      <div className="mx-auto flex min-h-16 max-w-7xl items-center gap-4 px-4 sm:px-6">
+      <div className="mx-auto flex h-14 max-w-7xl items-center gap-4 px-4 sm:px-6">
         <div className="flex shrink-0 items-center pr-3">
           <img src={certifyProLogo} alt="CertifyPro" className="h-9 w-auto object-contain sm:h-10" />
         </div>
@@ -88,7 +88,7 @@ const AdminNavbar = () => {
                 className="text-sidebar-foreground hover:bg-sidebar-accent/50 hover:text-sidebar-accent-foreground xl:hidden"
                 aria-label="Open navigation menu"
               >
-                <Menu className="h-5 w-5" />
+                <Menu className="h-5 w-5" aria-hidden="true" />
               </Button>
             </SheetTrigger>
             <SheetContent side="left" className="border-sidebar-border bg-sidebar">
@@ -97,7 +97,7 @@ const AdminNavbar = () => {
                   <img src={certifyProLogo} alt="CertifyPro" className="h-8 w-auto object-contain" />
                 </SheetTitle>
               </SheetHeader>
-              <div className="mt-8 space-y-2">
+              <div className="mt-6 space-y-1.5">
                 {visibleItems.map((item) => (
                   <SheetClose key={item.url} asChild>
                     <NavLink
@@ -111,7 +111,7 @@ const AdminNavbar = () => {
                   </SheetClose>
                 ))}
 
-                <div className="my-6 h-px bg-sidebar-border/60" />
+                <div className="my-4 h-px bg-sidebar-border/60" />
 
                 <SheetClose asChild>
                   <NavLink
@@ -119,7 +119,7 @@ const AdminNavbar = () => {
                     className="flex items-center gap-4 rounded-lg px-4 py-3 text-sm font-medium text-sidebar-foreground transition-colors hover:bg-sidebar-accent/10 hover:text-sidebar-accent-foreground"
                     activeClassName="bg-sidebar-accent/15 text-sidebar-primary ring-1 ring-sidebar-border"
                   >
-                    <UserCircle className="h-5 w-5" />
+                    <UserCircle className="h-5 w-5" aria-hidden="true" />
                     My Profile
                   </NavLink>
                 </SheetClose>
@@ -130,7 +130,7 @@ const AdminNavbar = () => {
                     className="flex items-center gap-4 rounded-lg px-4 py-3 text-sm font-medium text-sidebar-foreground transition-colors hover:bg-sidebar-accent/10 hover:text-sidebar-accent-foreground"
                     activeClassName="bg-sidebar-accent/15 text-sidebar-primary ring-1 ring-sidebar-border"
                   >
-                    <HelpCircle className="h-5 w-5" />
+                    <HelpCircle className="h-5 w-5" aria-hidden="true" />
                     User Manual
                   </NavLink>
                 </SheetClose>
@@ -141,7 +141,7 @@ const AdminNavbar = () => {
                       onClick={handleSignOut}
                       className="flex w-full items-center gap-4 rounded-lg px-4 py-3 text-left text-sm font-medium text-sidebar-foreground transition-colors hover:bg-destructive/10 hover:text-destructive"
                     >
-                      <LogOut className="h-5 w-5" />
+                      <LogOut className="h-5 w-5" aria-hidden="true" />
                       Sign Out
                     </button>
                   </SheetClose>
@@ -158,7 +158,7 @@ const AdminNavbar = () => {
             >
               <span className="hidden whitespace-nowrap text-sm font-medium sm:inline">{roleLabel}</span>
               <div className="flex h-7 w-7 items-center justify-center rounded-full bg-sidebar-accent text-sidebar-primary ring-1 ring-sidebar-border">
-                <UserCircle className="h-5 w-5" />
+                <UserCircle className="h-5 w-5" aria-hidden="true" />
               </div>
             </Button>
 
@@ -170,26 +170,26 @@ const AdminNavbar = () => {
                   className="h-9 w-9 border border-sidebar-border bg-sidebar-accent/30 text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
                   aria-label="Open account menu"
                 >
-                  <ChevronDown className="h-4 w-4" />
+                  <ChevronDown className="h-4 w-4" aria-hidden="true" />
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="w-48">
                 <DropdownMenuItem asChild>
                   <NavLink to="/dashboard/profile" className="flex items-center gap-2">
-                    <UserCircle className="h-4 w-4" />
+                    <UserCircle className="h-4 w-4" aria-hidden="true" />
                     My Profile
                   </NavLink>
                 </DropdownMenuItem>
                 <DropdownMenuItem asChild>
                   <NavLink to="/dashboard/profile?section=security" className="flex items-center gap-2">
-                    <Shield className="h-4 w-4" />
+                    <Shield className="h-4 w-4" aria-hidden="true" />
                     Account Settings
                   </NavLink>
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem asChild>
                   <NavLink to="/" onClick={handleSignOut} className="flex items-center gap-2">
-                    <LogOut className="h-4 w-4" />
+                    <LogOut className="h-4 w-4" aria-hidden="true" />
                     Sign Out
                   </NavLink>
                 </DropdownMenuItem>

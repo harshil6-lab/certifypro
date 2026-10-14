@@ -4,6 +4,7 @@ import { isAuthenticated } from "@/lib/auth";
 import { CheckCircle, Zap, Shield } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { supabase } from "@/lib/supabaseClient";
 import {
   selectFreePlan,
@@ -86,9 +87,10 @@ const SelectPlan = () => {
         </div>
 
         {error && (
-          <div className="rounded-lg bg-destructive/10 border border-destructive/20 p-4 text-destructive text-sm text-center">
-            {error}
-          </div>
+          <Alert variant="destructive" className="text-center">
+            <AlertTitle>Something went wrong</AlertTitle>
+            <AlertDescription>{error}</AlertDescription>
+          </Alert>
         )}
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -96,7 +98,7 @@ const SelectPlan = () => {
           <Card className="border-border hover:border-accent/50 transition-colors">
             <CardHeader className="pb-4">
               <div className="flex items-center gap-2 mb-2">
-                <Shield className="w-5 h-5 text-muted-foreground" />
+                <Shield className="w-5 h-5 text-muted-foreground" aria-hidden="true" />
                 <span className="text-lg font-semibold text-foreground">Free</span>
               </div>
               <p className="text-3xl font-bold text-foreground">₹0</p>
@@ -111,7 +113,7 @@ const SelectPlan = () => {
                   "CSV import included",
                 ].map((f) => (
                   <li key={f} className="flex items-center gap-2">
-                    <CheckCircle className="w-4 h-4 text-green-500 flex-shrink-0" />
+                    <CheckCircle className="w-4 h-4 text-success flex-shrink-0" aria-hidden="true" />
                     {f}
                   </li>
                 ))}
@@ -134,7 +136,7 @@ const SelectPlan = () => {
             </div>
             <CardHeader className="pb-4">
               <div className="flex items-center gap-2 mb-2">
-                <Zap className="w-5 h-5 text-accent" />
+                <Zap className="w-5 h-5 text-accent" aria-hidden="true" />
                 <span className="text-lg font-semibold text-foreground">Pro</span>
               </div>
               <p className="text-3xl font-bold text-foreground">
@@ -152,7 +154,7 @@ const SelectPlan = () => {
                   "Priority support",
                 ].map((f) => (
                   <li key={f} className="flex items-center gap-2">
-                    <CheckCircle className="w-4 h-4 text-accent flex-shrink-0" />
+                    <CheckCircle className="w-4 h-4 text-accent flex-shrink-0" aria-hidden="true" />
                     {f}
                   </li>
                 ))}

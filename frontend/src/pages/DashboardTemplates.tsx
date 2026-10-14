@@ -3,6 +3,8 @@ import { Eye, ChevronLeft, ChevronRight } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { PageContainer, PageToolbar } from "@/components/layout/PageContainer";
+import { ErrorState, LoadingState } from "@/components/States";
 import { CertificateTemplate } from "@/components/certificates/CertificateTemplate";
 import { CertificateTemplateMeta, GalleryCategory } from "@/components/certificates/types";
 import { getTemplates } from "@/services/apiService";
@@ -74,14 +76,13 @@ const DashboardTemplates = () => {
   }, [templates]);
 
   return (
-    <div className="p-8 max-w-[1240px] mx-auto space-y-6 animate-fade-in">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-heading font-bold">Dashboard Template Gallery</h1>
-          <p className="text-muted-foreground">Official templates available for generation and workflow preview.</p>
-        </div>
-        <Badge>Official Only</Badge>
-      </div>
+    <PageContainer className="space-y-6 animate-fade-in">
+      <PageToolbar
+        crumbs={[{ label: "Dashboard", href: "/dashboard" }, { label: "Template gallery" }]}
+        title={<span className="font-heading">Dashboard Template Gallery</span>}
+        description="Official templates available for generation and workflow preview."
+        actions={<Badge>Official Only</Badge>}
+      />
 
       <div className="flex flex-wrap gap-2">
         {categories.map((category) => (
@@ -102,9 +103,9 @@ const DashboardTemplates = () => {
         </CardHeader>
         <CardContent>
           {loading ? (
-            <div className="h-64 flex items-center justify-center text-muted-foreground">Loading templates...</div>
+            <LoadingState rows={4} />
           ) : error ? (
-            <div className="h-64 flex items-center justify-center text-red-500">{error}</div>
+            <ErrorState title="Could not load templates" description={error} />
           ) : (
             <>
               <p className="text-sm text-muted-foreground mb-3">
@@ -172,7 +173,7 @@ const DashboardTemplates = () => {
           ))}
         </div>
       </div>
-    </div>
+    </PageContainer>
   );
 };
 

@@ -17,15 +17,7 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { PageContainer, PageHeader } from "@/components/layout/PageContainer";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
+import { PageContainer, PageToolbar } from "@/components/layout/PageContainer";
 import {
   Select,
   SelectContent,
@@ -33,6 +25,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { DataTable, type DataColumn } from "@/components/DataTable";
+import { EmptyState } from "@/components/States";
 import { useToast } from "@/components/ui/use-toast";
 import {
   useAccessControl,
@@ -191,9 +185,118 @@ const AccessControl = () => {
     }
   };
 
+  const memberColumns: DataColumn<AccessMember>[] = [
+    {
+      key: "name",
+      header: "Administrator",
+      accessor: (member) => member.name,
+      sortable: true,
+      render: (member) => (
+        <div className="flex items-center gap-3">
+          <Avatar className="h-9 w-9">
+            <AvatarFallback className="bg-primary text-primary-foreground text-xs font-medium">
+              {getInitials(member.name)}
+            </AvatarFallback>
+          </Avatar>
+          <div>
+            <p className="font-medium text-sm">{member.name}</p>
+            <p className="text-xs text-muted-foreground">{member.email}</p>
+          </div>
+        </div>
+      ),
+    },
+    {
+      key: "role",
+      header: "Role",
+      accessor: (member) => roleLabel(member),
+      sortable: true,
+      render: (member) =>
+        member.member_type === "super_admin" ? (
+          <Badge className="gap-1">
+            <Crown className="h-3 w-3" aria-hidden="true" /> Super Admin
+          </Badge>
+        ) : (
+          <Badge variant="outline" className="gap-1">
+            <ShieldCheck className="h-3 w-3" aria-hidden="true" /> {roleLabel(member)}
+          </Badge>
+        ),
+    },
+    {
+      key: "status",
+      header: "Status",
+      accessor: (member) => member.status,
+      sortable: true,
+      render: (member) => (
+        <Badge variant={member.status === "active" ? "success" : "neutral"}>{member.status}</Badge>
+      ),
+    },
+    {
+      key: "joined",
+      header: "Joined",
+      accessor: (member) => member.joined_at,
+      sortable: true,
+      render: (member) => (
+        <span className="text-sm text-muted-foreground">{formatJoined(member.joined_at)}</span>
+      ),
+    },
+    {
+      key: "permissions",
+      header: "Permissions",
+      accessor: (member) =>
+        member.member_type === "admin" || member.member_type === "super_admin"
+          ? "All modules"
+          : member.permissions
+              .map((permission) => permissionCatalog.find((item) => item.key === permission)?.label || permission)
+              .join(", "),
+      render: (member) => (
+        <div className="flex flex-wrap gap-2">
+          {(member.member_type === "admin" || member.member_type === "super_admin"
+            ? ["All modules"]
+            : member.permissions.map((permission) => permissionCatalog.find((item) => item.key === permission)?.label || permission)
+          ).map((permission) => (
+            <Badge key={`${member.id}-${permission}`} variant="secondary" className="text-xs">
+              {permission}
+            </Badge>
+          ))}
+        </div>
+      ),
+    },
+    {
+      key: "actions",
+      header: "Actions",
+      className: "text-right",
+      render: (member) => {
+        const removable = member.member_type === "co_admin" ? canManageCoAdmins : canManageAdmins;
+        return (
+          <div className="flex justify-end gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setSelectedMemberId(member.id)}
+              disabled={member.member_type !== "co_admin" || loading || degraded || !managementAvailable}
+            >
+              Manage
+            </Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              className="text-destructive hover:text-destructive"
+              aria-label={`Remove ${member.name || member.email}`}
+              onClick={() => void handleRemove(member.id)}
+              disabled={!removable || member.is_current_user || loading || submitting || degraded || !managementAvailable}
+            >
+              <Trash2 className="h-4 w-4" aria-hidden="true" />
+            </Button>
+          </div>
+        );
+      },
+    },
+  ];
+
   return (
     <PageContainer className="space-y-6 animate-fade-in">
-      <PageHeader
+      <PageToolbar
+        crumbs={[{ label: "Dashboard", href: "/dashboard" }, { label: "Access control" }]}
         title="Access control"
         description="Manage super admin, admin, and co-admin access."
         actions={
@@ -204,7 +307,7 @@ const AccessControl = () => {
       />
 
       <Alert>
-        <ShieldCheck className="h-4 w-4" />
+        <ShieldCheck className="h-4 w-4" aria-hidden="true" />
         <AlertTitle>Reserved super admin</AlertTitle>
         <AlertDescription>
           A reserved super-admin account retains permanent access and cannot be modified or removed from this panel.
@@ -213,7 +316,7 @@ const AccessControl = () => {
 
       {error ? (
         <Alert variant="destructive">
-          <AlertTriangle className="h-4 w-4" />
+          <AlertTriangle className="h-4 w-4" aria-hidden="true" />
           <AlertTitle>Access control load failed</AlertTitle>
           <AlertDescription>
             {error}
@@ -224,7 +327,7 @@ const AccessControl = () => {
 
       {degraded ? (
         <Alert className="border-warning/40 [&>svg]:text-warning">
-          <AlertTriangle className="h-4 w-4" />
+          <AlertTriangle className="h-4 w-4" aria-hidden="true" />
           <AlertTitle>Read-only fallback mode</AlertTitle>
           <AlertDescription>
             Role visibility is available, but invite, update, and remove actions stay disabled until the backend responds again.
@@ -244,7 +347,7 @@ const AccessControl = () => {
         <Card>
           <CardHeader className="pb-3">
             <CardTitle className="flex items-center gap-2 text-base font-semibold">
-              <UserPlus className="h-4 w-4 text-muted-foreground" />
+              <UserPlus className="h-4 w-4 text-muted-foreground" aria-hidden="true" />
               Invite administrator
             </CardTitle>
           </CardHeader>
@@ -253,7 +356,7 @@ const AccessControl = () => {
               <div>
                 <Label className="mb-2 block text-sm font-medium">Invite by email</Label>
                 <div className="relative">
-                  <Mail className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
+                  <Mail className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" aria-hidden="true" />
                   <Input
                     value={inviteEmail}
                     onChange={(event) => setInviteEmail(event.target.value)}
@@ -294,9 +397,11 @@ const AccessControl = () => {
                   .map((permission) => (
                     <label
                       key={permission.key}
-                      className="flex items-start gap-3 rounded-lg border border-border bg-background px-3 py-3"
+                      htmlFor={`invite-permission-${permission.key}`}
+                      className="flex items-start gap-3 rounded-lg border border-border bg-background px-3 py-3 cursor-pointer"
                     >
                       <Checkbox
+                        id={`invite-permission-${permission.key}`}
                         checked={inviteRole === "admin" || invitePermissions.includes(permission.key)}
                         onCheckedChange={() => toggleInvitePermission(permission.key)}
                         disabled={inviteRole === "admin"}
@@ -316,7 +421,7 @@ const AccessControl = () => {
                 disabled={submitting || !inviteEmail.trim() || !canManageCoAdmins || degraded || !managementAvailable}
                 className="gap-2"
               >
-                <UserPlus className="h-4 w-4" />
+                <UserPlus className="h-4 w-4" aria-hidden="true" />
                 {inviteRole === "admin" ? "Invite admin" : "Invite co-admin"}
               </Button>
             </div>
@@ -332,7 +437,7 @@ const AccessControl = () => {
         <Card>
           <CardHeader className="pb-3">
             <CardTitle className="flex items-center gap-2 text-base font-semibold">
-              <Shield className="h-4 w-4 text-muted-foreground" />
+              <Shield className="h-4 w-4 text-muted-foreground" aria-hidden="true" />
               Selected member permissions
             </CardTitle>
           </CardHeader>
@@ -351,8 +456,9 @@ const AccessControl = () => {
                   {permissionCatalog
                     .filter((permission) => permission.key !== "access_control")
                     .map((permission) => (
-                      <label key={permission.key} className="flex items-start gap-3 rounded-lg border border-border p-3">
+                      <label key={permission.key} htmlFor={`member-permission-${permission.key}`} className="flex items-start gap-3 rounded-lg border border-border p-3 cursor-pointer">
                         <Checkbox
+                          id={`member-permission-${permission.key}`}
                           checked={selectedMember.member_type !== "co_admin" || memberPermissions.includes(permission.key)}
                           onCheckedChange={() => toggleMemberPermission(permission.key)}
                           disabled={selectedMember.member_type !== "co_admin" || !canManageCoAdmins}
@@ -373,9 +479,7 @@ const AccessControl = () => {
                 </Button>
               </>
             ) : (
-              <div className="rounded-lg border border-dashed border-border p-6 text-center text-sm text-muted-foreground">
-                Select a co-admin from the table to edit granular component access.
-              </div>
+              <EmptyState title="No member selected" description="Select a co-admin from the table to edit granular component access." />
             )}
           </CardContent>
         </Card>
@@ -384,93 +488,21 @@ const AccessControl = () => {
       <Card>
         <CardHeader className="pb-3">
           <CardTitle className="flex items-center gap-2 text-base font-semibold">
-            <Users className="h-4 w-4 text-muted-foreground" />
+            <Users className="h-4 w-4 text-muted-foreground" aria-hidden="true" />
             Approved administrators and co-admins ({members.length})
           </CardTitle>
         </CardHeader>
-        <CardContent className="p-0">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Administrator</TableHead>
-                <TableHead>Role</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead>Joined</TableHead>
-                <TableHead>Permissions</TableHead>
-                <TableHead className="text-right">Actions</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {members.map((member) => {
-                const removable = member.member_type === "co_admin" ? canManageCoAdmins : canManageAdmins;
-                return (
-                  <TableRow key={member.id} className="hover:bg-muted/50 transition-colors">
-                    <TableCell>
-                      <div className="flex items-center gap-3">
-                        <Avatar className="h-9 w-9">
-                          <AvatarFallback className="bg-primary text-primary-foreground text-xs font-medium">
-                            {getInitials(member.name)}
-                          </AvatarFallback>
-                        </Avatar>
-                        <div>
-                          <p className="font-medium text-sm">{member.name}</p>
-                          <p className="text-xs text-muted-foreground">{member.email}</p>
-                        </div>
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      {member.member_type === "super_admin" ? (
-                        <Badge className="gap-1">
-                          <Crown className="h-3 w-3" /> Super Admin
-                        </Badge>
-                      ) : (
-                        <Badge variant="outline" className="gap-1">
-                          <ShieldCheck className="h-3 w-3" /> {roleLabel(member)}
-                        </Badge>
-                      )}
-                    </TableCell>
-                    <TableCell>
-                      <Badge variant={member.status === "active" ? "success" : "neutral"}>{member.status}</Badge>
-                    </TableCell>
-                    <TableCell className="text-sm text-muted-foreground">{formatJoined(member.joined_at)}</TableCell>
-                    <TableCell>
-                      <div className="flex flex-wrap gap-2">
-                        {(member.member_type === "admin" || member.member_type === "super_admin"
-                          ? ["All modules"]
-                          : member.permissions.map((permission) => permissionCatalog.find((item) => item.key === permission)?.label || permission)
-                        ).map((permission) => (
-                          <Badge key={`${member.id}-${permission}`} variant="secondary" className="text-xs">
-                            {permission}
-                          </Badge>
-                        ))}
-                      </div>
-                    </TableCell>
-                    <TableCell className="text-right">
-                      <div className="flex justify-end gap-2">
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => setSelectedMemberId(member.id)}
-                          disabled={member.member_type !== "co_admin" || loading || degraded || !managementAvailable}
-                        >
-                          Manage
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          className="text-destructive hover:text-destructive"
-                          onClick={() => void handleRemove(member.id)}
-                          disabled={!removable || member.is_current_user || loading || submitting || degraded || !managementAvailable}
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      </div>
-                    </TableCell>
-                  </TableRow>
-                );
-              })}
-            </TableBody>
-          </Table>
+        <CardContent>
+          <DataTable<AccessMember>
+            columns={memberColumns}
+            rows={members}
+            rowKey={(member) => member.id}
+            searchPlaceholder="Search by name or email…"
+            getSearchText={(member) => `${member.name} ${member.email} ${roleLabel(member)}`}
+            emptyTitle="No members found"
+            emptyDescription="Invite an administrator or adjust your search."
+            caption="Approved administrators and co-admins"
+          />
         </CardContent>
       </Card>
     </PageContainer>

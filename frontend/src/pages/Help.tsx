@@ -1,5 +1,6 @@
-import { BookOpen, FileText, Upload, Printer, Search, Shield, ExternalLink } from "lucide-react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { BookOpen, FileText, Upload, Printer, Search, Shield } from "lucide-react";
+import { Card, CardContent } from "@/components/ui/card";
+import { PageContainer, PageToolbar } from "@/components/layout/PageContainer";
 
 const sections = [
   {
@@ -31,24 +32,25 @@ const sections = [
 
 const Help = () => {
   return (
-    <div className="p-8 max-w-[1000px] mx-auto space-y-6 animate-fade-in">
-      <div>
-        <h1 className="text-3xl font-heading font-bold text-foreground flex items-center gap-3">
-          <BookOpen className="w-8 h-8 text-accent" />
-          User Manual
-        </h1>
-        <p className="text-muted-foreground mt-1">
-          Everything you need to know to manage certificates with CertifyPro.
-        </p>
-      </div>
+    <PageContainer className="space-y-6 animate-fade-in">
+      <PageToolbar
+        crumbs={[{ label: "Dashboard", href: "/dashboard" }, { label: "User manual" }]}
+        title={
+          <span className="flex items-center gap-3 font-heading">
+            <BookOpen className="h-8 w-8 text-accent" aria-hidden="true" />
+            User Manual
+          </span>
+        }
+        description="Everything you need to know to manage certificates with CertifyPro."
+      />
 
       <div className="space-y-4">
         {sections.map((section) => (
           <Card key={section.title}>
             <CardContent className="p-5">
               <div className="flex items-start gap-4">
-                <div className="w-10 h-10 rounded-lg bg-accent/10 flex items-center justify-center shrink-0 mt-0.5 group-hover:bg-accent/20 transition-colors">
-                  <section.icon className="w-5 h-5 text-accent" />
+                <div className="w-10 h-10 rounded-lg bg-accent/10 flex items-center justify-center shrink-0 mt-0.5 transition-colors">
+                  <section.icon className="w-5 h-5 text-accent" aria-hidden="true" />
                 </div>
                 <div>
                   <h3 className="font-heading font-semibold text-foreground mb-1">{section.title}</h3>
@@ -59,7 +61,7 @@ const Help = () => {
           </Card>
         ))}
       </div>
-    </div>
+    </PageContainer>
   );
 };
 
