@@ -7,6 +7,7 @@ import {
 } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { API_BASE, getAuthHeaders } from "@/services/apiService";
+import { supabase } from "@/lib/supabaseClient";
 
 
 export type AccessPermission =
@@ -225,12 +226,9 @@ const inviteMember = async (payload: InvitePayload) => {
 
   if (!organizationId) {
     try {
-      const { createClient } = await import("@supabase/supabase-js");
-      const client = createClient(
-        import.meta.env.VITE_SUPABASE_URL,
-        import.meta.env.VITE_SUPABASE_ANON_KEY
-      );
-      const { data: { session } } = await client.auth.getSession();
+      const { data: { session } } = supabase
+        ? await supabase.auth.getSession()
+        : { data: { session: null } };
       organizationId =
         session?.user?.user_metadata?.organization_id ??
         session?.user?.app_metadata?.organization_id ??

@@ -13,6 +13,7 @@ import {
   sendPasswordResetEmail,
   signInWithEmailPassword,
 } from "@/lib/auth";
+import { useCaptchaToken } from "@/hooks/useCaptchaToken";
 
 const Login = () => {
   const navigate = useNavigate();
@@ -27,6 +28,11 @@ const Login = () => {
   const [searchParams] = useSearchParams();
   const templateRedirect = searchParams.get("reason") === "templates";
   const redirectTo = searchParams.get("redirect") || "/dashboard";
+  const captcha = useCaptchaToken();
+  const Captcha = captcha.Widget;
+  // Turnstile tokens are single-use; when the site key is configured the
+  // form actions stay disabled until a fresh token exists.
+  const captchaBlocking = captcha.isConfigured && !captcha.token;
 
   const handleSignIn = async () => {
     setAuthError("");
@@ -34,7 +40,11 @@ const Login = () => {
     setIsSigningIn(true);
 
     try {
-      const result = await signInWithEmailPassword(email, password);
+      const result = await signInWithEmailPassword(
+        email,
+        password,
+        captcha.isConfigured ? captcha.token : undefined,
+      );
       if (!result.success) {
         setAuthError(result.error || "Unable to sign in. Please try again.");
         return;
@@ -63,6 +73,8 @@ const Login = () => {
     } catch {
       setAuthError("Unexpected authentication error. Please try again.");
     } finally {
+      // Tokens are single-use: always reset so the next attempt needs a fresh check.
+      captcha.reset();
       setIsSigningIn(false);
     }
   };
@@ -71,7 +83,12 @@ const Login = () => {
     setAuthError("");
     setResetMessage("");
 
-    const result = await sendPasswordResetEmail(email);
+    const result = await sendPasswordResetEmail(
+      email,
+      captcha.isConfigured ? captcha.token : undefined,
+    );
+    // The reset token is single-use regardless of the outcome.
+    captcha.reset();
     if (!result.success) {
       setAuthError(result.error || "Unable to send reset email.");
       return;
@@ -179,7 +196,8 @@ const Login = () => {
                 <button
                   type="button"
                   onClick={() => void handlePasswordReset()}
-                  className="rounded-sm text-sm font-medium text-muted-foreground underline-offset-4 transition-colors hover:text-foreground hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                  disabled={captchaBlocking}
+                  className="rounded-sm text-sm font-medium text-muted-foreground underline-offset-4 transition-colors hover:text-foreground hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
                 >
                   Forgot password?
                 </button>
@@ -218,13 +236,28 @@ const Login = () => {
                 <span>{resetMessage}</span>
               </div>
             ) : null}
+            {captcha.isConfigured ? (
+              <div className="flex flex-col items-center gap-1">
+                <Captcha />
+                {captchaBlocking ? (
+                  <p className="text-xs text-muted-foreground">
+                    Complete the security check to continue.
+                  </p>
+                ) : null}
+              </div>
+            ) : null}
             {!isSupabaseConfigured ? (
               <div className="rounded-md border border-warning/40 bg-warning/10 px-4 py-3 text-xs text-warning">
                 Authentication is not fully configured. Ask an administrator to set the required environment values.
               </div>
             ) : null}
 
-            <Button type="submit" size="lg" className="w-full" disabled={isSigningIn}>
+            <Button
+              type="submit"
+              size="lg"
+              className="w-full"
+              disabled={isSigningIn || captchaBlocking}
+            >
               {isSigningIn ? (
                 <>
                   <Loader2 className="h-4 w-4 animate-spin" />

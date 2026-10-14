@@ -1,22 +1,9 @@
 from fastapi import APIRouter, HTTPException, Request
-from pydantic import BaseModel, EmailStr
-from ..services.auth_service import send_magic_link, get_current_user
+from ..services.auth_service import get_current_user
 from ..core.supabase_client import get_supabase_service_client
 from fastapi import Path
 
 router = APIRouter()
-
-
-class LoginIn(BaseModel):
-    email: EmailStr
-
-
-@router.post("/login")
-async def login(payload: LoginIn):
-    result = send_magic_link(payload.email)
-    if not result.get("success"):
-        raise HTTPException(status_code=400, detail=result.get("error") or "failed to send magic link")
-    return {"message": "magic link requested"}
 
 
 @router.get("/me")

@@ -1,7 +1,7 @@
 """Authentication helpers that wrap Supabase operations.
 
-Provides a small abstraction for sending magic links and validating
-tokens. Keep functions small and add comments explaining the security
+Provides token validation for requests that carry a Supabase JWT.
+Keep functions small and add comments explaining the security
 considerations.
 """
 
@@ -11,30 +11,6 @@ from ..core.config import get_settings
 import requests
 
 settings = get_settings()
-
-
-def send_magic_link(email: str) -> dict:
-    """Send a magic-link (email OTP) to the given address.
-
-    Security note: The backend simply forwards the request to Supabase.
-    Supabase will send the email; the backend does not generate or send
-    the token itself.
-    """
-    if not email:
-        raise ValueError("email is required")
-
-    if not supabase:
-        return {"success": False, "error": "supabase client unavailable"}
-
-    try:
-        resp = supabase.auth.sign_in_with_otp({"email": email})
-        return {"success": True, "data": resp}
-    except Exception:
-        try:
-            resp = supabase.auth.sign_in(email=email)
-            return {"success": True, "data": resp}
-        except Exception as exc:
-            return {"success": False, "error": str(exc)}
 
 
 def get_current_user(token: str = None) -> Optional[dict]:

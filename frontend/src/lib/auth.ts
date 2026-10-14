@@ -34,6 +34,19 @@ const isEmailVerified = (session: Session | null): boolean => {
   return Boolean(session?.user?.email_confirmed_at);
 };
 
+/**
+ * Maps Supabase CAPTCHA failures to a distinct, friendly message.
+ * Returns null when the error is not CAPTCHA-related so existing
+ * error handling stays untouched.
+ */
+const mapCaptchaError = (message: string): string | null => {
+  if (message.toLowerCase().includes("captcha")) {
+    return "Security check failed. Please complete the check and try again.";
+  }
+
+  return null;
+};
+
 const isFirstLoginRequired = (session: Session | null): boolean => {
   return Boolean(session?.user?.user_metadata?.first_login_required);
 };
@@ -112,6 +125,7 @@ export function subscribeToAuthChanges(
 export async function signInWithEmailPassword(
   email: string,
   password: string,
+  captchaToken?: string | null,
 ): Promise<AuthResult> {
   if (!email.trim() || !password.trim()) {
     return {
@@ -131,13 +145,15 @@ export async function signInWithEmailPassword(
     const { data, error } = await supabase.auth.signInWithPassword({
       email: email.trim(),
       password,
+      options: { captchaToken: captchaToken ?? undefined },
     });
 
     if (error) {
       setAuthFlag(false);
       return {
         success: false,
-        error: error.message || "Unable to sign in. Please try again.",
+        error:
+          mapCaptchaError(error.message) || error.message || "Unable to sign in. Please try again.",
       };
     }
 
@@ -202,7 +218,10 @@ export async function signOutUser(): Promise<void> {
   await clearStoredSupabaseSession();
 }
 
-export async function sendPasswordResetEmail(email: string): Promise<AuthResult> {
+export async function sendPasswordResetEmail(
+  email: string,
+  captchaToken?: string | null,
+): Promise<AuthResult> {
   if (!email.trim()) {
     return {
       success: false,
@@ -220,12 +239,14 @@ export async function sendPasswordResetEmail(email: string): Promise<AuthResult>
   try {
     const { error } = await supabase.auth.resetPasswordForEmail(email.trim(), {
       redirectTo: `${window.location.origin}/reset-password`,
+      captchaToken: captchaToken ?? undefined,
     });
 
     if (error) {
       return {
         success: false,
-        error: error.message || "Unable to send password reset email.",
+        error:
+          mapCaptchaError(error.message) || error.message || "Unable to send password reset email.",
       };
     }
 
